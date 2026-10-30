@@ -1,0 +1,7 @@
+﻿# Danh sách tính năng MVP cần kiểm tra khoảng trống
+Quản lý tồn kho tủ lạnh có trạng thái định tính (còn nhiều, còn ít, hết)
+Nhập liệu bằng câu tự nhiên tiếng Việt cho nguyên liệu
+Gợi ý món ăn Việt từ nguyên liệu đang có, ưu tiên nguyên liệu sắp hết hạn
+Thông báo nguyên liệu sắp hết hạn theo ngăn tủ lạnh
+Danh sách đi chợ đánh dấu đã mua và cập nhật tồn kho khi hoàn tất
+Chia sẻ tủ lạnh cho nhiều thành viên trong gia đình
