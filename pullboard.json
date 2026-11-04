@@ -1,5 +1,5 @@
 {
-  "gate": "",
+  "gate": "./gradlew :androidApp:assembleDebug",
   "spec": "SPEC.md",
   "practice": "DOCTRINE.md",
   "worktrees": "inside",
@@ -12,6 +12,19 @@
   },
   "lease": "2h",
   "lanes": {
+    "android": {
+      "owns": [
+        "androidApp/",
+        "shared/",
+        "gradle/",
+        "build.gradle.kts",
+        "settings.gradle.kts",
+        "gradle.properties",
+        "gradlew",
+        "gradlew.bat"
+      ],
+      "starts": "any time"
+    },
     "review": {
       "owns": [],
       "starts": "any time: verifiers check submitted work and own no folders"

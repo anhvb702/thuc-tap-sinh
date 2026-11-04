@@ -13,4 +13,6 @@ Write each requirement as one row under its section, in this format. The fence k
 
 ## G · Goals: what the client asked for
 
+- G1 [approved, must] The app builds and opens on an Android emulator (Pixel_8) and its first screen shows without a crash. | gate: ./gradlew :androidApp:assembleDebug passes, and a screenshot of the running app from the emulator is attached to the PR
+
 ## K · Constraints
