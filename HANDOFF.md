@@ -1,6 +1,15 @@
 # HANDOFF: YourRefri (tạm dừng giữa tuần 1)
 
-Cập nhật: 2026-11-05. Chưa commit gì. Mọi thay đổi đang nằm trong working tree của `E:\KMM App`.
+Cập nhật: 2026-11-05. Xem tiến độ mới nhất ngay bên dưới; thông tin phía sau là handoff ban đầu và có thể đã cũ.
+
+## Tiến độ cập nhật trong phiên Codex
+
+- Fork `anhvb702/thuc-tap-sinh`, nhánh `codex/yourrefri-baseline`, PR review #2. Commit `dcc0482` chứa W1-04/05; không merge tự động.
+- W1-04/05: 187 test shared xanh; DB 34 test, repository 30 test; mỗi task 6 mutation bị bắt và đã khôi phục. Xem biên bản trong spec tương ứng.
+- W1-02/03/06: mỗi task đã kiểm 6 mutation bị test bắt, khôi phục và test shared xanh từ cache; W1-02 mutation mới tập trung Recipe/Slot, chưa riêng CookLog. Chi tiết trong các spec.
+- W1-07a có spec, test và code ViewModel bản đầu. Test compile lỗi suy luận kiểu ở hai phép `assertEquals`; đang hỏi người dùng cho phép sửa kiểu test mà giữ nguyên điều kiện. Chưa xác nhận ViewModel xanh hoặc mutation.
+- Qodo nêu vấn đề hoàn tác món chưa từng có để lại dòng `have=false`; cần đối chiếu hợp đồng reducer/repository và viết test tích hợp trước khi đổi hành vi. CodeRabbit bị giới hạn lượt review ở lần kiểm trước.
+- Người dùng cho phép tải dependency Gradle, commit/push theo feature và dùng emulator. Workspace đang mở trực tiếp trong Android Studio; báo khi có bản phù hợp để sync và chạy.
 
 ## Dự án
 App KMM "Hôm nay nấu gì" cho phụ huynh (Android trước, 5 tuần). Nhập đồ bằng lưới chạm (có/hết), hạn dùng ước tính, một thông báo mỗi ngày, gợi ý 3 món từ đồ sắp hỏng, công thức từng bước. Dữ liệu chỉ trên máy. Quy tắc đầy đủ ở `CLAUDE.md` (cùng nội dung cho Codex ở `AGENTS.override.md`), kế hoạch ở `PLAN.md`, spec test ở `docs/tests/W1-0x.md`.

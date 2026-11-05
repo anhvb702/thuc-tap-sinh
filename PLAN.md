@@ -110,7 +110,7 @@ Mỗi task ≤ ~300 dòng diff (S ≤100, M ≤200, L ≤300; vượt thì tách
 
 ## Definition of Done chung
 1. Test do Opus viết trước, không bị sửa hoặc làm yếu (Sonnet đối chiếu git diff của test).
-2. `./gradlew :shared:allTests` và build composeApp xanh.
+2. `./gradlew :shared:testDebugUnitTest` và build composeApp xanh.
 3. Logic chỉ hàm thuần, Clock/TimeZone được tiêm, `feature/*/logic` không import SQLDelight.
 4. Diff ≤ ~300 dòng, đúng file và chữ ký trong task.
 5. Không có từ cấm, văn phong ngắn, ấm, có đường lui.

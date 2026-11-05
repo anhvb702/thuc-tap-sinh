@@ -47,4 +47,3 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 - File tải về đặt trong `downloads\` (mỗi lần một thư mục con riêng, đã `.gitignore`), hỏi người dùng trước khi tải.
 - Không đọc hay in nội dung `.env*`, keystore, `local.properties`, file service account.
 
-@AGENTS.md
