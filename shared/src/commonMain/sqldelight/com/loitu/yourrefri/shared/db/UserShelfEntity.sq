@@ -1,0 +1,16 @@
+CREATE TABLE UserShelfEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    userShelfDays INTEGER NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO UserShelfEntity VALUES (:ingredientId, :userShelfDays);
+
+selectById:
+SELECT userShelfDays FROM UserShelfEntity WHERE ingredientId = :ingredientId;
+
+selectAll:
+SELECT * FROM UserShelfEntity ORDER BY ingredientId ASC;
+
+deleteById:
+DELETE FROM UserShelfEntity WHERE ingredientId = :ingredientId;

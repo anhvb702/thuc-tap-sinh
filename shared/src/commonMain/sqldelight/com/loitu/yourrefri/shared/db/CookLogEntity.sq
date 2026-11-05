@@ -1,0 +1,26 @@
+CREATE TABLE CookLogEntity (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    recipeId TEXT NOT NULL,
+    cookedOn TEXT NOT NULL,
+    photoUri TEXT,
+    savedIngredientIds TEXT AS kotlin.collections.List<kotlin.String> NOT NULL
+);
+
+insert:
+INSERT INTO CookLogEntity(recipeId, cookedOn, photoUri, savedIngredientIds)
+VALUES (:recipeId, :cookedOn, :photoUri, :savedIngredientIds);
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
+selectAll:
+SELECT * FROM CookLogEntity ORDER BY cookedOn DESC, id DESC;
+
+selectSince:
+SELECT * FROM CookLogEntity WHERE cookedOn >= :since ORDER BY cookedOn DESC, id DESC;
+
+selectRecipeIdsSince:
+SELECT DISTINCT recipeId FROM CookLogEntity WHERE cookedOn >= :since ORDER BY recipeId;
+
+deleteById:
+DELETE FROM CookLogEntity WHERE id = :id;
