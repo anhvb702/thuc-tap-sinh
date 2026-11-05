@@ -1,20 +1,30 @@
-# HANDOFF: YourRefri (tạm dừng giữa tuần 1)
+# HANDOFF: YourRefri
 
 Cập nhật: 2026-11-05. Xem tiến độ mới nhất ngay bên dưới; thông tin phía sau là handoff ban đầu và có thể đã cũ.
 
 ## Tiến độ cập nhật trong phiên Codex
 
-- Fork `anhvb702/thuc-tap-sinh`, nhánh `codex/yourrefri-baseline`, PR review #2. Commit `dcc0482` chứa W1-04/05; không merge tự động.
-- W1-04/05: 187 test shared xanh; DB 34 test, repository 30 test; mỗi task 6 mutation bị bắt và đã khôi phục. Xem biên bản trong spec tương ứng.
-- W1-02/03/06: mỗi task đã kiểm 6 mutation bị test bắt, khôi phục và test shared xanh từ cache; W1-02 mutation mới tập trung Recipe/Slot, chưa riêng CookLog. Chi tiết trong các spec.
-- W1-07a có spec, test và code ViewModel bản đầu. Test compile lỗi suy luận kiểu ở hai phép `assertEquals`; đang hỏi người dùng cho phép sửa kiểu test mà giữ nguyên điều kiện. Chưa xác nhận ViewModel xanh hoặc mutation.
-- Qodo nêu vấn đề hoàn tác món chưa từng có để lại dòng `have=false`; cần đối chiếu hợp đồng reducer/repository và viết test tích hợp trước khi đổi hành vi. CodeRabbit bị giới hạn lượt review ở lần kiểm trước.
-- Người dùng cho phép tải dependency Gradle, commit/push theo feature và dùng emulator. Workspace đang mở trực tiếp trong Android Studio; báo khi có bản phù hợp để sync và chạy.
+- Trạng thái làm việc hiện tại: fork `anhvb702/thuc-tap-sinh`, nhánh `codex/yourrefri-baseline`; lịch sử commit gần nhất xem bằng `git log`. PR/review cần đối chiếu trực tiếp trước khi cập nhật; không dùng số PR cũ làm bằng chứng hiện tại.
+- W1-04/05: tổng 187 shared test xanh theo biên bản trong `docs/tests/W1-05.md`; W1-04 có 34 test DB, W1-05 có 30 test repository. Mỗi task có 6 mutation bị bắt và đã khôi phục, theo `docs/tests/W1-04.md` và `docs/tests/W1-05.md`.
+- W1-02/03/06: mỗi spec ghi 6 mutation bị bắt và khôi phục; chi tiết và lệnh có trong `docs/tests/W1-02.md`, `W1-03.md`, `W1-06.md`. W1-02 mutation tập trung Recipe, chưa bao phủ riêng CookLog.
+- Các kết quả test/mutation trên là chạy Gradle CLI trước đây, một số kết quả xanh cuối lấy từ cache theo biên bản. Chưa được người dùng tái kiểm trong Android Studio ở phiên hiện tại.
+- W1-07a có spec, test và code ViewModel bản đầu. Test compile lỗi suy luận kiểu ở hai phép `assertEquals`; đang chờ người dùng quyết định có sửa kiểu kỳ vọng trong test hay không. Chưa xác nhận ViewModel xanh hoặc mutation.
+- W4-01 có code và test trong workspace, người dùng chưa xem kết quả trên Android Studio. Cần người dùng bấm chạy test và gửi kết quả; không ghi nhận là đã kiểm Android Studio. Spec có biên bản kiểm tra trước đó và nêu giới hạn test.
+- Qodo nêu vấn đề hoàn tác món chưa từng có để lại dòng `have=false`; cần đối chiếu hợp đồng reducer/repository và viết test tích hợp trước khi đổi hành vi.
+- Người dùng cho phép tải dependency Gradle, commit/push theo feature và dùng emulator. Khi có bản phù hợp, báo người dùng sync và kiểm tra Android Studio.
+
+### Bước tiếp theo
+
+1. Chờ người dùng quyết định có cho phép sửa lỗi suy luận kiểu trong test W1-07a; không tự sửa test khi chưa có chỉ dẫn.
+2. Nhờ người dùng chạy các test liên quan trong Android Studio và gửi kết quả; không thay bằng chạy test CLI khi không có Computer Use.
+3. Đối chiếu kết quả review Qodo về hoàn tác món chưa từng có với hợp đồng và bổ sung test tích hợp trước khi đổi hành vi.
 
 ## Dự án
-App KMM "Hôm nay nấu gì" cho phụ huynh (Android trước, 5 tuần). Nhập đồ bằng lưới chạm (có/hết), hạn dùng ước tính, một thông báo mỗi ngày, gợi ý 3 món từ đồ sắp hỏng, công thức từng bước. Dữ liệu chỉ trên máy. Quy tắc đầy đủ ở `CLAUDE.md` (cùng nội dung cho Codex ở `AGENTS.override.md`), kế hoạch ở `PLAN.md`, spec test ở `docs/tests/W1-0x.md`.
+App KMM "Hôm nay nấu gì" cho phụ huynh (Android trước, 5 tuần). Nhập đồ bằng lưới chạm (có/hết), hạn dùng ước tính, một thông báo mỗi ngày, gợi ý 3 món từ đồ sắp hỏng, công thức từng bước. Dữ liệu chỉ trên máy. Quy tắc hiện hành ở `AGENTS.override.md`, kế hoạch ở `PLAN.md`, spec test ở `docs/tests/W1-0x.md`.
 
-Quy trình mỗi task: Opus thiết kế test trước, Haiku code cho test xanh (không sửa test), Sonnet kiểm (có mutation). Chuyển sang Codex thì một agent làm cả ba vai theo thứ tự đó, xem `AGENTS.override.md`.
+`AGENTS.override.md` là nguồn chỉ dẫn hiện hành về quy trình, phân vai và cách xử lý test; tiêu chí task ở `docs/tests/`. `SPEC.md` mô tả phạm vi sản phẩm, `DECISIONS.md` ghi quyết định và mục đang chờ.
+
+> Các mục tiến độ bên dưới được giữ lại từ handoff ban đầu để tra lịch sử; chúng không phải ảnh chụp hiện trạng. Chỉ phần “Tiến độ cập nhật trong phiên Codex” phía trên là snapshot hiện hành.
 
 ## Đã xong và đã được kiểm
 - **W1-00** (toolchain, module `:shared`, `:composeApp`): Sonnet chấp nhận. `assembleDebug` xanh.
