@@ -36,7 +36,7 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 3. Sonnet kiểm: đọc diff, chạy test, kiểm mutation, đối chiếu tiêu chí, ghi biên bản ngắn.
 - Mỗi task ≤ ~300 dòng diff; vượt thì tách.
 - Nhánh `feat/<mã-thẻ>-<slug>`, mỗi task một PR, squash merge.
-- Không commit, push hay merge khi chưa được hỏi.
+- Người dùng đã cho phép commit/push từng feature lên fork để bot review; không merge khi chưa được hỏi.
 - DoD: `:shared` test xanh, build `:composeApp` xanh, test khớp tiêu chí trong `docs/tests/`, UI có ảnh chụp emulator, thông báo và thời gian có checklist tay.
 - Không xóa hoặc `@Ignore` test cũ.
 

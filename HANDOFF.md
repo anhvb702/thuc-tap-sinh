@@ -62,4 +62,4 @@ Haiku bị dừng ở bước cuối, nên chưa có báo cáo cuối và chưa 
 - Không đọc hay in `local.properties`, `.env*`, keystore.
 
 ## Việc chưa hỏi người dùng
-Commit, tách PR, đổi tên thư mục `E:\KMM App` thành `YourRefri` (nên làm khi đóng Android Studio), tải skill codegraph (người dùng gợi ý; cần hỏi trước khi tải).
+Người dùng đã cho phép commit/push theo feature và tải dependency Gradle. Chưa hỏi đổi tên thư mục `E:\KMM App` thành `YourRefri` hoặc tải skill codegraph; không merge khi chưa hỏi.

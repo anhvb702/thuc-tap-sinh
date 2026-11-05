@@ -9,7 +9,7 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước: "Hôm nay n�
 - Dữ liệu chỉ trên máy (SQLDelight). Không tài khoản, backend, analytics hay crash SDK.
 - Mọi tính năng chạy đầy đủ offline.
 - Hạn dùng luôn ghi "ước tính"; không khẳng định an toàn thực phẩm.
-- Không tạo file ngoài danh sách cần thiết, không commit/push/merge, không tải file, khi chưa hỏi người dùng.
+- Không tạo file ngoài danh sách cần thiết hoặc merge khi chưa hỏi người dùng. Trong phiên hiện tại người dùng đã cho phép tải dependency Gradle cần thiết và commit/push từng feature lên fork để bot review.
 - Không đọc hay in nội dung `.env*`, keystore, `local.properties`, file service account.
 
 ## Văn phong trong app
