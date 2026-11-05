@@ -1,4 +1,4 @@
-rootProject.name = "MakeYourDay"
+﻿rootProject.name = "YourRefri"
 
 pluginManagement {
     repositories {
@@ -27,5 +27,6 @@ dependencyResolutionManagement {
     }
 }
 
-include(":androidApp")
 include(":shared")
+include(":composeApp")
+
