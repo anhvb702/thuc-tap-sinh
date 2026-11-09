@@ -3,10 +3,18 @@ package com.loitu.yourrefri.feature.pantry.logic
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.CancelShelfEditor
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.CancelUnitEditor
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.AddIngredient
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.ConsumeIngredient
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.Loaded
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.OpenUnitEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.OpenShelfEditor
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.IncreaseQuantity
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.DecreaseQuantity
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.PickShelfDays
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.PickUnit
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.SaveShelfEditor
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.SaveUnitEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.Tap
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect.SaveHave
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect.SaveShelfDays
@@ -54,6 +62,92 @@ class PantryGridReducerTest {
     }
 
     private fun cell(state: PantryGridState, id: String): PantryCell = cellsOf(state).single { it.ingredientId == id }
+
+    @Test
+    fun decreaseQuantityKeepsCookedItemPresentWhenMoreThanOneRemains() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05"))).copy(
+            quantities = mapOf("trung-ga" to 3),
+        )
+
+        val result = reduce(start, DecreaseQuantity("trung-ga"))
+
+        assertEquals(2, result.state.quantities["trung-ga"])
+        assertTrue(result.state.pantry.getValue("trung-ga").have)
+    }
+
+    @Test
+    fun decreaseQuantityAtOneMarksCookedItemAbsentWithoutZeroQuantity() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05")))
+
+        val result = reduce(start, DecreaseQuantity("trung-ga"))
+
+        assertFalse(result.state.pantry.getValue("trung-ga").have)
+        assertNull(result.state.quantities["trung-ga"])
+    }
+
+    @Test
+    fun legacyDecreaseQuantityKeepsItsExistingAbsentRowBehavior() {
+        val start = loaded(pantry = listOf(notHave("trung-ga", "2026-11-05")))
+
+        val result = reduce(start, DecreaseQuantity("trung-ga"))
+
+        assertTrue(result.state.pantry.getValue("trung-ga").have)
+        assertEquals(listOf(SaveHave("trung-ga", true, today)), result.effects)
+    }
+
+    @Test
+    fun consumeIngredient_doesNotRestoreItemMadeAbsentByEarlierQueuedAction() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05")))
+        val absent = reduce(start, Tap("trung-ga"))
+
+        val result = reduce(absent.state, ConsumeIngredient("trung-ga"))
+
+        assertEquals(absent.state, result.state)
+        assertTrue(result.effects.isEmpty())
+    }
+
+    @Test
+    fun consumeIngredient_withNoPantryRowDoesNothing() {
+        val start = loaded()
+
+        val result = reduce(start, ConsumeIngredient("trung-ga"))
+
+        assertEquals(start, result.state)
+        assertTrue(result.effects.isEmpty())
+    }
+
+    @Test
+    fun consumeIngredient_atOneMarksPresentIngredientAbsent() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05")))
+
+        val result = reduce(start, ConsumeIngredient("trung-ga"))
+
+        assertFalse(result.state.pantry.getValue("trung-ga").have)
+        assertEquals(listOf(SaveHave("trung-ga", false, today)), result.effects)
+    }
+
+    @Test
+    fun consumeIngredient_aboveOneDecreasesOneAndKeepsItemPresent() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05"))).copy(
+            quantities = mapOf("trung-ga" to 3),
+        )
+
+        val result = reduce(start, ConsumeIngredient("trung-ga"))
+
+        assertEquals(2, result.state.quantities["trung-ga"])
+        assertTrue(result.state.pantry.getValue("trung-ga").have)
+        assertEquals(listOf(PantryGridEffect.SaveQuantity("trung-ga", 2)), result.effects)
+    }
+
+    @Test
+    fun consumeIngredient_unknownIdDoesNothing() {
+        val start = loaded(pantry = listOf(have("trung-ga", "2026-11-05")))
+
+        val result = reduce(start, ConsumeIngredient("unknown"))
+
+        assertEquals(start, result.state)
+        assertTrue(result.effects.isEmpty())
+    }
 
     private fun userTapCount(actions: List<PantryGridAction>): Int = actions.count { it !is Loaded }
 
@@ -147,7 +241,7 @@ class PantryGridReducerTest {
         assertEquals(start, end)
         assertFalse("ca-chua" in end.pantry)
         assertEquals(
-            listOf<PantryGridEffect>(SaveHave("ca-chua", true, today), SaveHave("ca-chua", false, today)),
+            listOf<PantryGridEffect>(SaveHave("ca-chua", true, today), PantryGridEffect.DeleteHave("ca-chua")),
             effects,
         )
     }
@@ -391,10 +485,18 @@ class PantryGridReducerTest {
     private fun freeTextOf(action: PantryGridAction): String? = when (action) {
         is Loaded -> null
         is Tap -> null
+        is AddIngredient -> null
+        is IncreaseQuantity -> null
+        is DecreaseQuantity -> null
+        is ConsumeIngredient -> null
         is OpenShelfEditor -> null
         is PickShelfDays -> null
         SaveShelfEditor -> null
         CancelShelfEditor -> null
+        is OpenUnitEditor -> null
+        is PickUnit -> null
+        SaveUnitEditor -> null
+        CancelUnitEditor -> null
     }
 
     @Test
@@ -402,11 +504,19 @@ class PantryGridReducerTest {
         val all: List<PantryGridAction> = listOf(
             Loaded(table(), emptyList(), today),
             Tap("tom"),
+            AddIngredient("tom", SHELF_DAY_OPTIONS.first()),
+            IncreaseQuantity("tom"),
+            DecreaseQuantity("tom"),
+            ConsumeIngredient("tom"),
             OpenShelfEditor("tom"),
             PickShelfDays(SHELF_DAY_OPTIONS.first()),
             PickShelfDays(null),
             SaveShelfEditor,
             CancelShelfEditor,
+            OpenUnitEditor("tom"),
+            PickUnit("quả"),
+            SaveUnitEditor,
+            CancelUnitEditor,
         )
         assertTrue(all.all { freeTextOf(it) == null })
     }

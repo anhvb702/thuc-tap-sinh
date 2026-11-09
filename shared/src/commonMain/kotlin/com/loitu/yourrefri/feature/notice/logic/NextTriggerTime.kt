@@ -11,6 +11,9 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
+fun nextReminderTrigger(enabled: Boolean, now: Instant, tz: TimeZone): Instant? =
+    if (enabled) nextTriggerTime(now, tz, LocalTime(17, 30)) else null
+
 fun nextTriggerTime(now: Instant, tz: TimeZone, hour: LocalTime): Instant {
     val date = now.toLocalDateTime(tz).date
     val today = LocalDateTime(date, hour).toInstant(tz)

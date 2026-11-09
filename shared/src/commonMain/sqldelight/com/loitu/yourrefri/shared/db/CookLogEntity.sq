@@ -10,6 +10,10 @@ insert:
 INSERT INTO CookLogEntity(recipeId, cookedOn, photoUri, savedIngredientIds)
 VALUES (:recipeId, :cookedOn, :photoUri, :savedIngredientIds);
 
+insertWithId:
+INSERT INTO CookLogEntity(id, recipeId, cookedOn, photoUri, savedIngredientIds)
+VALUES (:id, :recipeId, :cookedOn, :photoUri, :savedIngredientIds);
+
 lastInsertRowId:
 SELECT last_insert_rowid();
 
@@ -24,3 +28,6 @@ SELECT DISTINCT recipeId FROM CookLogEntity WHERE cookedOn >= :since ORDER BY re
 
 deleteById:
 DELETE FROM CookLogEntity WHERE id = :id;
+
+deleteAll:
+DELETE FROM CookLogEntity;

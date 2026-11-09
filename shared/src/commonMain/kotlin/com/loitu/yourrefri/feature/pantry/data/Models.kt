@@ -2,6 +2,9 @@ package com.loitu.yourrefri.feature.pantry.data
 
 import kotlinx.datetime.LocalDate
 
+val PANTRY_UNITS = listOf("phần", "cái", "quả", "bó", "g", "kg", "hộp", "chai")
+const val DEFAULT_PANTRY_UNIT = "phần"
+
 data class Ingredient(
     val id: String,
     val nameVi: String,

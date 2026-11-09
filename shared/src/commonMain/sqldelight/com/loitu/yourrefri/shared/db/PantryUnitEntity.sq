@@ -1,0 +1,19 @@
+CREATE TABLE PantryUnitEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    unit TEXT NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO PantryUnitEntity VALUES (:ingredientId, :unit);
+
+selectAll:
+SELECT * FROM PantryUnitEntity ORDER BY ingredientId ASC;
+
+selectById:
+SELECT unit FROM PantryUnitEntity WHERE ingredientId = :ingredientId;
+
+deleteById:
+DELETE FROM PantryUnitEntity WHERE ingredientId = :ingredientId;
+
+deleteAll:
+DELETE FROM PantryUnitEntity;

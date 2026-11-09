@@ -60,6 +60,22 @@ class PantryRepositoryTest {
     private fun TestScope.repo(clock: Clock, timeZone: TimeZone = utc): PantryRepositoryImpl =
         PantryRepositoryImpl(db, clock, timeZone, StandardTestDispatcher(testScheduler))
 
+    @Test
+    fun deleteHave_removesOnlyPantryRow() = runTest {
+        val repository = repo(FakeClock(at("2026-03-10T12:00:00Z")))
+        repository.setHave("egg", true)
+        repository.setShelfDays("egg", 8)
+        repository.setQuantity("egg", 3)
+        repository.setUnit("egg", "quả")
+
+        repository.deleteHave("egg")
+
+        assertTrue(repository.observe().first().isEmpty())
+        assertEquals(8L, db.userShelfEntityQueries.selectById("egg").executeAsOne())
+        assertEquals(3L, db.pantryQuantityEntityQueries.selectById("egg").executeAsOne())
+        assertEquals("quả", db.pantryUnitEntityQueries.selectById("egg").executeAsOne())
+    }
+
     // ---------------- setHave(true): markedAt lấy từ Clock + TimeZone được tiêm ----------------
 
     @Test

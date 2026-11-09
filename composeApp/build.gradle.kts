@@ -14,6 +14,12 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.datetime)
+    implementation(libs.androidx.lifecycle.viewmodelCompose)
+    implementation(libs.androidx.lifecycle.runtimeCompose)
+    testImplementation(libs.kotlin.testJunit)
+    testImplementation(libs.kotlinx.coroutines.test)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.runtime)
@@ -28,6 +34,8 @@ dependencies {
 android {
     namespace = "com.loitu.yourrefri"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+
+    sourceSets.getByName("test").resources.srcDir("src/main/assets")
 
     defaultConfig {
         applicationId = "com.loitu.yourrefri"

@@ -1,116 +1,109 @@
-# YourRefri "Hôm nay nấu gì" — Kế hoạch 5 tuần
+# PLAN.md — Kế Hoạch 5 Tuần Phát Triển YourRefri
 
-## Kế hoạch thực thi cập nhật 05/11/2026
+> **Tầm nhìn:** Phát triển YourRefri thành **"Người trợ lý nhỏ trong căn bếp gia đình"** xoay quanh 4 tab chính: **Trang chủ, Tủ lạnh, Món ăn, Cá nhân**, mang phong cách **Warm Minimalism** và đảm bảo 5 kỳ vọng thiết thực của người nội trợ.
 
-- Nguồn phạm vi hiện hành: `HANDOFF.md` và `AGENTS.override.md`. PR ý tưởng ở fork mô tả MVP khác (nhập câu tự nhiên, ba trạng thái, giờ nhắc 16:30); không tự áp dụng các quyết định đó vào app offline hiện tại.
-- Tuần 1: W1-04/05 đã có biên bản test/mutation CLI trong spec tương ứng; W1-02/03/06 cũng có biên bản 6 mutation bị bắt. Đây là bằng chứng chạy trước đó, chưa được người dùng tái kiểm trong Android Studio. Trạng thái hiện hành xem đầu `HANDOFF.md`.
-- W1-07 chia thành: (a) ViewModel, state và effect; (b) lưới và hộp sửa hạn; (c) điều hướng, nối dữ liệu, đóng gói JSON runtime và kiểm tra emulator. Thiết kế test/spec trước cho từng phần, kiểm ảnh emulator khi hoàn tất UI.
-- Tuần 2: danh sách cần dùng sớm, nội dung và lịch nhắc, xử lý reboot/múi giờ, màn hình chính; build APK thử. Tuần 3: gợi ý món, công thức và nhật ký. Tuần 4: xác nhận tuần, bộ đếm và phản hồi thử nghiệm. Tuần 5: kiểm tổng thể, quyền riêng tư và hoàn thiện APK.
-- Mỗi task có một owner điều phối; Sol đưa tiêu chí, Luna viết test rồi code, Terra kiểm độc lập. Chỉ một agent chạy build hoặc mutation trên workspace chung; chia file rõ ràng và chạy song song khi độc lập.
-- Sau mỗi task đã kiểm, tạo commit và PR trên fork theo phân công; CodeRabbit và Qodo nhận xét trên PR, agent xác minh từng ý, sửa lỗi hợp lệ và chạy lại kiểm tra. Không merge tự động. PR ý tưởng `anhvb702/thuc-tap-sinh#1` chỉ review tài liệu; code app cần PR riêng trên nhánh phù hợp sau khi đối chiếu lịch sử repo, không ghi đè nhánh ý tưởng.
-- Chờ duyệt bảng 25 món, các ràng buộc model và giờ/ngưỡng nhắc nêu trong `HANDOFF.md`; tiếp tục các phần không phụ thuộc trong lúc chờ.
-- Khi không có Computer Use, nhờ người dùng chạy unit test trong Android Studio và gửi kết quả; không thay bằng chạy test CLI. Chỉ ghi đã kiểm Android Studio khi đã thấy kết quả hoặc nhận báo cáo của người dùng. Dependency Gradle đã được người dùng cho phép tải. Mỗi task ghi kết quả thật, số mutation bị test bắt và những hạn chế.
+---
 
-App KMM (Compose Multiplatform, Android trước) cho phụ huynh: nhập đồ trong tủ bằng lưới chạm, nhắc đồ nên dùng sớm, gợi ý 3 món, công thức từng bước. Dữ liệu chỉ trên máy.
+## 1. Kiến Trúc 4 Tab Đi Vào Hoạt Động (Bottom Navigation)
 
-Trạng thái: kế hoạch thực thi đang tiếp tục; trạng thái và bằng chứng mới nhất nằm ở đầu `HANDOFF.md`. Mục chờ người dùng xem `DECISIONS.md`.
+```
+        ┌────────────────────────────────────────────────────────┐
+        │                 YOURREFRI (ComposeApp)                 │
+        │        Theme Warm Minimalism (DESIGN.md Tokens)        │
+        └──────────────────────────┬─────────────────────────────┘
+                                   │
+      ┌────────────────┬───────────┴────┬─────────────────┐
+      ▼                ▼                 ▼                 ▼
+ 🏠 TRANG CHỦ     🧊 TỦ LẠNH        🍲 MÓN ĂN         ⚙️ CÁ NHÂN
+ (5 giây nắm bắt) (Ngăn mát/đông)   (3 gợi ý thông minh) (Nhắc 17:30)
+ - Lời chào ấm áp - Thẻ có icon      - Đồ sắp hỏng lên đầu - 1 lần/ngày
+ - Tổng quan tủ   - Nút +/- số lượng - Công thức 4 bước    - Sao lưu
+ - Cần dùng gấp   - Chạm 1 lần Có/Hết - Checkmark từng bước- Quyền riêng tư
+ - 3 gợi ý tối nay- Nút Thêm FAB     - Cập nhật sau nấu
+```
 
-## Quy trình mỗi task
-1. Sol đề xuất tiêu chí đạt/không đạt, biên và nội dung tài liệu; không triển khai.
-2. Luna thiết kế test theo tiêu chí rồi viết code cho test xanh; không sửa hay làm yếu test.
-3. Terra kiểm độc lập: đọc diff, đối chiếu spec, chạy kiểm/mutation và ghi bằng chứng.
+---
 
-Mỗi task ≤ ~300 dòng diff (S ≤100, M ≤200, L ≤300; vượt thì tách).
+## 2. Lộ Trình 5 Tuần Chi Tiết
 
-## Kiến trúc đã thống nhất
-- Hai module: `:shared` (data + logic thuần) và `:composeApp` (UI, ViewModel).
-- `shared/.../feature/{pantry,recipe,suggest,cooklog,reminder}/{data,logic}`; `logic` chỉ hàm thuần, không import SQLDelight.
-- `composeApp/.../feature/*/ui` và `nav/Routes.kt` (một file, route type-safe, tham số nguyên thủy).
-- MVI: State / Action / Effect + ViewModel + StateFlow. Luôn tiêm `kotlin.time.Clock` và `TimeZone`.
-- SQLDelight cho dữ liệu; công thức là JSON bundle đọc lúc chạy, không vào DB.
-- Không backend, analytics, tài khoản.
-- Dữ liệu: `Ingredient(id,nameVi,group,defaultShelfDays,userShelfDays?)`, `PantryItem(ingredientId,have,markedAt)`, `CookLog(id,recipeId,cookedOn,photoUri?,savedIngredientIds)`, `Recipe(id,title,steps,required:List<Slot>,optional)`, `Slot=anyOf(ingredientIds)`. Không lưu số lượng.
-- `daysLeft = markedAt + (userShelfDays ?: defaultShelfDays) - today`; cách tính này theo hợp đồng W1-01. Ngưỡng SOON = 0..2 là đề xuất trong spec, chưa được người dùng duyệt.
-- Đề xuất W3 cho `suggest(recipes,pantry,ingredients,log,today,n=3)`: lọc món nấu được, ưu tiên món dùng đồ SOON, xếp theo `min(daysLeft)`, hòa thì theo id; món nấu trong 3 ngày gần nhất bị đẩy xuống; fallback theo số đồ khớp nếu <3 món. Ngưỡng SOON, cửa sổ 3 ngày và các quy tắc xếp hạng này chưa được người dùng duyệt; kiểm tra `DECISIONS.md` trước khi triển khai. Test chỉ kiểm thuộc tính, không khóa điểm số.
+### 🟢 Tuần 1: Nền tảng Dữ liệu & Quản lý Tủ lạnh (Nền tảng hoàn tất; UX follow-up đang làm)
+- **W1-00 đến W1-06 (ĐÃ XONG):** Toolchain, schema SQLDelight in-memory, ShelfTable 25 món, PantryRepository, PantryGridReducer.
+- **W1-07a/b/c (ĐÃ XONG BẢN GỐC):**
+  - Sửa lỗi ViewModel test, nối SQLite `yourrefri.db` vào `MainActivity.kt`.
+- **W1-07d (Nâng cấp Tủ lạnh theo định hướng mới):**
+  - Bổ sung vị trí bảo quản: **Ngăn mát** (Fridge) & **Ngăn đông** (Freezer).
+  - Hỗ trợ số lượng và nút tăng/giảm `+` / `-` trực tiếp trên thẻ (ví dụ: dùng 1 phần thịt bò thì giảm số lượng, không mặc định xóa hết).
+  - FAB mở hộp thoại nhập tên, kèm tối đa 6 chip gợi ý theo catalog; chạm chip điền ô nhập, xác nhận riêng mới thêm món.
+- **W1-08 (Lưu số lượng bền vững — ĐÃ XONG):**
+  - Lưu override số lượng trong bảng SQLDelight riêng `PantryQuantityEntity`, có migration từ schema v1 sang v2.
+  - Mặc định là 1; quantity 1 xóa override. Tăng/giảm số lượng không sửa `have`/`markedAt`; riêng bấm giảm ở 1 chuyển món sang “Hết” bằng hành động trạng thái hiện có, không tạo quantity 0.
+  - ViewModel nạp lại số lượng từ repository; nút `+`/`−` có vùng chạm 48dp.
 
-## Văn phong
-Ấm, ngắn, gợi ý không ra lệnh, luôn có đường lui. Cấm: "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", điểm số, so sánh, streak. Nói "khoảng / nên dùng trước". Đồ quá hạn: "kiểm tra lại xem còn dùng được không".
+---
 
-## Tuần 1 — Khung, DB, bảng hạn, lưới chạm
-| Mã | Mục tiêu | Chữ ký / file chính | Phụ thuộc | Cỡ | Tiêu chí test |
-|---|---|---|---|---|---|
-| W1-00 | Kiểm tra toolchain, nâng `libs.versions.toml` (SQLDelight, kotlinx-datetime, navigation-compose, lifecycle, targetSdk); dựng 2 module | gradle/, build.gradle.kts | — | M | Không unit test; `./gradlew build` xanh, test mẫu chạy được ở shared |
-| W1-01 | `daysLeft`, `urgencyOf` | `feature/pantry/logic/Shelf.kt` | — | S | userShelfDays ghi đè default; biên -1/0/2/3; markedAt = hôm nay; qua tháng và năm nhuận |
-| W1-02 | Model dữ liệu | `feature/*/data/Models.kt` | W1-00 | S | Giá trị mặc định; `Slot.anyOf` không rỗng |
-| W1-03 | Bảng hạn ~25 món (JSON) và loader | `ShelfTable.parse(json)` | W1-02 | M | Đủ ~25 món; id trùng lỗi; thiếu defaultShelfDays lỗi; `nameVi` không rỗng |
-| W1-04 | Schema SQLDelight, `DriverFactory` | `*.sq` | W1-00 | M | Driver in-memory: chèn, đọc, ghi đè; userShelfDays được nhớ |
-| W1-05 | `PantryRepository` | `observe()`, `setHave(id,have,markedAt?)`, `setShelfDays(id,days)` | W1-02, W1-04 | M | Clock/TimeZone được tiêm; markedAt tùy chọn để khôi phục ngày; sửa hạn được nhớ (xem spec W1-05) |
-| W1-06 | Reducer lưới chạm (MVI) | `PantryGridReducer` | W1-05 | M | 1 chạm đổi có/hết; 10 món ≤3 chạm/món; sửa hạn ≤3 chạm |
-| W1-07 | UI lưới + nhãn "ước tính" + `nav/Routes.kt` | composeApp pantry/ui | W1-06 | L | Không unit test; ảnh chụp emulator |
-| W1-08 | Viết lại CLAUDE.md cho YourRefri | CLAUDE.md | W1-00 | S | — |
+### ✅ Tuần 2: Trang Chủ "5 Giây Nắm Bắt", Theme Warm Minimalism & Nhắc Nhở 17:30
+- **W2-01 (Theme Warm Minimalism):**
+  - Triển khai bộ màu theo `DESIGN.md`: Warm Ivory `#F7F5EF`, Sage Green `#789477`, Soft Green `#DDE8D9`, Warm Beige `#E8D8B9`, Terracotta `#D98C70`, Deep Charcoal `#343B34`.
+  - Dựng Bottom Navigation chuẩn 4 tab.
+- **W2-02 (Trang Chủ — Mở app hiểu ngay trong 5 giây):**
+  - Lời chào theo buổi tự động (Sáng / Chiều / Tối).
+  - Widget tổng quan số món đang có và tối đa 3 tên nguyên liệu hiện có; Home không có nút thêm thực phẩm.
+  - Thanh cuộn ngang các món cần ưu tiên dùng trong 0–2 ngày tới (nhãn Terracotta/Beige dịu mắt).
+  - 3 Thẻ món ăn gợi ý hôm nay (xem nhanh nguyên liệu sẵn có).
+- **W2-03 (Thông báo nhắc nhở nhẹ nhàng 17:30):**
+  - Giờ nhắc cố định 17:30; chỉ bật/tắt, không chỉnh giờ. Dùng `AlarmManager` không chính xác, tối đa 1 thông báo/ngày.
+  - Nội dung ấm áp, không phán xét: *"Tối nay nhà mình có [món A, B] nên dùng trước, bạn xem gợi ý nhé!"*.
+  - **Hoàn tất:** toggle bền vững, xin quyền notification theo hành động bật, receiver kiểm tra dữ liệu và chống gửi lặp; đặt lại sau reboot/đổi giờ/múi giờ/cập nhật. Logic có 6 mutation tests. Thiết bị ADB đang kết nối nhưng notification thực tế chưa được thử.
 
-## Tuần 2 — Bản thử người thật
-| Mã | Mục tiêu | Phụ thuộc | Cỡ | Tiêu chí test |
-|---|---|---|---|---|
-| W2-01 | `expiringList(pantry,ingredients,today)` | W1-01 | S | Chỉ have=true; EXPIRED lên đầu; hòa theo id; rỗng thì rỗng |
-| W2-02 | `statusText(daysLeft)` | W1-01 | S | EXPIRED có câu "kiểm tra lại…"; không có từ cấm; dùng "khoảng / nên dùng trước" |
-| W2-03 | `planDailyNotice(pantry,ingredients,today,lastSent)` | W2-01 | M | Không có đồ cần nhắc thì null; đã gửi hôm nay thì null; gộp một thông báo; mô phỏng 30 ngày không ngày nào >1 |
-| W2-04 | `nextTriggerTime(now,tz,hour)` | — | S | Trước giờ thì hôm nay, sau giờ thì ngày mai; đổi múi giờ; biên 23:59 |
-| W2-05 | Android: AlarmManager không chính xác, BootReceiver, TIMEZONE_CHANGED, POST_NOTIFICATIONS | W2-03, W2-04 | M | Không unit test; checklist tay |
-| W2-06 | Màn hình chính: danh sách sắp hỏng, mở app luôn có nội dung | W2-01, W1-07 | M | Reducer: rỗng vẫn có thông điệp ấm và đường lui |
-| W2-07 | Ra APK thử, gửi 5 hộ qua Zalo, thu phản hồi | W2-05, W2-06 | S | — |
+---
 
-## Tuần 3 — Gợi ý và nhật ký nấu
-| Mã | Mục tiêu | Phụ thuộc | Cỡ | Tiêu chí test |
-|---|---|---|---|---|
-| W3-01 | `RecipeBundle.parse(json)` | W1-02 | M | Bước ≤8; không có trường định lượng; slot rỗng lỗi; id trùng lỗi |
-| W3-02 | `canCook(recipe,pantry)` | W3-01 | S | Mọi required slot khớp; anyOf khớp một là đủ; optional không bắt buộc |
-| W3-03 | `suggest(...)` | W3-02, W1-01 | L | Dự thảo, chờ duyệt: (1) mọi món trả về nấu được; (2) có món dùng đồ SOON thì đứng trước; (3) tất định, đảo thứ tự đầu vào thì kết quả giống; (4) món nấu trong 3 ngày gần nhất không vào top khi còn món khác; (5) fallback khi <3 món; (6) tối đa n; (7) rỗng thì rỗng |
-| W3-04 | Công thức đợt 1 (25 món) | W3-01 | M | Validator chạy trên toàn bundle |
-| W3-05 | `CookLogRepository` và "dùng hết chưa?" | W1-04 | M | Ghi log; hết/còn/bỏ cập nhật pantry đúng; 1 chạm |
-| W3-06 | UI gợi ý 3 món, chi tiết món, hộp "dùng hết chưa?" | W3-03, W3-05 | L | Reducer có test; UI ảnh chụp |
+### ✅ Tuần 3: Món Ăn (Recipes) — 3 Gợi Ý Thông Minh & Công Thức 4 Bước
+- **W3-01 (Thuật toán 3 gợi ý thực tế):**
+  - Gợi ý 1: Món tận dụng nhiều đồ sắp hỏng nhất.
+  - Gợi ý 2: Món nấu được từ các nguyên liệu đang có sẵn.
+  - Gợi ý 3: Món nhanh gọn, dễ làm dưới 20 phút.
+- **W3-02 (Màn hình chi tiết công thức 4 bước):**
+  - Bước 1: Chuẩn bị nguyên liệu | Bước 2: Sơ chế | Bước 3: Chế biến | Bước 4: Hoàn thành.
+  - Có checkbox đánh dấu từng bước giúp người nấu không bị rối.
+- **W3-03 (Đã hoàn tất — Hỏi sau khi nấu):** Nấu xong mở xác nhận trước khi cập nhật. Một lựa chọn sẵn cho mỗi slot; action riêng `ConsumeIngredient` kiểm tra `have` tại reducer khi xử lý, quantity >1 giảm mà vẫn Có, quantity 1 chuyển Hết. Sáu mutation W3-03 bị bắt; xem `docs/tests/W3-03.md` và follow-up `docs/tests/P12-02R.md`.
+- **W3-01 (Đã hoàn tất):** Kiểm tra gợi ý theo tồn kho và alternative; không đếm hai lựa chọn trong slot như hai nguyên liệu riêng. Xem `docs/tests/W3-01.md`.
+- **W3-04 (Hợp đồng lịch sử):** Hàm lọc strict `<15`/`<30` và 6 mutation ban đầu vẫn được giữ để bảo toàn bằng chứng lịch sử; xem `docs/tests/W3-04.md`.
+- **W5-02B (Đã triển khai):** UI dùng “Tối đa 15 phút” / “Tối đa 30 phút”, gồm đúng 15/30 phút. Unit contract inclusive và sáu mutation được ghi trong `docs/tests/W5-02B.md`; các test lịch sử strict của W3-04 được giữ nguyên.
 
-## Tuần 4 — Xác nhận tuần, bộ đếm, 40 công thức
-| Mã | Mục tiêu | Phụ thuộc | Cỡ | Tiêu chí test |
-|---|---|---|---|---|
-| W4-01 | `weeklyReview`, mặc định "đúng hết" | W1-05 | M | Mặc định giữ nguyên; chỉ đổi mục được chạm; số chạm ≤ ngưỡng 30s |
-| W4-02 | `usedBeforeDueCount(log,...)` | W3-05 | S | Đếm khi chọn "hết" và daysLeft ≥0; cùng đồ không đếm 2 lần trong một lần nấu; câu chữ ghi nhận, không có từ cấm |
-| W4-03 | UI xác nhận tuần và bộ đếm | W4-01, W4-02 | M | Ảnh chụp |
-| W4-04 | Công thức 26 đến 40 | W3-04 | M | Validator |
-| W4-05 | Sửa lỗi từ phản hồi tuần 2-3 | W2-07 | M | Test hồi quy cho mỗi lỗi |
+---
 
-## Tuần 5 — Hoàn thiện
-- W5-01: đo tiêu chí (10 món ≤60s, ≤3 chạm; xác nhận tuần ≤30s; mô phỏng 30 ngày).
-- W5-02: quét từ cấm trên mọi chuỗi giao diện bằng test.
-- W5-03: icon, ký APK, ghi chú quyền riêng tư (dữ liệu chỉ trên máy), cài sạch chạy được.
-- W5-04 (nếu kịp, mỗi mục một task): công thức lên 60, ảnh nhật ký, nhập bằng giọng nói qua OS, danh sách đi chợ, món tự tạo.
+### ✅ Tuần 4: Trang Cá Nhân, Đơn Vị Đo & Sao Lưu Offline
+- **W4-01 (Cá nhân & Cài đặt thông báo):**
+  - Bật/tắt thông báo cố định lúc 17:30 theo ràng buộc sản phẩm; không cho chỉnh giờ.
+  - Đơn vị đo lường chọn riêng trên từng thẻ ở Tủ lạnh (hộp, quả, g, kg, bó...).
+- **W4-02 (Xuất/Nhập dữ liệu sao lưu JSON):**
+  - **Đã hoàn tất:** xuất/khôi phục JSON qua Android Storage Access Framework; validate trước khi import và yêu cầu xác nhận trước khi thay dữ liệu. Restore transaction bảo toàn dữ liệu nếu lỗi. Ảnh chỉ giữ URI metadata, không đưa nội dung ảnh vào file. Android `allowBackup=false`; backup rules loại trừ dữ liệu khỏi cloud backup và device transfer. Chi tiết `docs/tests/W4-02.md`.
+- **W4-03 (Tối ưu Trợ năng & Màn hình nhỏ):**
+  - **Logic/data hoàn tất; runtime còn mở:** font body tối thiểu 14sp, màu chữ kiểm tra tương phản, vùng chạm lựa chọn/nút chính ít nhất 48dp; unit override theo món, migration v2→v3, backup tương thích và test round-trip. Font scale, 360dp, TalkBack và bố cục runtime chưa được xác minh; xem `docs/tests/W4-03.md` và snapshot đầu `HANDOFF.md`.
 
-## Thứ tự và song song
-- Chuỗi chính: W1-00 → W1-02 → W1-04/W1-05 → W1-06 → W1-07 → W2-06 → W2-07 → W3-06 → W4-03 → W5.
-- Song song được: W1-01 với W1-00; W1-08 với W1-02; W1-03 với W1-04; W2-01/02/04; W3-01/04 với W3-05; W4-01/02/04.
-- Trên workspace dùng chung, mỗi file có một owner và chỉ một agent chạy build/test/mutation tại một thời điểm; xem `AGENTS.override.md`.
+### UX follow-up — 2026-11-08
+- **UX-02/UX-03:** Hoàn tất sáu mutation cho từng contract; kết quả và lệnh trong `docs/tests/UX-02.md`, `docs/tests/UX-03.md`.
+- **UX-04:** Source xử lý các pain point P0/P1; sáu mutation helper/presentation đều bị test bắt trong vòng 2. Call-site Compose, thao tác chạm và layout runtime chưa được instrumented; xem giới hạn cùng bằng chứng ở `docs/tests/UX-04.md`.
+- **UX-05:** Quick-add có bộ lọc nhóm/query và multi-select; sáu mutation helper bị bắt. Sort theo `markedAt` giảm dần, nhưng timestamp có thể cũ hơn thời điểm món vừa hết; chưa có Compose interaction/runtime test. Xem `docs/tests/UX-05.md`.
+- **UX-06:** Bundle mở rộng lên 10 công thức, bốn bước/món, thời gian hợp lệ và ingredient IDs đối chiếu catalog; sáu mutation bị bắt. Xem `docs/tests/UX-06.md`.
 
-## Mục đang chờ quyết định
+---
 
-Danh sách hiện hành nằm ở `DECISIONS.md`; không dùng danh sách xác nhận cũ trong bản kế hoạch ban đầu.
+### 🟡 Tuần 5: Đánh Giá Cùng Persona Khách Hàng & Đóng Gói
+- **W5-01 (Đánh giá cùng Customer Persona Chị Mai/Anh Nam):**
+  - Đo 7 tiêu chuẩn UX:
+    1. Hiểu tủ lạnh trong 5 giây.
+    2. Thêm món trong 10-15 giây.
+    3. Cập nhật đã dùng trong 1-2 chạm.
+    4. Tìm món phù hợp trong 30 giây.
+    5. Đọc công thức không bị rối.
+    6. Tối đa 1 thông báo/ngày.
+    7. 100% tính năng không cần tài khoản.
+  - **Hoàn tất source review:** hai lượt đánh giá persona; sửa ngôn ngữ trạng thái, gợi ý không có dữ liệu, xếp hạng món và hành vi thêm món. Persona chưa đánh giá runtime; report tại `docs/tests/W5-01.md`.
+- **W5-02:** Launcher icon hoàn tất; `:composeApp:assembleRelease` thành công lúc 2026-11-07 00:40 local, tạo APK unsigned 8,049,873 bytes. Cần signing key do chủ dự án quản lý để ký và cài release.
+- **W6-01 & W6-02 (Zero-Input Pantry Loop — Thực đơn tuần & Đi chợ 1 chạm theo góp ý PR #5):**
+  - Giải quyết triệt để rào cản "ngại nhập liệu thủ công mỗi lần đi chợ/nấu ăn" bằng vòng lặp ngược: Lập thực đơn tuần (cá nhân hóa theo `DietGoal` & `FamilyPreferenceTag` của các thành viên, chống lặp ngày liền kề, ưu tiên đồ sẵn có đầu tuần) → Tự động tổng hợp danh sách đi chợ tuần (trừ đồ đã có trong tủ, đếm số bữa dùng) → 1 chạm `"Đã mua xong · Cất vào tủ lạnh 🧊"` tự động nạp nguyên liệu vào tủ lạnh. Chi tiết tại `docs/tests/W6-01.md` và `docs/tests/W6-02.md`.
 
-## Rủi ro và điều kiện cắt
-- Toolchain KMM/SQLDelight lệch phiên bản: dành trọn W1-00; quá 1 ngày thì bỏ iOS, giữ androidMain.
-- Hạn ước tính sai làm mất tin: luôn nhãn "ước tính", sửa dễ; nếu phản hồi tuần 2 nói sai nhiều thì sửa bảng hạn trước mọi thứ.
-- Thông báo bị OS chặn: dùng báo thức không chính xác; mở app luôn thấy nội dung.
-- Công thức là nút cổ chai (chờ duyệt): chốt lô 25 sớm trong tuần 2.
-- Cắt theo thứ tự khi trễ: W5-04 → công thức 60 → công thức 40 (giữ 25-30) → bộ đếm → xác nhận tuần bản tối giản. Không cắt: lưới chạm, thông báo, gợi ý 3 món.
-- Chưa có phản hồi người thật đến tuần 3: vẫn đi tiếp nhưng ghi rõ chưa kiểm chứng.
+### Bằng chứng và snapshot
 
-## Definition of Done chung
-1. Test được thiết kế theo tiêu chí trước code, không bị sửa hoặc làm yếu; Terra đối chiếu độc lập.
-2. Unit test xanh theo kết quả Android Studio; khi phiên không có Computer Use, người dùng chạy và gửi kết quả. Build Android xanh theo quy trình hiện hành.
-3. Logic chỉ hàm thuần, Clock/TimeZone được tiêm, `feature/*/logic` không import SQLDelight.
-4. Diff ≤ ~300 dòng, đúng file và chữ ký trong task.
-5. Không có từ cấm, văn phong ngắn, ấm, có đường lui.
-6. Không backend, analytics, tài khoản.
-7. UI có ảnh chụp emulator; AlarmManager/BootReceiver có checklist tay đã tick.
-8. Terra ghi biên bản ngắn: tiêu chí nào đạt, bằng chứng.
-
-## Task thử pipeline đầu tiên
-W1-01 (`daysLeft`, `urgencyOf`): nhỏ, thuần logic. Ví dụ Opus có thể thiết kế: markedAt=2026-11-01, defaultShelfDays=5; today=2026-11-03 → 3 ngày, OK; today=2026-11-06 → 0, SOON; today=2026-11-07 → -1, EXPIRED; userShelfDays=2 ghi đè default 5; `urgencyOf(-1)=EXPIRED`, `(0)=SOON`, `(2)=SOON`, `(3)=OK`; 2028-02-28 + 2 ngày qua năm nhuận.
+Test count, ảnh runtime, trạng thái emulator và giới hạn kiểm chứng thay đổi theo phiên; xem snapshot mới nhất ở đầu `HANDOFF.md`. Số test/build trong từng task là bằng chứng lịch sử tại thời điểm task chạy, không phải xác nhận trạng thái hiện tại. Release APK unsigned cần khóa ký do chủ dự án quản lý.

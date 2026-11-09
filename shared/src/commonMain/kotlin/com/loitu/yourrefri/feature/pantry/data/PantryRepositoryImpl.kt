@@ -30,6 +30,16 @@ class PantryRepositoryImpl(
             rows.associate { it.ingredientId to it.userShelfDays.toInt() }
         }
 
+    override fun observeQuantities(): Flow<Map<String, Int>> =
+        db.pantryQuantityEntityQueries.selectAll().asFlow().mapToList(ioContext).map { rows ->
+            rows.associate { it.ingredientId to it.quantity.toInt() }
+        }
+
+    override fun observeUnits(): Flow<Map<String, String>> =
+        db.pantryUnitEntityQueries.selectAll().asFlow().mapToList(ioContext).map { rows ->
+            rows.associate { it.ingredientId to it.unit }
+        }
+
     override suspend fun setHave(ingredientId: String, have: Boolean, markedAt: LocalDate?) {
         withContext(ioContext) {
             db.transaction {
@@ -46,6 +56,12 @@ class PantryRepositoryImpl(
         }
     }
 
+    override suspend fun deleteHave(ingredientId: String) {
+        withContext(ioContext) {
+            db.pantryEntityQueries.deleteById(ingredientId)
+        }
+    }
+
     override suspend fun setShelfDays(ingredientId: String, days: Int?) {
         require(days == null || days >= 0)
         withContext(ioContext) {
@@ -53,6 +69,29 @@ class PantryRepositoryImpl(
                 db.userShelfEntityQueries.deleteById(ingredientId)
             } else {
                 db.userShelfEntityQueries.upsert(ingredientId, days.toLong())
+            }
+        }
+    }
+
+    override suspend fun setQuantity(ingredientId: String, quantity: Int) {
+        require(quantity >= 1)
+        withContext(ioContext) {
+            val quantities = db.pantryQuantityEntityQueries
+            if (quantity == 1) {
+                quantities.deleteById(ingredientId)
+            } else {
+                quantities.upsert(ingredientId, quantity.toLong())
+            }
+        }
+    }
+
+    override suspend fun setUnit(ingredientId: String, unit: String?) {
+        require(unit == null || unit in PANTRY_UNITS)
+        withContext(ioContext) {
+            if (unit == null || unit == DEFAULT_PANTRY_UNIT) {
+                db.pantryUnitEntityQueries.deleteById(ingredientId)
+            } else {
+                db.pantryUnitEntityQueries.upsert(ingredientId, unit)
             }
         }
     }

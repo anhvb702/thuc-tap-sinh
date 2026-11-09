@@ -14,3 +14,6 @@ SELECT * FROM UserShelfEntity ORDER BY ingredientId ASC;
 
 deleteById:
 DELETE FROM UserShelfEntity WHERE ingredientId = :ingredientId;
+
+deleteAll:
+DELETE FROM UserShelfEntity;

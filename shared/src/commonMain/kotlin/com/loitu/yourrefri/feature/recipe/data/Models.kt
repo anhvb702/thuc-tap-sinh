@@ -16,6 +16,7 @@ data class Recipe(
     val steps: List<String>,
     val required: List<Slot>,
     val optional: List<Slot> = emptyList(),
+    val minutes: Int? = null,
 ) {
     init {
         require(id.isNotBlank()) { "Recipe id không được rỗng" }
@@ -24,5 +25,6 @@ data class Recipe(
         require(steps.isNotEmpty() && steps.size <= 8) { "Recipe phải có từ 1 đến 8 bước" }
         require(steps.all { it.isNotBlank() }) { "Bước nấu không được rỗng" }
         require(required.isNotEmpty()) { "Recipe phải có ít nhất một Slot bắt buộc" }
+        require(minutes == null || minutes in 1..1440) { "Recipe minutes phải nằm trong 1..1440" }
     }
 }
