@@ -61,7 +61,6 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.canCook
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDurationInclusive
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
-import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
 import com.loitu.yourrefri.feature.recipe.logic.recommendRecipes
 import com.loitu.yourrefri.feature.recipe.logic.ingredientIdsToConsume
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
@@ -79,34 +78,43 @@ fun RecipeScreen(
     onCookRecipe: ((Recipe, List<String>) -> Unit)? = null,
     initialMode: RecipeScreenMode = RecipeScreenMode.DAILY,
     onStockIngredients: ((List<String>) -> Unit)? = null,
+    weeklyGoal: DietGoal? = null,
+    onWeeklyGoalChange: ((DietGoal) -> Unit)? = null,
+    weeklyPreferences: Set<FamilyPreferenceTag>? = null,
+    onWeeklyPreferencesChange: ((Set<FamilyPreferenceTag>) -> Unit)? = null,
+    weeklySwappedOffsets: Map<Int, Int>? = null,
+    onWeeklySwappedOffsetsChange: ((Map<Int, Int>) -> Unit)? = null,
+    weeklyUncheckedIds: Set<String>? = null,
+    onWeeklyUncheckedIdsChange: ((Set<String>) -> Unit)? = null,
+    onModeChange: ((RecipeScreenMode) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    var mode by remember { mutableStateOf(initialMode) }
-    var goal by remember { mutableStateOf(DietGoal.BALANCED) }
-    var preferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
-    var swappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
-    val weeklyPlan = remember(recipes, goal, preferences, swappedOffsets) {
-        buildWeeklyMealPlan(recipes, state, goal, preferences, swappedOffsets)
+    var localMode by remember(initialMode) { mutableStateOf(initialMode) }
+    val mode = localMode
+    fun updateMode(newMode: RecipeScreenMode) {
+        localMode = newMode
+        onModeChange?.invoke(newMode)
     }
-    if (mode == RecipeScreenMode.WEEKLY) {
-        WeeklyMealPlanContent(
-            plan = weeklyPlan, shopping = buildWeeklyShoppingList(weeklyPlan, state), goal = goal,
-            preferences = preferences, offsets = swappedOffsets,
-            onGoal = { goal = it }, onPreference = { preferences = togglePreferenceTag(preferences, it) },
-            onSwap = { swappedOffsets = bumpDaySwapOffset(swappedOffsets, it) },
-            onStock = onStockIngredients, onDaily = { mode = RecipeScreenMode.DAILY }, modifier = modifier,
-        )
-        return
+
+    var localGoal by remember { mutableStateOf(DietGoal.BALANCED) }
+    var localPreferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
+    var localSwappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
+    var localUncheckedIds by remember { mutableStateOf(emptySet<String>()) }
+
+    val goal = weeklyGoal ?: localGoal
+    val preferences = weeklyPreferences ?: localPreferences
+    val swappedOffsets = weeklySwappedOffsets ?: localSwappedOffsets
+    val uncheckedIds = weeklyUncheckedIds ?: localUncheckedIds
+
+    var initialPantrySnapshot by remember { mutableStateOf(state) }
+    LaunchedEffect(state.pantry.isNotEmpty()) {
+        if (initialPantrySnapshot.pantry.isEmpty() && state.pantry.isNotEmpty()) {
+            initialPantrySnapshot = state
+        }
     }
-    val recommendations = recommendRecipes(recipes, state)
-    val recommendationIds = recommendations.map { it.recipe.id }
-    val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
-    var selectedRecipeId by remember(recommendationIds, initialRecipeId) {
-        mutableStateOf(resolvedInitialRecipeId)
-    }
-    var selectedDuration by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(initialRecipeId) {
-        if (shouldClearDurationForRequest(initialRecipeId)) selectedDuration = null
+
+    val weeklyPlan = remember(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets) {
+        buildWeeklyMealPlan(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets)
     }
     val stepChecks = remember { mutableStateMapOf<String, Boolean>() }
     var updatedRecipeResult by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -169,6 +177,54 @@ fun RecipeScreen(
         )
     }
 
+    if (mode == RecipeScreenMode.WEEKLY) {
+        WeeklyMealPlanContent(
+            plan = weeklyPlan,
+            shopping = buildWeeklyShoppingList(weeklyPlan, state, preferences),
+            goal = goal,
+            preferences = preferences,
+            uncheckedIds = uncheckedIds,
+            onToggleChecked = { id, checked ->
+                val next = if (checked) uncheckedIds - id else uncheckedIds + id
+                localUncheckedIds = next
+                onWeeklyUncheckedIdsChange?.invoke(next)
+            },
+            onGoal = {
+                localGoal = it
+                onWeeklyGoalChange?.invoke(it)
+            },
+            onPreference = { tag ->
+                val next = togglePreferenceTag(preferences, tag)
+                localPreferences = next
+                onWeeklyPreferencesChange?.invoke(next)
+            },
+            onSwap = { dayIdx ->
+                val next = bumpDaySwapOffset(swappedOffsets, dayIdx)
+                localSwappedOffsets = next
+                onWeeklySwappedOffsetsChange?.invoke(next)
+            },
+            onRequestCook = { recipe ->
+                pendingCookRecipe = recipe
+                showCookConfirmation = true
+            },
+            updatedRecipeResult = updatedRecipeResult,
+            onStock = onStockIngredients,
+            onDaily = { updateMode(RecipeScreenMode.DAILY) },
+            modifier = modifier,
+        )
+        return
+    }
+    val recommendations = recommendRecipes(recipes, state)
+    val recommendationIds = recommendations.map { it.recipe.id }
+    val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
+    var selectedRecipeId by remember(recommendationIds, initialRecipeId) {
+        mutableStateOf(resolvedInitialRecipeId)
+    }
+    var selectedDuration by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(initialRecipeId) {
+        if (shouldClearDurationForRequest(initialRecipeId)) selectedDuration = null
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -178,7 +234,7 @@ fun RecipeScreen(
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = true, onClick = {}, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("🍲 Gợi ý hôm nay") })
-            FilterChip(selected = false, onClick = { mode = RecipeScreenMode.WEEKLY }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
+            FilterChip(selected = false, onClick = { updateMode(RecipeScreenMode.WEEKLY) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
         }
         Text(
             text = "Hôm nay nấu gì? 🍲",
@@ -427,38 +483,84 @@ private fun WeeklyMealPlanContent(
     shopping: List<com.loitu.yourrefri.feature.recipe.logic.ShoppingListItem>,
     goal: DietGoal,
     preferences: Set<FamilyPreferenceTag>,
-    offsets: Map<Int, Int>,
+    uncheckedIds: Set<String>,
+    onToggleChecked: (String, Boolean) -> Unit,
     onGoal: (DietGoal) -> Unit,
     onPreference: (FamilyPreferenceTag) -> Unit,
     onSwap: (Int) -> Unit,
+    onRequestCook: (Recipe) -> Unit,
+    updatedRecipeResult: Pair<String, String>?,
     onStock: ((List<String>) -> Unit)?,
     onDaily: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val unchecked = remember(shopping) { mutableStateMapOf<String, Boolean>() }
     var openedDay by remember { mutableStateOf<Int?>(null) }
     var result by remember { mutableStateOf<String?>(null) }
-    val buyItems = shopping.filterNot { it.alreadyInPantry }
-    val selectedIds = shoppingIdsToStock(shopping, unchecked.filterValues { !it }.keys)
+    val buyItems = shopping.filter { !it.alreadyInPantry || it.missingQuantity > 0 }
+    val selectedIds = shoppingIdsToStock(shopping, uncheckedIds)
+    val stockListForAction = remember(shopping, uncheckedIds) {
+        shopping.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
+            .flatMap { item -> List(item.missingQuantity.coerceAtLeast(1)) { item.ingredient.id } }
+    }
     Column(modifier.fillMaxSize().background(WarmIvory).verticalScroll(rememberScrollState()).padding(16.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(selected = false, onClick = onDaily, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("🍲 Gợi ý hôm nay") })
             FilterChip(selected = true, onClick = {}, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
         }
-        Text("Chọn định hướng và khẩu vị, mình lo phần còn lại.", style = MaterialTheme.typography.bodyMedium, color = MutedGray, modifier = Modifier.padding(vertical = 8.dp))
+        Text("Chọn định hướng và khẩu vị, mình xếp sẵn mâm cơm (Món mặn + Canh/Rau) cả tuần.", style = MaterialTheme.typography.bodyMedium, color = MutedGray, modifier = Modifier.padding(vertical = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DietGoal.entries.forEach { item -> FilterChip(item == goal, { onGoal(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
             FamilyPreferenceTag.entries.forEach { item -> FilterChip(item in preferences, { onPreference(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
         }
         plan.forEach { day ->
-            Card(Modifier.fillMaxWidth().padding(vertical = 5.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            val isExpanded = openedDay == day.dayIndex
+            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp)) {
-                    Text(day.dayLabelVi, style = MaterialTheme.typography.titleMedium, color = SageGreenText)
-                    Text(day.recipe.title, Modifier.clickable { openedDay = if (openedDay == day.dayIndex) null else day.dayIndex }, style = MaterialTheme.typography.titleMedium, color = DeepCharcoal)
-                    Text(day.recipe.minutes?.let { "$it phút" } ?: "Thời gian chưa rõ", color = MutedGray)
-                    Text(day.matchReasonVi, color = SageGreenText)
-                    TextButton(onClick = { onSwap(day.dayIndex) }) { Text("Đổi món ↻") }
-                    if (openedDay == day.dayIndex) day.recipe.steps.take(4).forEachIndexed { index, step -> Text("${index + 1}. $step", Modifier.padding(vertical = 4.dp)) }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(day.dayLabelVi, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = SageGreenText)
+                        val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
+                        Text(totalMinutes?.let { "⏱️ ~$it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = MutedGray)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text("🍖 Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
+                    day.sideRecipe?.let { side ->
+                        Text("🥬 Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = DeepCharcoal, modifier = Modifier.padding(top = 2.dp))
+                    }
+                    Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = SageGreenText, modifier = Modifier.padding(top = 4.dp))
+                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = { openedDay = if (isExpanded) null else day.dayIndex },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text(if (isExpanded) "Thu gọn cách nấu ▲" else "Xem cách nấu ▼", color = SageGreenText, fontWeight = FontWeight.SemiBold)
+                        }
+                        TextButton(
+                            onClick = { onSwap(day.dayIndex) },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) {
+                            Text("Đổi thực đơn ↻", color = DeepCharcoal)
+                        }
+                    }
+                    if (isExpanded) {
+                        day.dishes.forEach { dish ->
+                            Spacer(Modifier.height(8.dp))
+                            Text("Cách nấu ${dish.title}:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
+                            dish.steps.forEachIndexed { index, step ->
+                                Text("${index + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = DeepCharcoal, modifier = Modifier.padding(vertical = 3.dp))
+                            }
+                            Button(
+                                onClick = { onRequestCook(dish) },
+                                colors = ButtonDefaults.buttonColors(containerColor = SageGreenStrong),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                            ) {
+                                Text("Đã nấu xong: ${dish.title} 🎉", color = Color.White)
+                            }
+                            if (updatedRecipeResult?.first == dish.id) {
+                                Text(updatedRecipeResult.second, style = MaterialTheme.typography.bodySmall, color = SageGreenText, modifier = Modifier.padding(top = 4.dp))
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -466,19 +568,27 @@ private fun WeeklyMealPlanContent(
         Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = SageGreenText)
         buyItems.forEach { item ->
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = unchecked[item.ingredient.id] != false, onCheckedChange = { unchecked[item.ingredient.id] = it })
-                Column { Text(item.ingredient.nameVi, color = DeepCharcoal); Text("Dùng cho ${item.mealCount} bữa", color = MutedGray) }
+                Checkbox(checked = item.ingredient.id !in uncheckedIds, onCheckedChange = { onToggleChecked(item.ingredient.id, it) })
+                Column {
+                    Text(item.ingredient.nameVi, color = DeepCharcoal, fontWeight = FontWeight.Medium)
+                    val subtitle = if (item.availableQuantity > 0) {
+                        "Cần cho ${item.mealCount} bữa (trong tủ có ${item.availableQuantity}, mua thêm ${item.missingQuantity})"
+                    } else {
+                        "Dùng cho ${item.mealCount} bữa"
+                    }
+                    Text(subtitle, color = MutedGray, style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
-        val haveItems = shopping.filter { it.alreadyInPantry }
+        val haveItems = shopping.filter { it.alreadyInPantry && it.missingQuantity == 0 }
         if (haveItems.isNotEmpty()) {
-            Text("Đã có sẵn trong tủ: ${haveItems.joinToString(", ") { it.ingredient.nameVi }}", color = MutedGray, modifier = Modifier.padding(top = 4.dp))
+            Text("Đã đủ cho cả tuần: ${haveItems.joinToString(", ") { it.ingredient.nameVi }}", color = MutedGray, modifier = Modifier.padding(top = 4.dp))
         }
         if (buyItems.isEmpty()) {
             Text("Tuần này nhà mình đã đủ nguyên liệu 🎉", Modifier.padding(top = 8.dp), color = SageGreenText)
         } else {
             Button(onClick = {
-                onStock?.invoke(selectedIds)
+                onStock?.invoke(stockListForAction)
                 if (onStock != null) result = stockResultMessage(selectedIds.size)
             }, enabled = onStock != null && selectedIds.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text(stockActionButtonLabel(selectedIds.size))

@@ -15,18 +15,49 @@ enum class FamilyPreferenceTag(val labelVi: String) {
     VEGGIE_TOFU("Rau, Đậu & Nấm"), MEAT("Thịt heo, bò, gà"),
 }
 
-data class PlannedDayMeal(val dayIndex: Int, val dayLabelVi: String, val recipe: Recipe, val matchReasonVi: String)
-data class ShoppingListItem(val ingredient: Ingredient, val mealCount: Int, val alreadyInPantry: Boolean)
+data class PlannedDayMeal(
+    val dayIndex: Int,
+    val dayLabelVi: String,
+    val recipe: Recipe,
+    val matchReasonVi: String,
+    val sideRecipe: Recipe? = null,
+) {
+    val dishes: List<Recipe>
+        get() = listOfNotNull(recipe, sideRecipe)
+}
+
+data class ShoppingListItem(
+    val ingredient: Ingredient,
+    val mealCount: Int,
+    val alreadyInPantry: Boolean,
+    val availableQuantity: Int = if (alreadyInPantry) mealCount else 0,
+    val missingQuantity: Int = if (alreadyInPantry) 0 else mealCount,
+)
 
 private val days = listOf("Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật")
 private val lightIds = setOf("rau-muong", "rau-ngot", "cai-ngot", "xa-lach", "bi-xanh", "dau-phu", "nam", "ca-basa", "ca-hoi")
 private val proteinIds = setOf("thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "ca-basa", "ca-hoi", "tom", "trung-ga")
-private val kidIds = setOf("trung-ga", "thit-ga", "khoai")
+private val kidIds = setOf("trung-ga", "thit-ga", "khoai-tay", "khoai")
 private val seaIds = setOf("ca-basa", "ca-hoi", "tom")
 private val veggieIds = lightIds - setOf("ca-basa", "ca-hoi")
 private val meatIds = setOf("thit-heo", "thit-heo-xay", "thit-bo", "thit-ga")
+private val soupOrVeggiePrefixes = listOf("canh-", "rau-")
 
 private fun Recipe.ids() = required.flatMap { it.anyOf }.toSet()
+
+internal fun Recipe.isSoupOrVeggieSide(): Boolean {
+    val lowerTitle = title.lowercase()
+    return soupOrVeggiePrefixes.any { id.startsWith(it) } ||
+        lowerTitle.startsWith("canh ") ||
+        lowerTitle.startsWith("rau ")
+}
+
+private fun FamilyPreferenceTag.ingredientIds(): Set<String> = when (this) {
+    FamilyPreferenceTag.KID_FAVORITE -> kidIds
+    FamilyPreferenceTag.SEAFOOD -> seaIds
+    FamilyPreferenceTag.VEGGIE_TOFU -> veggieIds
+    FamilyPreferenceTag.MEAT -> meatIds
+}
 
 fun buildWeeklyMealPlan(
     recipes: List<Recipe>, state: PantryGridState, goal: DietGoal = DietGoal.BALANCED,
@@ -48,71 +79,122 @@ fun buildWeeklyMealPlan(
             DietGoal.RICH_PROTEIN -> if (ids.any { it in proteinIds }) 40 else 0
         }
         val preferenceScore = preferences.sumOf { tag ->
-            val group = when (tag) {
-                FamilyPreferenceTag.KID_FAVORITE -> kidIds
-                FamilyPreferenceTag.SEAFOOD -> seaIds
-                FamilyPreferenceTag.VEGGIE_TOFU -> veggieIds
-                FamilyPreferenceTag.MEAT -> meatIds
-            }
-            if (ids.any { it in group }) 20 else 0
+            if (ids.any { it in tag.ingredientIds() }) 20 else 0
         }
         return (if (day <= 1) pantryScore else 0) + goalScore + preferenceScore
     }
-    fun ranked(day: Int, excluded: Set<String>) = unique.withIndex().filter { it.value.id !in excluded }
+    fun rankedFrom(pool: List<Recipe>, day: Int, excluded: Set<String>) = pool.withIndex()
+        .filter { it.value.id !in excluded }
         .sortedWith(compareByDescending<IndexedValue<Recipe>> { score(it.value, day) }.thenBy { it.index })
         .map { it.value }
-    // Base plan first; swaps are applied afterwards so one swap never reshuffles unrelated days.
-    val picks = mutableListOf<Recipe>()
-    repeat(7) { day ->
-        val candidates = ranked(day, setOfNotNull(picks.lastOrNull()?.id))
-        if (candidates.isEmpty()) return@repeat
-        picks += candidates.firstOrNull { c -> picks.none { it.id == c.id } } ?: candidates.first()
-    }
-    swappedOffsets.toSortedMap().forEach { (day, rawOffset) ->
-        val offset = rawOffset.coerceAtLeast(0)
-        if (day !in picks.indices || offset == 0) return@forEach
-        val options = ranked(day, setOfNotNull(picks.getOrNull(day - 1)?.id))
-        val start = options.indexOfFirst { it.id == picks[day].id }.coerceAtLeast(0)
-        picks[day] = options[(start + offset) % options.size]
-        var next = day + 1
-        while (next < picks.size && picks[next].id == picks[next - 1].id) {
-            val avoid = setOfNotNull(picks[next - 1].id, picks.getOrNull(next + 1)?.id)
-            picks[next] = ranked(next, avoid).firstOrNull() ?: ranked(next, setOf(picks[next - 1].id)).first()
-            next++
+
+    val mainPool = unique.filterNot { it.isSoupOrVeggieSide() }.ifEmpty { unique }
+    val sidePool = unique.filter { it.isSoupOrVeggieSide() }
+    val hasTwoCourseCatalog = mainPool.size >= 2 && sidePool.isNotEmpty() && mainPool.any { main -> sidePool.any { it.id != main.id } }
+
+    fun pickSeries(pool: List<Recipe>): MutableList<Recipe> {
+        val picks = mutableListOf<Recipe>()
+        repeat(7) { day ->
+            val candidates = rankedFrom(pool, day, setOfNotNull(picks.lastOrNull()?.id))
+            if (candidates.isEmpty()) return@repeat
+            picks += candidates.firstOrNull { c -> picks.none { it.id == c.id } } ?: candidates.first()
         }
+        swappedOffsets.toSortedMap().forEach { (day, rawOffset) ->
+            val offset = rawOffset.coerceAtLeast(0)
+            if (day !in picks.indices || offset == 0) return@forEach
+            val options = rankedFrom(pool, day, setOfNotNull(picks.getOrNull(day - 1)?.id))
+            if (options.isEmpty()) return@forEach
+            val start = options.indexOfFirst { it.id == picks[day].id }.coerceAtLeast(0)
+            picks[day] = options[(start + offset) % options.size]
+            var next = day + 1
+            while (next < picks.size && picks[next].id == picks[next - 1].id) {
+                val avoid = setOfNotNull(picks[next - 1].id, picks.getOrNull(next + 1)?.id)
+                picks[next] = rankedFrom(pool, next, avoid).firstOrNull()
+                    ?: rankedFrom(pool, next, setOf(picks[next - 1].id)).firstOrNull()
+                    ?: picks[next]
+                next++
+            }
+        }
+        return picks
     }
+
+    val mainPicks = pickSeries(if (hasTwoCourseCatalog) mainPool else unique)
+    val sidePicks = if (hasTwoCourseCatalog) {
+        val sides = mutableListOf<Recipe?>()
+        repeat(mainPicks.size) { day ->
+            val mainId = mainPicks[day].id
+            val priorSideId = sides.lastOrNull()?.id
+            val candidates = rankedFrom(sidePool, day, setOfNotNull(mainId, priorSideId))
+                .ifEmpty { rankedFrom(sidePool, day, setOf(mainId)) }
+            if (candidates.isEmpty()) {
+                sides += null
+            } else {
+                val unseen = candidates.filter { c -> sides.none { it?.id == c.id } }.ifEmpty { candidates }
+                val offset = swappedOffsets[day]?.coerceAtLeast(0) ?: 0
+                sides += unseen[offset % unseen.size]
+            }
+        }
+        sides
+    } else {
+        List(mainPicks.size) { null }
+    }
+
     val chosen = mutableListOf<PlannedDayMeal>()
-    picks.forEachIndexed { day, selected ->
+    mainPicks.forEachIndexed { day, selected ->
+        val side = sidePicks.getOrNull(day)
+        val combinedIds = selected.ids() + (side?.ids() ?: emptySet())
         val reason = when {
-            day <= 1 && selected.ids().any { it in urgent } -> "Nên dùng sớm nguyên liệu đang có"
+            day <= 1 && combinedIds.any { it in urgent } -> "Nên dùng sớm nguyên liệu đang có"
             goal == DietGoal.QUICK && selected.minutes != null && selected.minutes <= 20 -> "Nấu trong khoảng ${selected.minutes} phút"
-            goal == DietGoal.LIGHT && selected.ids().any { it in lightIds } -> "Có rau, đậu, nấm hoặc cá"
-            goal == DietGoal.RICH_PROTEIN && selected.ids().any { it in proteinIds } -> "Có nguyên liệu giàu đạm"
-            preferences.any { tag -> selected.ids().any { id -> when (tag) {
-                FamilyPreferenceTag.KID_FAVORITE -> id in kidIds
-                FamilyPreferenceTag.SEAFOOD -> id in seaIds
-                FamilyPreferenceTag.VEGGIE_TOFU -> id in veggieIds
-                FamilyPreferenceTag.MEAT -> id in meatIds
-            } } } -> "Hợp với lựa chọn của gia đình"
+            goal == DietGoal.LIGHT && combinedIds.any { it in lightIds } -> "Có rau, đậu, nấm hoặc cá"
+            goal == DietGoal.RICH_PROTEIN && combinedIds.any { it in proteinIds } -> "Có nguyên liệu giàu đạm"
+            preferences.any { tag -> combinedIds.any { it in tag.ingredientIds() } } -> "Hợp với lựa chọn của gia đình"
+            side != null -> "Đủ mâm: 1 món mặn + 1 món canh/rau"
             else -> "Gợi ý cân bằng cho bữa cơm gia đình"
         }
-        chosen += PlannedDayMeal(day, days[day], selected, reason)
+        chosen += PlannedDayMeal(day, days[day], selected, reason, sideRecipe = side)
     }
     return chosen
 }
 
-fun buildWeeklyShoppingList(plan: List<PlannedDayMeal>, state: PantryGridState): List<ShoppingListItem> {
+fun buildWeeklyShoppingList(
+    plan: List<PlannedDayMeal>,
+    state: PantryGridState,
+    preferences: Set<FamilyPreferenceTag> = emptySet(),
+): List<ShoppingListItem> {
+    val preferredIds = preferences.flatMapTo(HashSet()) { it.ingredientIds() }
     val counts = linkedMapOf<String, Int>()
-    plan.forEach { meal -> meal.recipe.required.forEach { slot ->
-        val selected = slot.anyOf.firstOrNull { state.pantry[it]?.have == true } ?: slot.anyOf.first()
-        counts[selected] = (counts[selected] ?: 0) + 1
-    } }
+    plan.forEach { meal ->
+        meal.dishes.forEach { dish ->
+            dish.required.forEach { slot ->
+                val selected = slot.anyOf.firstOrNull { state.pantry[it]?.have == true }
+                    ?: slot.anyOf.firstOrNull { it in preferredIds }
+                    ?: slot.anyOf.first()
+                counts[selected] = (counts[selected] ?: 0) + 1
+            }
+        }
+    }
     val catalog = state.ingredients.associateBy { it.id }
     val order = state.ingredients.mapIndexed { index, ingredient -> ingredient.id to index }.toMap()
     return counts.mapNotNull { (id, count) ->
-        catalog[id]?.let { ingredient -> ShoppingListItem(ingredient, count, state.pantry[id]?.have == true) }
-    }.sortedWith(compareBy<ShoppingListItem> { it.alreadyInPantry }.thenBy { order[it.ingredient.id] ?: Int.MAX_VALUE })
+        catalog[id]?.let { ingredient ->
+            val have = state.pantry[id]?.have == true
+            val currentQty = if (have) (state.quantities[id] ?: 1) else 0
+            val missingQty = (count - currentQty).coerceAtLeast(0)
+            ShoppingListItem(
+                ingredient = ingredient,
+                mealCount = count,
+                alreadyInPantry = have,
+                availableQuantity = currentQty,
+                missingQuantity = missingQty,
+            )
+        }
+    }.sortedWith(compareBy<ShoppingListItem> { it.alreadyInPantry && it.missingQuantity == 0 }.thenBy { order[it.ingredient.id] ?: Int.MAX_VALUE })
 }
 
 fun shoppingIdsToStock(items: List<ShoppingListItem>, uncheckedIds: Set<String> = emptySet()): List<String> =
-    items.filter { !it.alreadyInPantry && it.ingredient.id !in uncheckedIds }.map { it.ingredient.id }
+    items.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }.map { it.ingredient.id }
+
+fun shoppingQuantitiesToStock(items: List<ShoppingListItem>, uncheckedIds: Set<String> = emptySet()): Map<String, Int> =
+    items.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
+        .associate { it.ingredient.id to it.missingQuantity.coerceAtLeast(1) }

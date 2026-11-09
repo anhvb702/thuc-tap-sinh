@@ -3,7 +3,6 @@ package com.loitu.yourrefri.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -23,18 +22,17 @@ import com.loitu.yourrefri.feature.home.ui.HomeScreen
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridScreen
+import com.loitu.yourrefri.feature.recipe.logic.DietGoal
+import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreen
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForAllRecipes
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForHomeCard
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreenMode
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
-import com.loitu.yourrefri.ui.theme.DeepCharcoal
 import com.loitu.yourrefri.ui.theme.MutedGray
-import com.loitu.yourrefri.ui.theme.SageGreen
 import com.loitu.yourrefri.ui.theme.SageGreenText
 import com.loitu.yourrefri.ui.theme.SoftGreen
-import com.loitu.yourrefri.ui.theme.WarmIvory
 
 enum class NavTab(val label: String, val icon: String) {
     HOME("Trang chủ", "🏠"),
@@ -61,6 +59,10 @@ fun MainScaffold(
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
+    var weeklyGoal by remember { mutableStateOf(DietGoal.BALANCED) }
+    var weeklyPreferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
+    var weeklySwappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
+    var weeklyUncheckedIds by remember { mutableStateOf(emptySet<String>()) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -137,12 +139,35 @@ fun MainScaffold(
                     recipes = recipes,
                     initialRecipeId = requestedRecipeId,
                     initialMode = requestedRecipeMode,
+                    weeklyGoal = weeklyGoal,
+                    onWeeklyGoalChange = { weeklyGoal = it },
+                    weeklyPreferences = weeklyPreferences,
+                    onWeeklyPreferencesChange = { weeklyPreferences = it },
+                    weeklySwappedOffsets = weeklySwappedOffsets,
+                    onWeeklySwappedOffsetsChange = { weeklySwappedOffsets = it },
+                    weeklyUncheckedIds = weeklyUncheckedIds,
+                    onWeeklyUncheckedIdsChange = { weeklyUncheckedIds = it },
+                    onModeChange = { requestedRecipeMode = it },
                     onCookRecipe = { _, ingredientIds ->
                         ingredientIds.distinct()
                             .filter { state.pantry[it]?.have == true }
                             .forEach { onAction(PantryGridAction.ConsumeIngredient(it)) }
                     },
-                    onStockIngredients = { ids -> ids.forEach { onAction(PantryGridAction.AddIngredient(it, null)) } },
+                    onStockIngredients = { ids ->
+                        ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
+                            val alreadyHave = state.pantry[id]?.have == true
+                            if (!alreadyHave) {
+                                onAction(PantryGridAction.AddIngredient(id, null))
+                                repeat((needed - 1).coerceAtLeast(0)) {
+                                    onAction(PantryGridAction.IncreaseQuantity(id))
+                                }
+                            } else {
+                                repeat(needed.coerceAtLeast(0)) {
+                                    onAction(PantryGridAction.IncreaseQuantity(id))
+                                }
+                            }
+                        }
+                    },
                 )
                 NavTab.SETTINGS -> SettingsScreen(
                     backupStatus = backupStatus,
