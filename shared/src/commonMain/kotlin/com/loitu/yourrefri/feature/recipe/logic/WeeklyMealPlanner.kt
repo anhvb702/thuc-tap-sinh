@@ -21,6 +21,7 @@ data class PlannedDayMeal(
     val recipe: Recipe,
     val matchReasonVi: String,
     val sideRecipe: Recipe? = null,
+    val mealTypeVi: String = "Bữa cơm chính",
 ) {
     val dishes: List<Recipe>
         get() = listOfNotNull(recipe, sideRecipe)
@@ -161,16 +162,18 @@ fun buildWeeklyShoppingList(
     plan: List<PlannedDayMeal>,
     state: PantryGridState,
     preferences: Set<FamilyPreferenceTag> = emptySet(),
+    includeLunchMealPrep: Boolean = false,
 ): List<ShoppingListItem> {
     val preferredIds = preferences.flatMapTo(HashSet()) { it.ingredientIds() }
     val counts = linkedMapOf<String, Int>()
+    val portionMultiplier = if (includeLunchMealPrep) 2 else 1
     plan.forEach { meal ->
         meal.dishes.forEach { dish ->
             dish.required.forEach { slot ->
                 val selected = slot.anyOf.firstOrNull { state.pantry[it]?.have == true }
                     ?: slot.anyOf.firstOrNull { it in preferredIds }
                     ?: slot.anyOf.first()
-                counts[selected] = (counts[selected] ?: 0) + 1
+                counts[selected] = (counts[selected] ?: 0) + portionMultiplier
             }
         }
     }

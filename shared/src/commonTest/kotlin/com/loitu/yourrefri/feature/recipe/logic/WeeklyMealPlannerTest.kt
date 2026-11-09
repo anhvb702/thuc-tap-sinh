@@ -135,4 +135,17 @@ class WeeklyMealPlannerTest {
         assertEquals(2, partialShopping.single().missingQuantity)
         assertEquals(mapOf("pork" to 2), shoppingQuantitiesToStock(partialShopping))
     }
+
+    @Test fun includeLunchMealPrepDoublesPortionsForNextDayLunch() {
+        val plan = listOf(
+            PlannedDayMeal(0, "Thứ 2", recipe("d1", "pork"), ""),
+            PlannedDayMeal(1, "Thứ 3", recipe("d2", "pork"), ""),
+        )
+        val normal = buildWeeklyShoppingList(plan, state.copy(pantry = emptyMap()), includeLunchMealPrep = false)
+        assertEquals(2, normal.single().mealCount)
+
+        val withLunch = buildWeeklyShoppingList(plan, state.copy(pantry = emptyMap()), includeLunchMealPrep = true)
+        assertEquals(4, withLunch.single().mealCount)
+        assertEquals(mapOf("pork" to 4), shoppingQuantitiesToStock(withLunch))
+    }
 }

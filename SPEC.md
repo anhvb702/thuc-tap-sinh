@@ -43,8 +43,9 @@
 - **Lọc thời gian nấu:** “Tất cả”, “Tối đa 15 phút”, “Tối đa 30 phút”; gồm món đúng 15 hoặc 30 phút tương ứng, bỏ duration không xác định/không dương và giữ thứ tự gợi ý. Quyết định inclusive do người dùng chốt ngày 2026-11-08; implementation và unit contracts có trong `docs/tests/W5-02B.md`.
 - **Thực đơn tuần 7 ngày & Đi chợ 1 chạm (`W6-01`, `W6-02`):**
   - Màn hình Món ăn có thanh chuyển 2 chế độ: `"🍲 Gợi ý hôm nay"` và `"📅 Thực đơn tuần & Đi chợ"`, kèm lối tắt `"Lập thực đơn tuần & đi chợ 📅"` từ Trang chủ.
-  - Cá nhân hóa thực đơn cả tuần (`Thứ 2` → `Chủ nhật`) theo định hướng bữa ăn (`DietGoal`: Cân bằng gia đình, Thanh đạm · Nhiều rau, Đậm đà · Đủ đạm, Nấu nhanh ≤ 20 phút) và khẩu vị thành viên (`FamilyPreferenceTag`: Món dễ ăn, Cá & Tôm, Rau, Đậu & Nấm, Thịt heo, bò, gà). Không trùng món ở 2 ngày liên tiếp, ưu tiên nguyên liệu cần dùng sớm ở đầu tuần và cho phép `"Đổi món ↻"` từng ngày.
-  - Tự động tổng hợp danh sách nguyên liệu cần mua (`buildWeeklyShoppingList`), trừ các nguyên liệu đã có sẵn trong tủ (`alreadyInPantry`), đếm số bữa sử dụng trong tuần (`mealCount`), và hỗ trợ nút 1 chạm `"Đã mua xong (n món) · Cất vào tủ lạnh 🧊"` tự động cập nhật nguyên liệu vào tủ lạnh mà không cần nhập tay.
+  - Cá nhân hóa thực đơn cả tuần (`Thứ 2` → `Chủ nhật`) theo định hướng bữa ăn (`DietGoal`: Cân bằng gia đình, Thanh đạm · Nhiều rau, Đậm đà · Đủ đạm, Nấu nhanh ≤ 20 phút) và khẩu vị thành viên (`FamilyPreferenceTag`: Món dễ ăn, Cá & Tôm, Rau, Đậu & Nấm, Thịt heo, bò, gà). Xếp chuẩn mâm cơm 2 món (`🍖 Món chính` + `🥬 Canh/Rau`) mỗi ngày, không trùng món chính hay món phụ ở 2 ngày liên tiếp, ưu tiên nguyên liệu cần dùng sớm ở đầu tuần và cho phép `"Đổi thực đơn ↻"` từng ngày.
+  - Ghi chú rõ ràng: thiết kế cho **Bữa cơm chính trong ngày (Trưa hoặc Tối)** với nhãn `Thứ X · Bữa cơm chính`; hỗ trợ tùy chọn **`"🍱 Nấu thêm phần cơm trưa hôm sau"`** để tự động tính thêm định lượng đi chợ cho ai muốn mang cơm trưa đi làm.
+  - Tự động tổng hợp danh sách nguyên liệu cần mua (`buildWeeklyShoppingList`), so sánh số lượng cần với số lượng đang có trong tủ (`quantities`), đếm số bữa/phần sử dụng, và hỗ trợ nút 1 chạm `"Đã mua xong (n món) · Cất vào tủ lạnh 🧊"` tự động cộng dồn số lượng nguyên liệu vào tủ lạnh mà không cần nhập tay.
 - **Trang công thức 4 bước rõ ràng:**
   - Bước 1: Chuẩn bị nguyên liệu
   - Bước 2: Sơ chế

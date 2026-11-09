@@ -63,6 +63,7 @@ fun MainScaffold(
     var weeklyPreferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
     var weeklySwappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
     var weeklyUncheckedIds by remember { mutableStateOf(emptySet<String>()) }
+    var weeklyIncludeLunchMealPrep by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -147,6 +148,8 @@ fun MainScaffold(
                     onWeeklySwappedOffsetsChange = { weeklySwappedOffsets = it },
                     weeklyUncheckedIds = weeklyUncheckedIds,
                     onWeeklyUncheckedIdsChange = { weeklyUncheckedIds = it },
+                    weeklyIncludeLunchMealPrep = weeklyIncludeLunchMealPrep,
+                    onWeeklyIncludeLunchMealPrepChange = { weeklyIncludeLunchMealPrep = it },
                     onModeChange = { requestedRecipeMode = it },
                     onCookRecipe = { _, ingredientIds ->
                         ingredientIds.distinct()

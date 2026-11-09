@@ -86,6 +86,8 @@ fun RecipeScreen(
     onWeeklySwappedOffsetsChange: ((Map<Int, Int>) -> Unit)? = null,
     weeklyUncheckedIds: Set<String>? = null,
     onWeeklyUncheckedIdsChange: ((Set<String>) -> Unit)? = null,
+    weeklyIncludeLunchMealPrep: Boolean? = null,
+    onWeeklyIncludeLunchMealPrepChange: ((Boolean) -> Unit)? = null,
     onModeChange: ((RecipeScreenMode) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -100,11 +102,13 @@ fun RecipeScreen(
     var localPreferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
     var localSwappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
     var localUncheckedIds by remember { mutableStateOf(emptySet<String>()) }
+    var localIncludeLunchMealPrep by remember { mutableStateOf(false) }
 
     val goal = weeklyGoal ?: localGoal
     val preferences = weeklyPreferences ?: localPreferences
     val swappedOffsets = weeklySwappedOffsets ?: localSwappedOffsets
     val uncheckedIds = weeklyUncheckedIds ?: localUncheckedIds
+    val includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: localIncludeLunchMealPrep
 
     var initialPantrySnapshot by remember { mutableStateOf(state) }
     LaunchedEffect(state.pantry.isNotEmpty()) {
@@ -180,9 +184,14 @@ fun RecipeScreen(
     if (mode == RecipeScreenMode.WEEKLY) {
         WeeklyMealPlanContent(
             plan = weeklyPlan,
-            shopping = buildWeeklyShoppingList(weeklyPlan, state, preferences),
+            shopping = buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = includeLunchMealPrep),
             goal = goal,
             preferences = preferences,
+            includeLunchMealPrep = includeLunchMealPrep,
+            onToggleLunchMealPrep = {
+                localIncludeLunchMealPrep = it
+                onWeeklyIncludeLunchMealPrepChange?.invoke(it)
+            },
             uncheckedIds = uncheckedIds,
             onToggleChecked = { id, checked ->
                 val next = if (checked) uncheckedIds - id else uncheckedIds + id
@@ -483,6 +492,8 @@ private fun WeeklyMealPlanContent(
     shopping: List<com.loitu.yourrefri.feature.recipe.logic.ShoppingListItem>,
     goal: DietGoal,
     preferences: Set<FamilyPreferenceTag>,
+    includeLunchMealPrep: Boolean,
+    onToggleLunchMealPrep: (Boolean) -> Unit,
     uncheckedIds: Set<String>,
     onToggleChecked: (String, Boolean) -> Unit,
     onGoal: (DietGoal) -> Unit,
@@ -507,17 +518,45 @@ private fun WeeklyMealPlanContent(
             FilterChip(selected = false, onClick = onDaily, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("🍲 Gợi ý hôm nay") })
             FilterChip(selected = true, onClick = {}, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
         }
-        Text("Chọn định hướng và khẩu vị, mình xếp sẵn mâm cơm (Món mặn + Canh/Rau) cả tuần.", style = MaterialTheme.typography.bodyMedium, color = MutedGray, modifier = Modifier.padding(vertical = 8.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = Color(0xFFF3F6F2),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2EBE0))
+        ) {
+            Column(Modifier.padding(12.dp)) {
+                Text(
+                    text = "💡 Lưu ý về bữa cơm gia đình:",
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = DeepCharcoal,
+                )
+                Text(
+                    text = "Thực đơn được thiết kế cho Bữa cơm chính trong ngày (Trưa hoặc Tối) gồm 1 món mặn + 1 món canh/rau để cả nhà ăn ngon mà không bị áp lực lên lịch quá nhiều bữa.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DeepCharcoal,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
+        }
+        Text("Chọn định hướng và khẩu vị, mình xếp sẵn mâm cơm (Món mặn + Canh/Rau) cả tuần.", style = MaterialTheme.typography.bodyMedium, color = MutedGray, modifier = Modifier.padding(bottom = 6.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             DietGoal.entries.forEach { item -> FilterChip(item == goal, { onGoal(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
             FamilyPreferenceTag.entries.forEach { item -> FilterChip(item in preferences, { onPreference(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            FilterChip(
+                selected = includeLunchMealPrep,
+                onClick = { onToggleLunchMealPrep(!includeLunchMealPrep) },
+                modifier = Modifier.heightIn(min = 48.dp),
+                label = { Text(if (includeLunchMealPrep) "🍱 Đang tính thêm phần cơm trưa hôm sau" else "🍱 Nấu thêm phần cơm trưa hôm sau") }
+            )
         }
         plan.forEach { day ->
             val isExpanded = openedDay == day.dayIndex
             Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(day.dayLabelVi, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = SageGreenText)
+                        Text(dayMealCardHeader(day.dayLabelVi, day.mealTypeVi), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = SageGreenText)
                         val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
                         Text(totalMinutes?.let { "⏱️ ~$it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = MutedGray)
                     }
@@ -571,12 +610,16 @@ private fun WeeklyMealPlanContent(
                 Checkbox(checked = item.ingredient.id !in uncheckedIds, onCheckedChange = { onToggleChecked(item.ingredient.id, it) })
                 Column {
                     Text(item.ingredient.nameVi, color = DeepCharcoal, fontWeight = FontWeight.Medium)
-                    val subtitle = if (item.availableQuantity > 0) {
-                        "Cần cho ${item.mealCount} bữa (trong tủ có ${item.availableQuantity}, mua thêm ${item.missingQuantity})"
-                    } else {
-                        "Dùng cho ${item.mealCount} bữa"
-                    }
-                    Text(subtitle, color = MutedGray, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = shoppingItemSubtitle(
+                            mealCount = item.mealCount,
+                            availableQuantity = item.availableQuantity,
+                            missingQuantity = item.missingQuantity,
+                            isLunchPrep = includeLunchMealPrep,
+                        ),
+                        color = MutedGray,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
         }

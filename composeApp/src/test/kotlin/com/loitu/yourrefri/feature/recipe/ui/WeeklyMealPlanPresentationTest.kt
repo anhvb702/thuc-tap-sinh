@@ -22,4 +22,14 @@ class WeeklyMealPlanPresentationTest {
         assertEquals("Đã mua xong (0 món) · Cất vào tủ lạnh 🧊", stockActionButtonLabel(0))
         assertEquals("Danh sách đã được cập nhật.", stockResultMessage(0))
     }
+    @Test fun dayHeaderAndShoppingSubtitleSupportLunchMealPrep() {
+        assertEquals("Thứ 2 · Bữa cơm chính", dayMealCardHeader("Thứ 2"))
+        assertEquals("Thứ 3 · Bữa trưa & tối", dayMealCardHeader("Thứ 3", "Bữa trưa & tối"))
+        assertEquals("Dùng cho 2 bữa", shoppingItemSubtitle(2, 0, 2, isLunchPrep = false))
+        assertEquals("Dùng cho 4 phần (có phần cơm trưa mang đi)", shoppingItemSubtitle(4, 0, 4, isLunchPrep = true))
+        assertEquals(
+            "Cần cho 4 phần (gồm cơm trưa) · trong tủ có 1, mua thêm 3",
+            shoppingItemSubtitle(4, 1, 3, isLunchPrep = true),
+        )
+    }
 }
