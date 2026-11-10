@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,6 +65,9 @@ import com.loitu.yourrefri.ui.theme.WarmIvory
 internal data class ActionStyle(val container: Color, val content: Color)
 
 internal val weeklyPlanActionStyle = ActionStyle(container = SageGreenStrong, content = Color.White)
+
+// Cỡ chữ hệ thống từ 1.2 trở lên thì nút "Xem tủ" xuống dưới chữ, không đặt cạnh.
+internal fun summaryButtonBelowText(fontScale: Float): Boolean = fontScale >= 1.2f
 
 @Composable
 fun HomeScreen(
@@ -120,13 +124,8 @@ fun HomeScreen(
             colors = CardDefaults.cardColors(containerColor = SoftGreenLight),
             shape = RoundedCornerShape(20.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            val buttonBelow = summaryButtonBelowText(LocalDensity.current.fontScale)
+            val summaryText: @Composable () -> Unit = {
                 Column {
                     Text(
                         text = "Tủ lạnh hiện có",
@@ -147,6 +146,8 @@ fun HomeScreen(
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
+            }
+            val summaryButton: @Composable () -> Unit = {
                 Button(
                     onClick = onNavigateToPantry,
                     colors = ButtonDefaults.buttonColors(containerColor = SageGreenStrong),
@@ -154,6 +155,24 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                 ) {
                     Text("Xem tủ 🧊", color = Color.White, fontWeight = FontWeight.Medium)
+                }
+            }
+            if (buttonBelow) {
+                Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                    summaryText()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    summaryButton()
+                }
+            } else {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    summaryText()
+                    summaryButton()
                 }
             }
         }
