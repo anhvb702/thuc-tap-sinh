@@ -13,9 +13,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.home.ui.HomeScreen
@@ -33,6 +36,16 @@ import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
 import com.loitu.yourrefri.ui.theme.MutedGray
 import com.loitu.yourrefri.ui.theme.SageGreenText
 import com.loitu.yourrefri.ui.theme.SoftGreen
+
+// Nhãn tab cho phép xuống dòng khi cỡ chữ hệ thống lớn, để không cắt còn một từ.
+internal const val NAV_LABEL_MAX_LINES = 2
+
+// Chữ nhãn tab không vượt 18sp hiển thị, kể cả khi cỡ chữ hệ thống lớn.
+internal const val NAV_LABEL_MAX_DISPLAY_SP = 18f
+
+// Cỡ chữ đặt cho Text (sp). Compose nhân với fontScale hệ thống, nên chia lại để chữ hiển thị bị chặn.
+internal fun navLabelFontSizeSp(fontScale: Float): Float =
+    if (fontScale <= 0f) 14f else minOf(14f, NAV_LABEL_MAX_DISPLAY_SP / fontScale)
 
 enum class NavTab(val label: String, val icon: String) {
     HOME("Trang chủ", "🏠"),
@@ -89,8 +102,10 @@ fun MainScaffold(
                         label = {
                             Text(
                                 text = tab.label,
-                                fontSize = 14.sp,
-                                maxLines = 1,
+                                fontSize = navLabelFontSizeSp(LocalDensity.current.fontScale).sp,
+                                maxLines = NAV_LABEL_MAX_LINES,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 color = if (isSelected) SageGreenText else MutedGray
                             )
