@@ -501,6 +501,7 @@ fun PantryGridScreen(
                                 onClick = {
                                     val wasSelected = ingredient.id in selectedIds
                                     selectedIds = toggleQuickAddSelection(selectedIds, ingredient.id)
+                                    newFoodName = quickAddQueryAfterChipTap(newFoodName, selectedIds, ingredient)
                                     if (!wasSelected && selectedIds.size == 1) {
                                         newFoodDays = quickAddSuggestionSelection(ingredient).overrideDays
                                     }

@@ -121,6 +121,64 @@ class QuickAddSuggestionsTest {
         )
     }
 
+    // Contract UX-05 (quyết định 2026-11-10, theo khuyến nghị Advisor và Brainstormer): chạm chip chỉ bật/tắt
+    // trạng thái chọn; không đổi ô tìm kiếm, để người dùng chọn tiếp các chip khác.
+    @Test
+    fun chipTapNeverChangesSearchQuery() {
+        val chicken = Ingredient("chicken", "Thịt gà", "thit", 3)
+        assertEquals("thit", quickAddQueryAfterChipTap("thit", setOf("chicken"), chicken))
+        assertEquals("thit", quickAddQueryAfterChipTap("thit", setOf("chicken", "pork"), chicken))
+        assertEquals("thit", quickAddQueryAfterChipTap("thit", emptySet(), chicken))
+    }
+
+    // Contract UX-04/UX-05: không xác nhận khi truy vấn còn nhiều chip, kể cả khi chỉ một món bắt đầu bằng truy vấn.
+    @Test
+    fun confirmWithoutChipDoesNotPickOneOfSeveralSuggestions() {
+        val today = LocalDate(2026, 11, 10)
+        val state = PantryGridState(
+            today = today,
+            ingredients = listOf(
+                Ingredient("cam", "Cam", "trai-cay", 7),
+                Ingredient("carrot", "Cà rốt", "rau-cu", 14),
+                Ingredient("salmon", "Cá hồi", "ca", 3),
+            ),
+        )
+
+        assertEquals(emptyList(), quickAddIdsToSave(state, emptySet(), "ca"))
+        assertEquals(listOf("cam"), quickAddIdsToSave(state, emptySet(), "Cam"))
+        assertEquals(
+            "Có vài món phù hợp, bạn chạm chọn 1 món gợi ý bên trên nhé.",
+            quickAddQueryMessage(state, "ca", afterAttempt = true),
+        )
+    }
+
+    // Contract UX-04: thông báo "có vài món" chỉ khi còn từ hai chip gợi ý; một chip không báo "có vài món".
+    @Test
+    fun ambiguityMessageNeedsAtLeastTwoSuggestionChips() {
+        val today = LocalDate(2026, 11, 10)
+        val pork = Ingredient("pork", "Thịt heo", "thit", 7)
+        val porkMince = Ingredient("pork2", "Thịt heo xay", "thit", 3)
+        val chicken = Ingredient("chicken", "Thịt gà", "thit", 3)
+        val oneChip = PantryGridState(
+            today = today,
+            ingredients = listOf(pork, porkMince, chicken),
+            pantry = mapOf(
+                "pork" to PantryItem("pork", true, today),
+                "pork2" to PantryItem("pork2", true, today),
+            ),
+        )
+        val twoChips = PantryGridState(today = today, ingredients = listOf(pork, porkMince, chicken))
+
+        assertEquals(
+            "Bạn chạm món gợi ý bên trên để thêm nhé.",
+            quickAddQueryMessage(oneChip, "thit", afterAttempt = true),
+        )
+        assertEquals(
+            "Có vài món phù hợp, bạn chạm chọn 1 món gợi ý bên trên nhé.",
+            quickAddQueryMessage(twoChips, "thit", afterAttempt = true),
+        )
+    }
+
     @Test
     fun suggestionSelectionUsesEffectiveEstimateWithoutSavingAnOverride() {
         val catalogDefault = quickAddSuggestionSelection(ingredients.first())

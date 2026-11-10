@@ -96,10 +96,16 @@ internal fun quickAddIdsToSave(
             .filter { it in selectedIds }
             .toList()
     }
-    return quickAddMatch(state.ingredients, query)
+    return quickAddPickForSave(state, query)?.let { listOf(it.id) } ?: emptyList()
+}
+
+// Món được thêm khi xác nhận không chọn chip: khớp chính xác tên, hoặc đúng một chip còn lại.
+private fun quickAddPickForSave(state: PantryGridState, query: String): Ingredient? {
+    if (query.isBlank()) return null
+    val exact = state.ingredients.firstOrNull { it.nameVi.equals(query.trim(), ignoreCase = true) }
+    val normalized = normalizeFoodQuery(query)
+    return (exact ?: state.ingredients.filter { matchesFoodQuery(it.nameVi, normalized) }.singleOrNull())
         ?.takeIf { state.pantry[it.id]?.have != true }
-        ?.let { listOf(it.id) }
-        ?: emptyList()
 }
 
 internal fun quickAddConfirmLabel(selectedCount: Int): String {
@@ -158,11 +164,20 @@ internal fun quickAddQueryMessage(
     if (uniqueMatch != null && state.pantry[uniqueMatch.id]?.have == true) {
         return "Món này đã có trong tủ rồi."
     }
-    if (afterAttempt && matchingIngredients.size > 1 && uniqueMatch == null) {
-        return "Có vài món phù hợp, bạn chạm chọn 1 món gợi ý bên trên nhé."
+    if (afterAttempt && quickAddPickForSave(state, normalizedQuery) == null) {
+        val chipCount = quickAddCandidates(state, normalizedQuery).size
+        if (chipCount > 1) return "Có vài món phù hợp, bạn chạm chọn 1 món gợi ý bên trên nhé."
+        if (chipCount == 1) return "Bạn chạm món gợi ý bên trên để thêm nhé."
     }
     return null
 }
+
+// Chạm chip chỉ bật/tắt trạng thái chọn; ô tìm kiếm giữ nguyên để chọn thêm chip khác.
+internal fun quickAddQueryAfterChipTap(
+    currentQuery: String,
+    selectedIdsAfterTap: Set<String>,
+    ingredient: Ingredient,
+): String = currentQuery
 
 private fun normalizeFoodQuery(value: String): String = Normalizer
     .normalize(value.lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
