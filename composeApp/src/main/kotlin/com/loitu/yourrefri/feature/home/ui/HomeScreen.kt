@@ -60,6 +60,11 @@ import com.loitu.yourrefri.ui.theme.TerracottaText
 import com.loitu.yourrefri.ui.theme.WarmBeige
 import com.loitu.yourrefri.ui.theme.WarmIvory
 
+// Nút hành động chính: nền xanh sage đậm, chữ trắng (WCAG AA >= 4.5).
+internal data class ActionStyle(val container: Color, val content: Color)
+
+internal val weeklyPlanActionStyle = ActionStyle(container = SageGreenStrong, content = Color.White)
+
 @Composable
 fun HomeScreen(
     state: PantryGridState,
@@ -89,8 +94,15 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = MutedGray,
         )
-        Button(onClick = onNavigateToWeeklyRecipes, modifier = Modifier.fillMaxWidth()) {
-            Text("Lập thực đơn tuần & đi chợ 📅")
+        Button(
+            onClick = onNavigateToWeeklyRecipes,
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = weeklyPlanActionStyle.container,
+                contentColor = weeklyPlanActionStyle.content,
+            ),
+        ) {
+            Text("Lập thực đơn tuần & đi chợ 📅", color = weeklyPlanActionStyle.content)
         }
         Text(
             text = "Hôm nay nhà mình thế nào?",
