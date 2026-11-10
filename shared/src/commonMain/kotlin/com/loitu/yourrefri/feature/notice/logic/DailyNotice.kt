@@ -3,7 +3,6 @@ package com.loitu.yourrefri.feature.notice.logic
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
-import com.loitu.yourrefri.feature.pantry.logic.statusText
 import kotlinx.datetime.LocalDate
 
 data class DailyNotice(
@@ -27,6 +26,7 @@ fun planDailyNotice(
         day = today,
         ingredientIds = items.map { it.item.ingredientId },
         title = "Gợi ý từ tủ nhà mình",
-        body = items.joinToString("\n") { "${it.ingredient.nameVi}: ${statusText(it.daysLeft)}" },
+        body = "Tối nay nhà mình có ${items.joinToString(", ") { it.ingredient.nameVi }} " +
+            "nên dùng trước, bạn xem gợi ý nhé!",
     )
 }
