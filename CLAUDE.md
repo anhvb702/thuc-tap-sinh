@@ -21,7 +21,7 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 - `logic` chỉ hàm thuần, không import SQLDelight.
 - MVI: State / Action / Effect + ViewModel + StateFlow.
 - Điều hướng: Navigation Compose type-safe; tham số route chỉ dùng kiểu nguyên thủy (id `Long`, ngày dạng chuỗi ISO); mọi route nằm trong `composeApp/.../nav/Routes.kt`.
-- Thời gian: luôn tiêm `Clock` / `TimeZone` (kotlinx-datetime), không gọi giờ hệ thống trực tiếp.
+- Thời gian: luôn tiêm `kotlin.time.Clock` và `kotlinx.datetime.TimeZone`, không gọi giờ hệ thống trực tiếp.
 - Công thức là JSON bundle đọc lúc chạy, không vào DB.
 
 ## Thông báo
@@ -31,12 +31,10 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 - Mở app luôn thấy nội dung, dù OS chặn thông báo.
 
 ## Quy trình mỗi task
-1. Opus thiết kế unit test trước: tên test, đầu vào, kết quả cần đạt.
-2. Haiku viết code cho test xanh. Không sửa hay làm yếu test.
-3. Sonnet kiểm: đọc diff, chạy test, kiểm mutation, đối chiếu tiêu chí, ghi biên bản ngắn.
+- File này có quy trình/nhãn model cũ; dùng vai trò, model và các bước hiện hành trong `AGENTS.override.md`.
+- Nếu contract tồn tại trong `docs/tests/`, contract đó là tiêu chí nghiệm thu: thiết kế test trước code, không sửa/làm yếu test, chạy mutation và ghi bằng chứng thật.
 - Mỗi task ≤ ~300 dòng diff; vượt thì tách.
-- Nhánh `feat/<mã-thẻ>-<slug>`, mỗi task một PR, squash merge.
-- Người dùng đã cho phép commit/push từng feature lên fork để bot review; không merge khi chưa được hỏi.
+- Hướng dẫn nhánh/PR/merge ở tài liệu này đã lỗi thời. Dùng `AGENTS.override.md` hiện hành; không tự tạo nhánh, PR, commit/push hoặc merge ngoài phạm vi được yêu cầu.
 - DoD: `:shared` test xanh, build `:composeApp` xanh, test khớp tiêu chí trong `docs/tests/`, UI có ảnh chụp emulator, thông báo và thời gian có checklist tay.
 - Không xóa hoặc `@Ignore` test cũ.
 
