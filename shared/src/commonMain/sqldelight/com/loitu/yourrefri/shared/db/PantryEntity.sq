@@ -1,0 +1,23 @@
+CREATE TABLE PantryEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    have INTEGER AS kotlin.Boolean NOT NULL,
+    markedAt TEXT NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO PantryEntity VALUES (:ingredientId, :have, :markedAt);
+
+updateHave:
+UPDATE PantryEntity SET have = :have WHERE ingredientId = :ingredientId;
+
+selectAll:
+SELECT * FROM PantryEntity ORDER BY ingredientId ASC;
+
+selectById:
+SELECT * FROM PantryEntity WHERE ingredientId = :ingredientId;
+
+deleteById:
+DELETE FROM PantryEntity WHERE ingredientId = :ingredientId;
+
+deleteAll:
+DELETE FROM PantryEntity;

@@ -1,0 +1,4 @@
+CREATE TABLE PantryUnitEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    unit TEXT NOT NULL
+);
