@@ -1,0 +1,167 @@
+[
+  {
+    "id": "canh-chua-ca-basa",
+    "title": "Canh chua cá basa",
+    "minutes": 25,
+    "steps": [
+      "Rửa sạch cá basa, cắt khúc vừa ăn; cà chua bổ múi cau; hành lá cắt nhỏ.",
+      "Ướp cá với một chút muối, tiêu và nước mắm trong 10 phút.",
+      "Đun sôi nước, thêm cà chua và me chua; nấu đến khi cà chua mềm.",
+      "Cho cá vào nấu chín, nêm vừa ăn rồi rắc hành lá trước khi dùng."
+    ],
+    "required": [
+      { "anyOf": ["ca-basa"] },
+      { "anyOf": ["ca-chua"] },
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "thit-kho-trung",
+    "title": "Thịt heo kho trứng",
+    "minutes": 35,
+    "steps": [
+      "Thịt heo rửa sạch, cắt miếng vừa ăn; trứng gà luộc chín và bóc vỏ.",
+      "Ướp thịt với hành tím, nước mắm, đường và tiêu trong 15 phút.",
+      "Thắng nước màu, cho thịt vào đảo săn rồi thêm nước vừa xâm xấp.",
+      "Cho trứng vào kho lửa nhỏ đến khi thịt mềm và nước sốt sánh lại."
+    ],
+    "required": [
+      { "anyOf": ["thit-heo", "thit-heo-xay"] },
+      { "anyOf": ["trung-ga"] }
+    ]
+  },
+  {
+    "id": "rau-muong-xao-hanh",
+    "title": "Rau muống xào hành tây",
+    "minutes": 12,
+    "steps": [
+      "Rau muống nhặt ngọn non, rửa sạch và để ráo; hành tây thái mỏng.",
+      "Phi thơm hành tây với một ít dầu, cho rau muống vào xào nhanh trên lửa lớn.",
+      "Nêm vừa ăn, đảo thêm một phút rồi dùng nóng.",
+      "Dọn rau ra đĩa, dùng cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["rau-muong"] },
+      { "anyOf": ["hanh-tay"] }
+    ]
+  },
+  {
+    "id": "thit-bo-xao-hanh-tay",
+    "title": "Thịt bò xào hành tây",
+    "minutes": 15,
+    "steps": [
+      "Thịt bò thái mỏng; hành tây thái múi cau, cà rốt thái lát nếu nhà mình có.",
+      "Ướp thịt bò với chút nước mắm và tiêu trong vài phút.",
+      "Làm nóng chảo, đảo thịt bò vừa săn rồi cho hành tây vào xào, thêm cà rốt nếu có.",
+      "Nêm vừa ăn, đảo đến khi rau vừa mềm và dọn cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["thit-bo"] },
+      { "anyOf": ["hanh-tay"] }
+    ],
+    "optional": [
+      { "anyOf": ["ca-rot"] }
+    ]
+  },
+  {
+    "id": "canh-rau-ngot-thit-bam",
+    "title": "Canh rau ngót nấu thịt",
+    "minutes": 15,
+    "steps": [
+      "Rau ngót tuốt lá, rửa sạch; thịt băm để riêng.",
+      "Ướp thịt với chút nước mắm, rồi xào nhẹ cho thơm.",
+      "Thêm nước vừa đủ, đun sôi và cho rau ngót vào nấu mềm.",
+      "Nêm vừa ăn, múc canh ra tô dùng cùng bữa cơm."
+    ],
+    "required": [
+      { "anyOf": ["rau-ngot"] },
+      { "anyOf": ["thit-heo-xay", "thit-heo"] }
+    ]
+  },
+  {
+    "id": "dau-phu-sot-ca-chua",
+    "title": "Đậu phụ sốt cà chua",
+    "minutes": 15,
+    "steps": [
+      "Đậu phụ cắt miếng vừa ăn; cà chua bổ nhỏ và hành lá thái khúc.",
+      "Áp chảo đậu phụ đến khi các mặt vàng nhẹ rồi gắp ra.",
+      "Xào cà chua mềm với chút nước, nêm vừa ăn rồi cho đậu vào đảo nhẹ.",
+      "Rắc hành lá, tắt bếp và dùng món sốt cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["dau-phu"] },
+      { "anyOf": ["ca-chua"] },
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "tom-rim-thit",
+    "title": "Tôm rim mặn ngọt",
+    "minutes": 20,
+    "steps": [
+      "Tôm làm sạch; hành lá cắt nhỏ, thịt heo thái mỏng nếu dùng thêm.",
+      "Ướp tôm với nước mắm và chút đường trong vài phút.",
+      "Rim thịt heo trước nếu có, rồi cho tôm vào đảo đến khi săn lại.",
+      "Thêm ít nước, rim đến khi sốt sánh nhẹ; rắc hành lá và dọn cơm."
+    ],
+    "required": [
+      { "anyOf": ["tom"] },
+      { "anyOf": ["hanh-la"] }
+    ],
+    "optional": [
+      { "anyOf": ["thit-heo"] }
+    ]
+  },
+  {
+    "id": "ga-kho-khoai-tay",
+    "title": "Thịt gà kho khoai tây cà rốt",
+    "minutes": 30,
+    "steps": [
+      "Thịt gà chặt miếng vừa ăn; khoai tây hoặc cà rốt gọt vỏ, cắt miếng.",
+      "Ướp gà với chút nước mắm, tiêu và hành tím trong ít phút.",
+      "Xào gà săn mặt, thêm khoai tây hoặc cà rốt cùng nước vừa xâm xấp.",
+      "Kho lửa nhỏ đến khi gà mềm, nêm vừa ăn và dùng với cơm."
+    ],
+    "required": [
+      { "anyOf": ["thit-ga"] },
+      { "anyOf": ["khoai-tay", "ca-rot"] }
+    ]
+  },
+  {
+    "id": "canh-bi-xanh-nau-tom",
+    "title": "Canh bí xanh nấu tôm nấm",
+    "minutes": 20,
+    "steps": [
+      "Bí xanh gọt vỏ, bỏ ruột và cắt miếng; tôm làm sạch hoặc dùng thịt băm.",
+      "Xào nhẹ tôm hoặc thịt với chút nước mắm cho thơm.",
+      "Thêm nước, đun sôi rồi cho bí xanh vào nấu mềm, thêm nấm nếu có.",
+      "Nêm vừa ăn, rắc hành lá nếu có và múc canh ra tô."
+    ],
+    "required": [
+      { "anyOf": ["bi-xanh"] },
+      { "anyOf": ["tom", "thit-heo-xay"] }
+    ],
+    "optional": [
+      { "anyOf": ["nam"] },
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "ca-hoi-ap-chao-xa-lach",
+    "title": "Cá hồi áp chảo trộn xà lách",
+    "minutes": 15,
+    "steps": [
+      "Cá hồi thấm khô, ướp nhẹ với muối và tiêu; rửa sạch xà lách hoặc cải ngọt.",
+      "Áp chảo cá hồi với chút dầu đến khi hai mặt chín vàng.",
+      "Nếu dùng cải ngọt, chần nhanh cho vừa mềm; cà chua bổ miếng nếu có.",
+      "Xếp cá cùng rau, thêm cà chua nếu có, dọn ra đĩa và dùng ngay với cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["ca-hoi"] },
+      { "anyOf": ["xa-lach", "cai-ngot"] }
+    ],
+    "optional": [
+      { "anyOf": ["ca-chua"] }
+    ]
+  }
+]

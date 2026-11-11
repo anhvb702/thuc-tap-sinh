@@ -1,61 +1,37 @@
-# HANDOFF — MakeYourDay
+# HANDOFF: YourRefri
 
-Cập nhật: 2026-11-04. Đọc file này đầu tiên khi mở phiên mới, sau đó đọc `CLAUDE.md`, `DECISIONS.md`, `PLAN.md`.
+> Cập nhật: **2026-11-09**. Repo `anhvb702/thuc-tap-sinh`, nhánh `codex/yourrefri-baseline`.
+> Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — giao diện Warm Minimalism, bốn tab, thao tác gọn, dữ liệu chỉ lưu trên thiết bị.
 
-## Dự án
-App KMM **MakeYourDay**: mỗi sáng trợ lý **Luna** (đặt lại tên được) kể lại những việc người dùng đã làm hôm trước để tạo động lực. Đối tượng: dân văn phòng / freelancer. Làm trong 5 tuần, Android trước, dữ liệu nằm trên máy, không backend ở v1, không streak.
-- applicationId: `com.loitu.makeyourday`
-- Repo: https://github.com/anhvb702/makeyourday (private, còn trống, chưa commit/push gì)
-- Trello: https://trello.com/b/P4IyEDiP/makeyourday
+## Snapshot hiện tại
 
-## Môi trường (Windows 11, không có Mac)
-- JDK: `E:\Dev\Java\jdk-21.0.13+9` (`JAVA_HOME` đã đặt)
-- Android Studio: `E:\Dev\Android\AndroidStudio`; SDK: `E:\Dev\Android\Sdk`; AVD: `E:\Dev\Android\avd` (Pixel 8, API 35)
-- Git 2.56, Node 26 ở `C:\Program Files`
-- `gh` ở `C:\Program Files\GitHub CLI\gh.exe`, đã đăng nhập `anhvb702`. Nếu `gh` không có trong PATH thì thoát hẳn và mở lại app.
-- File tải về: `downloads\` (đã `.gitignore`), mỗi lần một thư mục con, hỏi người dùng trước khi tải.
+- **W6-01 & W6-02 (Thực đơn tuần 7 ngày & Đi chợ 1 chạm — Zero-Input Pantry Loop):** triển khai `WeeklyMealPlanner.kt` (`:shared`) và `WeeklyMealPlanPresentation.kt` + chế độ `RecipeScreenMode.WEEKLY` (`:composeApp`) theo góp ý PR #5. Hỗ trợ gợi ý thực đơn 7 ngày (`Thứ 2` → `Chủ nhật`) theo `DietGoal` và `FamilyPreferenceTag` xếp chuẩn mâm cơm 2 món (`🍖 Món chính` + `🥬 Canh/Rau`) mỗi ngày không lặp món ngày liền kề, đổi món từng ngày (`Đổi thực đơn ↻`), định vị rõ ràng Bữa cơm chính (Trưa/Tối) với nhãn `Thứ X · Bữa cơm chính`, hỗ trợ tùy chọn `"🍱 Nấu thêm phần cơm trưa hôm sau"` cho meal-prep văn phòng, tự động tổng hợp danh sách đi chợ tuần theo `quantities` và nút `"Đã mua xong (n món) · Cất vào tủ lạnh 🧊"` tự động cộng dồn nguyên liệu vào tủ lạnh (`PantryGridAction.AddIngredient` + `IncreaseQuantity`). Suite unit test hiện đạt **343 `:shared` tests** và **107 `:composeApp` tests** (0 failures/errors); xem `docs/tests/W6-01.md`, `docs/tests/W6-02.md` và `docs/ux/customer-agent-feedback-round6-strict-audit-2026-11-09.md`.
+- **UX-02 (Home pantry preview):** tối đa ba tên món đang có theo thứ tự catalog. Sáu mutation đều làm test đỏ; chi tiết và kết quả ở `docs/tests/UX-02.md`.
+- **UX-03 (Recommendation copy):** Home và Recipes dùng chung nhãn mời gọi. Sáu mutation đều làm test đỏ; chi tiết ở `docs/tests/UX-03.md`.
+- **UX-05 (Quick-add multi-select):** sáu mutation helper đều bị bắt; bộ lọc group/query, chọn nhiều món, nhãn số lượng và lưu món đã có trong source. `markedAt` sort không đảm bảo thời điểm hết thực tế vì reducer giữ timestamp cũ. Chưa có Compose interaction/runtime test cho multi-select; xem `docs/tests/UX-05.md`.
+- **UX-06 (Recipe bundle):** bundle có 10 công thức, sáu mutation coverage đều bị bắt. Wording optional được chỉnh sau probes; không rerun mutation vì không chạm targets. Xem `docs/tests/UX-06.md`.
+- **Feedback P0/P1 ngày 2026-11-08:** source đã cập nhật quick-add, xác nhận nấu, truyền ID recipe từ Home và bố cục thẻ/lưới Pantry. UX-04 bắt **6/6 mutation ở helper/presentation**; test này chưa instrument Compose call-site, thao tác chạm hay runtime layout. Source review xác nhận UI hiện gọi các helper tương ứng. Xem giới hạn và bằng chứng tại `docs/tests/UX-04.md`.
+- **UX-04/05 runtime prep ngày 2026-11-09:** checklist nghiệm thu thủ công đã được ghi trong `docs/tests/UX-04.md` và `docs/tests/UX-05.md`. Các thao tác chưa chạy trên thiết bị/emulator; đây không phải kết quả instrumentation hay runtime verification.
+- **Thử runtime ngày 2026-11-09:** `:composeApp:assembleDebug` thành công. AVD `YourRefri_API36_Fresh` không khởi động Android Package Manager; `adb install -r` trả `Can't find service: package`, nên app chưa cài/chạy và không bước checklist UI nào được xác minh. Chi tiết trong UX-04/05.
+- **Test sau code:** `:composeApp:testDebugUnitTest --offline` — exit 0, BUILD SUCCESSFUL; XML **102 tests, 0 failures, 0 errors**. Đây là suite cuối sau chỉnh chip reset và wording optional. UX-05/06 mutation chạy trước hai chỉnh sửa không chạm target; source được khôi phục sau từng probe.
+- **W5-02B:** UI lọc thời gian dùng “Tối đa 15 phút” và “Tối đa 30 phút”, inclusive theo lựa chọn ngày 2026-11-08; hợp đồng và biên bản ở `docs/tests/W5-02B.md`.
+- **W4-03:** kiểm thử contrast/font có trong Compose suite; runtime ở 360dp, font scale lớn, TalkBack và tên dài chưa xác minh. Không coi test source hoặc ảnh cỡ mặc định là xác nhận runtime các tiêu chí này.
 
-## Trạng thái hiện tại
-Xong:
-- Quy ước: `CLAUDE.md`, `DECISIONS.md` (ADR-001..014), `PLAN.md`, `.claude/agents/brainstormer.md`, `.gitignore`.
-- Trello có 6 cột (Backlog, Ready, In Progress, In Review, QA, Done) và 7 thẻ tuần 1.
-- GitHub CLI đã đăng nhập, repo private đã tạo.
-- Project KMP đã được giải nén vào `E:\KMM App\KotlinProject\KotlinProject\`.
+## Runtime và giới hạn bằng chứng
 
-Chưa xong / chưa kiểm chứng:
-- Chưa biết project đã sync Gradle và chạy được trên emulator hay chưa (thẻ #1 "[BẠN] Sinh project...").
-- Chưa `git init`, chưa commit, chưa push.
-- Chưa tìm thấy file `tech_stack.md` mà người dùng nhắc tới. Nếu họ gửi lại thì đối chiếu với ADR-008/009 trước khi triển khai.
+Ảnh runtime cũ trong `build/verification_reports/` là bằng chứng từ phiên trước, không phải xác minh lại trong phiên này. Snapshot P11 từng cho thấy Pantry mặc định với catalog, trạng thái và thao tác số lượng. Thử nghiệm 360dp/fontScale 1.3 và 2.0 trước đây không ổn định; TalkBack chưa được bật. Notification thực tế và restore qua picker end-to-end cũng chưa được xác minh. Persona report là walkthrough giả lập từ source, không phải nghiên cứu người dùng thật.
 
-## Vấn đề cần xử lý ngay
-1. **Project nằm lồng hai cấp** (`KotlinProject\KotlinProject`). Cần đưa nội dung lên `E:\KMM App` (cùng cấp `CLAUDE.md`), gộp `.gitignore` (giữ file của ta, thêm dòng wizard sinh ra), xóa thư mục rỗng. Hỏi người dùng trước khi di chuyển vì Android Studio có thể đang mở thư mục đó.
-2. **Cấu trúc module lệch ADR-008**: wizard sinh `androidApp`, `iosApp`, `shared`, không có `composeApp`. ADR-008 ghi hai module `:shared` (data, recap) và `:composeApp` (UI, ViewModel). Phải chọn: tạo module `composeApp` hay sửa ADR cho khớp project sinh ra. Đây là quyết định kiến trúc, ghi lại vào `DECISIONS.md`.
-3. Phiên cũ còn mở ở thư mục OneDrive cũ `C:\Users\loitu\OneDrive\Desktop\AI\KMM app` (còn hai thư mục rỗng không xóa được do bị từ chối quyền). Người dùng nên xóa tay và mở phiên mới ở `E:\KMM App`.
+## Trạng thái dự án
 
-## Stack đã chốt (chi tiết ở DECISIONS.md)
-Compose Multiplatform · Navigation Compose type-safe (`@Serializable`, tham số nguyên thủy, mọi route một file) · SQLDelight · Koin (có test đồ thị DI) · Coil · kotlinx-datetime (`Clock`/`TimeZone` inject) · ViewModel + StateFlow theo MVI (State/Action/Effect). Package: `com.loitu.makeyourday.feature.<name>.{data,ui}`. Tầng domain chỉ cho `recap` và `assistant`.
-Thông báo: `AlarmManager` không chính xác (`setAndAllowWhileIdle`/`setWindow`), đặt lại sau boot và đổi múi giờ, tối đa 1 thông báo sáng/ngày, bỏ qua cuối tuần mặc định, nhắc tối tắt mặc định.
-Phương án dự phòng điều hướng: sealed `Screen` tự viết nếu spike deep-link thông báo thất bại.
+- Bốn khu vực Home, Pantry, Recipes, Settings đã có source; lưu trữ cục bộ SQLDelight và backup thủ công qua tệp.
+- W1–W4 có implementation data/logic; giới hạn runtime W4-03 nêu trên vẫn mở.
+- W5-01 là source walkthrough persona. Release APK từng được build unsigned; cần signing key do chủ dự án quản lý để ký.
+- Thay đổi hiện tại còn ở working tree; chưa push hoặc merge. Qodo đã phụ trách review PR; các finding đã xử lý tại local cần được cập nhật PR sau khi có quyết định push.
 
-## Quy ước làm việc
-- Squash merge, tiêu đề PR theo Conventional Commits, nhánh `feat/<card-id>-<slug>`, tối đa khoảng 400 dòng diff mỗi thẻ.
-- Trailer commit: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. Chỉ commit/push khi người dùng yêu cầu.
-- Agent không có secrets, không merge, không kéo thẻ sang Done. File điểm nóng (DI, nav graph, strings, `.sq`) chỉ sửa qua thẻ "integration".
-- Jev (TypeSafe AI) là tùy chọn và chỉ tư vấn; mọi tính năng phải chạy được khi không có Jev. Key không bao giờ dán vào chat hay đưa vào app.
-- Không tạo file ngoài danh sách ở `PLAN.md` mục 8 nếu chưa hỏi. `HANDOFF.md` được tạo theo yêu cầu trực tiếp của người dùng.
-- Người dùng muốn từng bước có "Xong khi", bạn nhắn xong thì mới làm tiếp.
+## Việc còn lại
 
-## Bước tiếp theo
-1. Hỏi người dùng đã sync Gradle và chạy app mẫu trên emulator chưa.
-2. Giải quyết hai vấn đề ở trên (lồng thư mục, cấu trúc module).
-3. `git init`, commit đầu tiên, push lên repo (khi được yêu cầu).
-4. Làm các thẻ tuần 1 theo thứ tự: #2 spike thông báo mở màn Recap · #3 CI · #4 spike độ trễ AlarmManager trên máy thật · #5 mẫu MVI + Koin + test DI · #6 schema SQLDelight · #7 màn thêm nhanh.
+1. Nếu cần nghiệm thu UI end-to-end cho UX-04/05, bổ sung test Compose instrumentation cho call-site, interaction và runtime layout; helper mutation hiện tại không bao phủ các phần đó.
+2. Xác minh runtime W4-03, notification và restore khi môi trường phù hợp.
+3. Ký release bằng signing key do chủ dự án quản lý nếu cần phát hành.
 
-## Việc còn lại của người dùng
-- Bảo vệ nhánh `main` trên GitHub (bắt buộc PR và status checks).
-- Đổi tên 6 nhãn Trello (xanh lá Dev-Shared, vàng Dev-UI, cam QA, đỏ Rủi ro cao, tím Cần Duyệt, xanh dương BẠN).
-- Trước tuần 4: đăng ký Jev tại typesafe.ai, lưu key vào `.env.local`.
-- Tuần 3 trở đi: tài khoản Google Play Console (25 USD), khoảng 12 người thử, thử thông báo trên máy thật. Tuần 4: tài khoản Cloudflare.
-- Xác thực nhanh với 5–10 người dùng xem họ có dùng công cụ to-do khác không (quyết định phạm vi danh sách "định làm hôm nay").
-- Tùy chọn: đặt `GRADLE_USER_HOME=E:\Dev\gradle`.
-- `chrisbanes/skills` chưa cài; cần đọc, ghim commit và được người dùng đồng ý trước.
+Giữ snapshot này làm điểm đồng bộ. Không dùng số test hay trạng thái runtime cũ để mô tả kết quả hiện tại.

@@ -1,31 +1,28 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# thuc-tap-sinh
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+Thực tập sinh
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
+Quy trình làm việc với Git
 
-### Running the apps
+Các em thực hiện theo các bước sau:
 
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
+1. Tạo nhánh mới
 
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+- Tách nhánh từ "main".
 
-### Running tests
+- Đặt tên nhánh theo cấu trúc:
+  
+  ytuong/{ten-cua-cac-em}
 
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
+- Ví dụ: "ytuong/nguyen-van-a"
 
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+2. Tạo Pull Request (PR)
 
----
+- Sau khi hoàn thành công việc, commit và push code lên nhánh của mình.
+- Tạo Pull Request (PR) từ nhánh cá nhân vào nhánh "main".
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+3. Gửi link PR
+
+- Gửi link Pull Request lên group để mọi người theo dõi và review code.
+
+Lưu ý: Không commit trực tiếp lên nhánh "main". Mọi thay đổi cần được gửi qua Pull Request.
