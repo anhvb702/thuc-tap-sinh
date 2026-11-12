@@ -5,8 +5,11 @@
 # Gửi câu hỏi:       .\scripts\jev.ps1 -RequestFile .\scripts\jev_request.json
 #                    .\scripts\jev.ps1 -RequestFile req.json -OutFile result.json
 #
-# Định dạng request theo https://docs.typesafe.ai/introduction/quickstart.md:
-# { "state": "...", "model": "jev-latest", "questions": { "<tên>": { "type": "choice|score|noul", ... } } }
+# Định dạng request (đã kiểm chứng với API, xem scripts/jev_request.example.json):
+# { "state": "...", "model": "jev-latest", "questions": { "<tên>": { ... } } }
+#   choice: { "type": "choice", "question": "...", "choices": [...], "criteria": { "<lựa chọn>": "<mô tả>" } }
+#   score:  { "type": "score", "question": "...", "criteria": ["mức 0", "mức 1", ...] }  (criteria là danh sách)
+#   noul:   { "type": "noul", "question": "...", "instructions": "..." }                 (bắt buộc instructions hoặc criteria)
 
 param(
     [Parameter(Mandatory = $false)]
@@ -30,9 +33,18 @@ if ([string]::IsNullOrWhiteSpace($ApiKey)) {
 
 $Headers = @{ Authorization = "Bearer $ApiKey" }
 
+# Invoke-RestMethod trên PowerShell 5.1 giải mã sai tiếng Việt; đọc byte và giải mã UTF-8.
+function Invoke-Jev([string]$Method, [string]$Uri, [byte[]]$Body = $null) {
+    $params = @{ Method = $Method; Uri = $Uri; Headers = $Headers; TimeoutSec = 120; UseBasicParsing = $true }
+    if ($Body) { $params.ContentType = "application/json; charset=utf-8"; $params.Body = $Body }
+    $r = Invoke-WebRequest @params
+    $text = [System.Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
+    return ($text | ConvertFrom-Json)
+}
+
 try {
     if ($Models) {
-        $resp = Invoke-RestMethod -Method Get -Uri "https://api.typesafe.ai/v1/models" -Headers $Headers -TimeoutSec 30
+        $resp = Invoke-Jev -Method Get -Uri "https://api.typesafe.ai/v1/models"
         $json = $resp | ConvertTo-Json -Depth 10
     }
     else {
@@ -44,8 +56,7 @@ try {
         $raw = Get-Content -Path $RequestFile -Raw -Encoding UTF8
         $null = $raw | ConvertFrom-Json   # kiểm tra JSON hợp lệ trước khi gửi
         $bytes = [System.Text.Encoding]::UTF8.GetBytes($raw)
-        $resp = Invoke-RestMethod -Method Post -Uri "https://api.typesafe.ai/v1/systemone" `
-            -Headers $Headers -ContentType "application/json; charset=utf-8" -Body $bytes -TimeoutSec 120
+        $resp = Invoke-Jev -Method Post -Uri "https://api.typesafe.ai/v1/systemone" -Body $bytes
         $json = $resp | ConvertTo-Json -Depth 20
     }
 }
