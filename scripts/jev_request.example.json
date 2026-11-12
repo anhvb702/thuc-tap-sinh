@@ -1,0 +1,27 @@
+{
+  "state": "Task: thêm màn hình sao lưu JSON về máy. Mô tả task, mã task và đường dẫn file liên quan. Không đưa secret hay dữ liệu cá nhân.",
+  "model": "jev-latest",
+  "questions": {
+    "role": {
+      "type": "choice",
+      "question": "Vai nào nên nhận task này?",
+      "choices": ["planner", "market-research", "brainstormer", "advisor", "customer", "executor", "reviewer", "docbot"],
+      "criteria": {
+        "planner": "phân tích, chia task, thiết kế contract và mutation",
+        "executor": "viết code hoặc test theo contract đã có",
+        "reviewer": "kiểm chứng contract, diff và bằng chứng",
+        "docbot": "chỉ cập nhật tài liệu"
+      }
+    },
+    "ready": {
+      "type": "score",
+      "question": "Mức sẵn sàng nghiệm thu hiện tại?",
+      "criteria": ["chưa có gì", "có ý tưởng", "có contract", "có code", "test xanh", "mutation đủ 6 kiểu và có bằng chứng"]
+    },
+    "touches_tests": {
+      "type": "noul",
+      "question": "Task này có đụng file test không?",
+      "instructions": "Trả lời yes nếu task sửa hoặc thêm file test (commonTest, androidUnitTest, docs/tests)."
+    }
+  }
+}
