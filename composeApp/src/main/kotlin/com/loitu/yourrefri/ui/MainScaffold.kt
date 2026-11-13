@@ -112,6 +112,7 @@ fun MainScaffold(
     onSundayTimeChange: (kotlinx.datetime.LocalTime) -> Unit = {},
     // Ghi "Đã nấu": nhận id bản ghi (hoặc null nếu không ghi được) để Hoàn tác xóa đúng bản ghi đó.
     onRecordCook: (recipeId: String, savedIngredientIds: List<String>, meal: com.loitu.yourrefri.feature.recipe.data.MealSlot, onResult: (Long?) -> Unit) -> Unit = { _, _, _, done -> done(null) },
+    currentHour: (() -> Int)? = null,
     cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
     modifier: Modifier = Modifier,
 ) {
@@ -162,8 +163,9 @@ fun MainScaffold(
         val before = state
         val ids = consumedIds.distinct().filter { before.pantry[it]?.have == true }
         ids.forEach { onAction(PantryGridAction.ConsumeIngredient(it)) }
-        // Ghi đúng bữa người dùng đang chọn ở Trang chủ (chưa chọn thì theo giờ).
-        onRecordCook(recipe.id, ids, currentMeal) {}
+        // Ghi đúng bữa người dùng đang chọn ở Trang chủ; chưa chọn thì ViewModel tính theo giờ lúc ghi.
+        // Chưa chọn bữa thì tính theo giờ lúc bấm nấu xong (không dùng giá trị cũ của state).
+        onRecordCook(recipe.id, ids, chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)) {}
         val namesById = before.ingredients.associate { it.id to it.nameVi }
         cookDone = CookDone(
             recipeTitle = recipe.title,
