@@ -39,7 +39,7 @@ class QuickAddConfirmTest {
     @Test fun ambiguousOrBlankQuery_doesNothing() {
         assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "Sữa", null))
         assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "  ", null))
-        assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "Không có", null))
+        assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "Sữa", null)) // mơ hồ, vẫn không làm gì
         val mixed = state.copy(pantry = state.pantry + ("milk" to PantryItem("milk", true, today)))
         assertEquals(emptyList(), quickAddConfirmActions(mixed, emptySet(), "Sữa", null))
     }
@@ -57,5 +57,15 @@ class QuickAddConfirmTest {
     @Test fun presentItemsStillNotOfferedAsTiles() {
         assertTrue(quickAddSuggestions(state).none { it.id == "egg" })
         assertTrue(quickAddSuggestions(state, "Trứng gà").isEmpty())
+    }
+
+    @Test fun unmatchedName_addsAsCustomFood() {
+        assertEquals(listOf(PantryGridAction.AddIngredient("custom:Không có", null)), quickAddConfirmActions(state, emptySet(), "Không có", null))
+        assertEquals(listOf(PantryGridAction.AddIngredient("custom:Rau cải", 3)), quickAddConfirmActions(state, emptySet(), "  Rau   cải ", 3))
+    }
+
+    @Test fun invalidCustomName_doesNothing() {
+        assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "ca, rot", null))
+        assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "a".repeat(41), null))
     }
 }
