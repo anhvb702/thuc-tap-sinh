@@ -179,7 +179,7 @@ internal fun quickAddQueryAfterChipTap(
     ingredient: Ingredient,
 ): String = currentQuery
 
-private fun normalizeFoodQuery(value: String): String = Normalizer
+internal fun normalizeFoodQuery(value: String): String = Normalizer
     .normalize(value.lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
     .replace(Regex("\\p{Mn}+"), "")
     .trim()
@@ -187,7 +187,7 @@ private fun normalizeFoodQuery(value: String): String = Normalizer
     .filter(String::isNotEmpty)
     .joinToString(" ")
 
-private fun matchesFoodQuery(name: String, normalizedQuery: String): Boolean {
+internal fun matchesFoodQuery(name: String, normalizedQuery: String): Boolean {
     val normalizedName = normalizeFoodQuery(name)
     if (normalizedName.contains(normalizedQuery)) return true
     val queryWords = normalizedQuery.split(' ')

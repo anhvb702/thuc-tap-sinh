@@ -38,6 +38,18 @@
 | `TerracottaText` | `#8C4A35` | Chữ cảnh báo/ưu tiên trên nền sáng. |
 | `SurfaceWhite` | `#FFFFFF` | Nền bề mặt/thẻ. |
 
+### Token bổ sung (giao diện mới)
+
+| Token | Mã Hex | Ứng dụng |
+| :--- | :--- | :--- |
+| `TerracottaSoft` | `#F7E4DA` | Nền nhãn "nên dùng trước", chữ `TerracottaText`. |
+| `WarmBeigeSoft` / `WarmBeigeText` | `#EFE4CB` / `#5E4B22` | Nhãn "khoảng còn vài ngày". |
+| `LineSoft` | `#E3E7DC` | Viền thẻ 1dp, thay màu viền viết cứng. |
+
+**Màu nhấn cam đất (theo ảnh thiết kế v2):** `cta` (`TerracottaStrong #B4553A`, chữ trắng `onCta`; tối: `#F2BBA5` chữ `#3F2C24`), `ctaSoft` (`#F7E4DA`), `ctaText` (`#8C4A35`). Dùng cho tab đang chọn, nút chính ("Thêm bằng giọng nói", "Nấu xong", "Tiếp"), nút tim đã chọn, ngày hôm nay. Xanh sage vẫn là màu của chip đang chọn, công tắc, trạng thái "có trong tủ". Mọi cặp chữ/nền kiểm AA trong `AppColorsTest`.
+
+**Bảng màu tối** (`DarkColorScheme`, chưa bật mặc định cho tới khi mọi màn hình bỏ màu viết cứng): nền `#1B1F1B`, thẻ `#252A25`, chính `#9DBB9C` (chữ trên nút `#14200F`), chữ `#ECEFE8`, chữ phụ `#AAB2A6`, cảnh báo `#F2BBA5` trên `#3F2C24`, beige `#E8D8B9` trên `#3A3322`. Mọi cặp chữ/nền đều kiểm WCAG AA bằng `DarkThemeContrastTest`.
+
 ### Token tương phản W4-03
 
 Giữ các giá trị đồng bộ với `composeApp/.../ui/theme/Theme.kt` và `AccessibilityContrastTest`: `DeepCharcoal #343B34`, `MutedGray #596057`, `SageGreenText #536C51`, `TerracottaText #8C4A35` trên bề mặt sáng; nút chính dùng `SageGreenStrong #506950` với chữ trắng. `SageGreen #789477` là màu thương hiệu, không phải màu chữ chính.
@@ -46,7 +58,8 @@ Giữ các giá trị đồng bộ với `composeApp/.../ui/theme/Theme.kt` và 
 
 ## 2. Typography & Khoảng Cách (Spacing)
 
-- **Font chữ:** Hỗ trợ tiếng Việt đầy đủ, bo tròn nhẹ hoặc humanist sans-serif (Inter / Roboto / Nunito).
+- **Font chữ:** Be Vietnam Pro (Regular, Medium, SemiBold, Bold; giấy phép OFL) nhúng trong `res/font`, dùng được khi không có mạng và đủ dấu tiếng Việt. Nunito đã cân nhắc cho tiêu đề nhưng bản tĩnh không có nguồn tải ổn định và bản biến thiên không chạy trên Android 7 (minSdk 24).
+- **Icon:** bộ icon nét một màu (24dp, nét 1.8) trong `ui/theme/AppIcons.kt`, màu do `Icon(tint = ...)` quyết định. Không dùng emoji làm icon giao diện.
 - **Cấp bậc văn bản (Type Scale):**
   - Title/Headline: 20sp - 24sp, SemiBold, Deep Charcoal. Không dùng chữ quá to gây áp lực.
   - Body Large: 16sp, Regular / Medium, line-height 24sp.
@@ -70,12 +83,17 @@ Giữ các giá trị đồng bộ với `composeApp/.../ui/theme/Theme.kt` và 
 - Quick-add gợi ý theo truy vấn không dấu, chỉ nhận diện duy nhất một món khi nhập tự do; chip chọn món giữ hạn “Theo gợi ý” theo user override hoặc catalog default.
 
 ### B. Bốn Khu Vực Chính (Bottom Navigation)
+
+Thanh tab: icon nét + nhãn, **không có nền viên thuốc**; mục đang chọn tô `ctaText` (đậm), mục khác `muted`. Tên tab: Trang chủ, Tủ lạnh, Món ăn, **Cài đặt**.
+
+Ảnh món: `FoodThumb` / `RecipeThumb` (`ui/components/FoodThumb.kt`) hiện ảnh thật nếu có trong `assets/food/<id>.webp|jpg|png` hoặc `assets/recipes/<id>...`, chưa có thì icon minh họa màu trong khung. Ảnh phải có bản quyền rõ ràng và đi kèm APK (chạy offline).
 1. **🏠 Trang chủ (Home):**
-   - Header: Lời chào ấm áp đổi theo buổi (`Chào buổi sáng`, `Chiều nay nấu gì?`).
-   - Widget tổng quan: Số món đang có + 1 dải cuộn ngang các món cần dùng gấp.
-   - 3 thẻ món ăn gợi ý hôm nay (lý do gợi ý, thời gian, tên món, trạng thái nấu được và nguyên liệu sẵn có/thiếu).
+   - Header: Lời chào ấm áp đổi theo buổi (`Chào buổi sáng`, `Chiều nay nấu gì?`) và tiêu đề "Hôm nay nhà mình ăn gì nhỉ?".
+   - Thứ tự đọc: thanh "Trong tủ có N món" kèm nút "Xem tủ", dải cuộn ngang "Nên dùng trước" (ghi "Khoảng còn N ngày", tiêu đề mục nhắc hạn là ước tính), 3 thẻ gợi ý hôm nay (thẻ đầu nổi bật nền `SoftGreen`), thẻ phụ "Lên thực đơn cả tuần" ở cuối trang.
+   - Thẻ gợi ý có lý do gợi ý dạng nhãn, thời gian và tên món.
 2. **🧊 Tủ lạnh (Pantry):**
-   - Bộ lọc **Tất cả món**, **Ngăn mát**, **Ngăn đông** và công tắc **Chỉ xem món đang có**.
+   - Một thanh chia đoạn **Tất cả | Ngăn mát | Ngăn đông** (nhãn xuống 2 dòng khi chữ lớn) và một dòng công tắc **Chỉ xem món đang có (N)**.
+   - Mỗi món là một hàng: icon nét, tên, "Khoảng còn N ngày", nút `−`/`+` tròn 48dp; khi chữ phóng to từ 115% bộ đếm xuống dòng riêng. Bấm `−` khi còn 1 thì đánh dấu hết và hiện "Hoàn tác" vài giây.
    - FAB thêm thực phẩm ở góc phải dưới; cần vùng cuộn để người dùng tiếp cận được thẻ cuối.
    - Lưới thẻ thích ứng theo chiều rộng; font lớn có thể giảm số cột.
 3. **🍲 Món ăn (Recipes):**

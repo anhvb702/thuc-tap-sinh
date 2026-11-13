@@ -1,0 +1,17 @@
+CREATE TABLE WeeklyMealPlanEntity (
+    day TEXT NOT NULL,
+    mealSlot TEXT NOT NULL,
+    recipeId TEXT NOT NULL,
+    portions INTEGER NOT NULL,
+    PRIMARY KEY (day, mealSlot)
+);
+
+upsert:
+INSERT OR REPLACE INTO WeeklyMealPlanEntity(day, mealSlot, recipeId, portions)
+VALUES (:day, :mealSlot, :recipeId, :portions);
+
+selectAll:
+SELECT * FROM WeeklyMealPlanEntity ORDER BY day ASC, mealSlot DESC;
+
+deleteAll:
+DELETE FROM WeeklyMealPlanEntity;

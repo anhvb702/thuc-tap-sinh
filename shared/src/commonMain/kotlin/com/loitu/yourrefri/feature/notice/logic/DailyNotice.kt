@@ -22,11 +22,12 @@ fun planDailyNotice(
     if (lastSent != null && lastSent >= today) return null
     val items = expiringList(pantry, ingredients, today)
     if (items.isEmpty()) return null
+    val names = items.take(2).joinToString(", ") { it.ingredient.nameVi }
+    val summary = if (items.size > 2) "$names và ${items.size - 2} món khác" else names
     return DailyNotice(
         day = today,
         ingredientIds = items.map { it.item.ingredientId },
         title = "Gợi ý từ tủ nhà mình",
-        body = "Tối nay nhà mình có ${items.joinToString(", ") { it.ingredient.nameVi }} " +
-            "nên dùng trước, bạn xem gợi ý nhé!",
+        body = "$summary nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.",
     )
 }

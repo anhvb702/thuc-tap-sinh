@@ -50,13 +50,13 @@ Phân vai theo provider (chốt bởi người dùng). Mỗi provider một mả
 | --- | --- | --- | --- |
 | **Jev — Điều hướng** | TypeSafe | `jev-latest` | Phân loại yêu cầu, chọn vai (`choice`), chấm sẵn sàng (`score`), kiểm khẳng định (`noul`). Không sửa file. |
 | **Planner** | Claude | `claude-opus-5-5` (cao nhất khả dụng) | Phân tích, chia task (≤300 dòng diff), thiết kế contract và 6 mutation, quyết định nghiệm thu. Đây là vai duy nhất của Claude. |
-| **Nghiên cứu thị trường / Phát triển ý tưởng** | Gemini | model Pro mới nhất, dùng grounding/search | Tìm đối thủ, nhu cầu thị trường, phát triển và so sánh ý tưởng; đầu ra là brief, không code. |
-| **Coding (executor)** | Codex | `gpt-6-luna`, reasoning `low` | Sửa đúng file được giao theo contract; không sửa hoặc làm yếu test. |
-| **Reviewer / Verifier** | Codex | `gpt-6.1-terra`, reasoning `high` | Review độc lập contract, diff, bằng chứng và mutation; khác model với executor để không tự chấm bài mình. Qodo vẫn review PR; không làm trùng. |
-| **Advisor (trade-off)** | Gemini | model Pro mới nhất | Ý kiến độc lập về rủi ro và phương án; chỉ phân tích, không sửa file. |
-| **Brainstormer (chia task UX/logic)** | Gemini | model Flash mới nhất | Phương án và chia task với acceptance, owner, dependency; không code. |
+| **Nghiên cứu thị trường / Phát triển ý tưởng** | Gemini | `gemini-3.8-flash`, dùng grounding/search | Tìm đối thủ, nhu cầu thị trường, phát triển và so sánh ý tưởng; đầu ra là brief, không code. |
+| **Coding (executor)** | Codex | `gpt-6.1-terra`, reasoning `low` | Sửa đúng file được giao theo contract; không sửa hoặc làm yếu test. |
+| **Reviewer / Verifier** | Codex | `gpt-6.1-sol`, reasoning `high` | Review độc lập contract, diff, bằng chứng và mutation; khác model với executor để không tự chấm bài mình. Qodo vẫn review PR; không làm trùng. |
+| **Advisor (trade-off)** | Gemini | `gemini-3.1-pro-preview` (Pro mới nhất có sẵn, còn preview) | Ý kiến độc lập về rủi ro và phương án; chỉ phân tích, không sửa file. |
+| **Brainstormer (chia task UX/logic)** | Gemini | `gemini-3.8-flash` | Phương án và chia task với acceptance, owner, dependency; không code. |
 | **DocBot** | Codex | `gpt-6-luna`, reasoning `low` | Chỉ sửa `HANDOFF.md`, `PLAN.md`, `SPEC.md`, `DECISIONS.md`, `docs/tests/*.md`, bằng chứng thật. |
-| **Persona khách hàng** | Gemini | model Flash mới nhất | Đánh giá UX/ngôn từ theo Chị Mai, Anh Nam, Cô Hạnh và `PRODUCT.md`; không code, không review kỹ thuật. Không coi walkthrough giả lập là nghiên cứu thật. |
+| **Persona khách hàng** | Gemini | `gemini-3.8-flash` | Đánh giá UX/ngôn từ theo Chị Mai, Anh Nam, Cô Hạnh và `PRODUCT.md`; không code, không review kỹ thuật. Không coi walkthrough giả lập là nghiên cứu thật. |
 
 Quy tắc:
 - Claude không nhận coding, review, nghiên cứu hay chia việc ngoài vai planner.
@@ -108,3 +108,22 @@ $env:ANDROID_HOME = "E:\Dev\Android\Sdk"
 
 ## Mốc hiện tại
 Xem phần tiến độ cập nhật ở đầu `HANDOFF.md`, rồi đối chiếu working tree, test và PR trước khi kết luận trạng thái. Không dùng các mốc cũ hơn trong handoff làm bằng chứng hiện tại.
+
+## Hạn mức sử dụng (chọn model theo mức khó, mặc định rẻ nhất đủ làm)
+
+Mỗi provider có hạn mức riêng; ưu tiên việc nặng sang Codex và Gemini để không tiêu hạn mức Claude.
+
+| Provider / model | Dùng cho | Hạn mức |
+| --- | --- | --- |
+| Claude Haiku (`claude-haiku-5-5`) | Tra cứu, đối chiếu, phân loại, tóm tắt, đọc log. Chỉ trong phiên planner, không giao như vai riêng. | Nhiều nhất (khoảng 40%) |
+| Claude Sonnet (`claude-sonnet-5-5`) | Việc đã rõ cách làm, không phải code: cập nhật tài liệu theo mẫu, trả lời câu hỏi thường. | Vừa (khoảng 15%) |
+| Claude Opus (`claude-opus-5-5`) | Planner: phân tích, chia task, thiết kế contract và mutation, quyết định nghiệm thu. | Có chọn lọc (khoảng 15%) |
+| Claude Fable (`claude-fable-5-2`) | Chỉ khi suy luận khó, việc dài nhiều bước, hoặc kiểm tra độc lập rủi ro cao. | Ít nhất (khoảng 5%) |
+| Gemini (`gemini-3.8-flash` / `gemini-3.1-pro-preview`) | Nghiên cứu thị trường, ý tưởng, advisor, brainstormer, persona khách hàng. | Hạn mức Gemini riêng |
+| Codex (`gpt-6-luna` / `gpt-6.1-terra` / `gpt-6.1-sol`) | Mọi việc code, review diff, DocBot. | Hạn mức Codex riêng |
+
+Quy tắc:
+- Bắt đầu bằng model rẻ nhất có thể; chỉ nâng khi kết quả không đạt.
+- Không dùng Fable cho tra cứu hay sửa nhỏ. Không chạy lại Gradle/test khi không có thay đổi.
+- Jev chỉ gọi khi cần chọn vai hoặc chấm điểm, không để làm việc thay.
+- Bảng này không thay đổi phân vai ở trên: Claude vẫn chỉ là planner; các dòng Haiku/Sonnet chỉ áp dụng cho việc cơ học trong phiên planner.

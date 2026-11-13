@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "testPattern": "^(shared/src/(commonTest|androidUnitTest|androidInstrumentedTest)|composeApp/src/(test|androidTest))/|^docs/tests/",
+  "stages": [
+    { "id": "s01_idea",       "kind": "agent",   "role": "brainstormer", "prompt": "idea",          "out": "01_idea_brief.md" },
+    { "id": "s02_evaluate",   "kind": "agent",   "role": "advisor",      "prompt": "evaluate",      "out": "02_evaluation.md", "decision": "GO" },
+    { "id": "s03_plan",       "kind": "plan",    "role": "planner",      "prompt": "plan",          "out": "03_plan.md" },
+    { "id": "s04_design",     "kind": "agent",   "role": "designer",     "prompt": "design",        "out": "04_design_spec.md" },
+    { "id": "s05_design_review", "kind": "design_review", "role": "design_reviewer", "prompt": "design_review", "out": "05_design_review.md" },
+    { "id": "s06_handoff",    "kind": "agent",   "role": "designer",     "prompt": "handoff",       "out": "06_code_handoff.md" },
+    { "id": "s07_tests_first","kind": "tests_first", "role": "test_writer", "prompt": "tests_first", "out": "07_tests_first.md" },
+    { "id": "s08_code",       "kind": "code",    "role": "executor",     "prompt": "code",          "out": "08_code.md" },
+    { "id": "s09_verify",     "kind": "verify",  "role": "mutation_designer", "prompt": "mutation_design", "out": "09_verify.md" },
+    { "id": "s10_bugcheck",   "kind": "bugcheck","role": "bug_hunter",   "prompt": "bugcheck",      "out": "10_bugs.md" },
+    { "id": "s11_review1",    "kind": "review",  "role": "reviewer",     "prompt": "review1",       "out": "11_review1.md" },
+    { "id": "s12_review2",    "kind": "personas","roles": ["customer_mai", "customer_nam", "customer_hanh"], "prompt": "persona", "out": "12_persona" },
+    { "id": "s13_final",      "kind": "final",   "role": "triage",       "prompt": "triage",        "out": "13_next_iteration.md" }
+  ],
+  "limits": { "maxFixLoops": 2, "maxAgentCalls": 60, "maxParallel": 3, "maxDiffPerTask": 300 },
+  "humanGate": "Chỉ một cổng: người dùng đọc FINAL_REPORT.md rồi tự merge. Script không push, không mở PR, không merge."
+}

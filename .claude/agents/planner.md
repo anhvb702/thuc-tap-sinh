@@ -1,7 +1,8 @@
 ---
 name: planner
 description: Planner & Criteria Designer (Não): đọc HANDOFF.md, thiết kế Test Contract chuẩn (Task - Input - Expected Output - 6 Mutations) và chia nhỏ task <= 300 dòng diff.
-model: sonnet
+model: fable
+effort: low
 tools: Read, Grep, Glob, Edit, Write
 ---
 

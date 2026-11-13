@@ -112,10 +112,17 @@ fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate =
 }
 
 private fun addIngredient(state: PantryGridState, id: String, days: Int?): PantryGridUpdate {
-    if (state.ingredients.none { it.id == id } || (days != null && days !in SHELF_DAY_OPTIONS) || state.pantry[id]?.have == true) {
+    if ((days != null && days !in SHELF_DAY_OPTIONS) || state.pantry[id]?.have == true) {
         return PantryGridUpdate(state)
     }
+    val ingredients = if (state.ingredients.any { it.id == id }) {
+        state.ingredients
+    } else {
+        val name = customFoodName(id) ?: return PantryGridUpdate(state)
+        state.ingredients + Ingredient(id, name, CUSTOM_FOOD_GROUP, CUSTOM_FOOD_DEFAULT_SHELF_DAYS)
+    }
     val added = state.copy(
+        ingredients = ingredients,
         pantry = state.pantry + (id to PantryItem(id, true, state.today)),
         sessionBase = state.sessionBase - id,
     )

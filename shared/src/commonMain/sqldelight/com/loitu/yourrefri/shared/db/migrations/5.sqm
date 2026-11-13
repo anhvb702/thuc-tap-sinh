@@ -1,0 +1,4 @@
+CREATE TABLE FavoriteRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    createdAtEpochMs INTEGER NOT NULL
+);

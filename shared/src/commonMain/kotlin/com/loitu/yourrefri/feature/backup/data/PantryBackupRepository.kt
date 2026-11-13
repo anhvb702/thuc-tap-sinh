@@ -2,12 +2,17 @@ package com.loitu.yourrefri.feature.backup.data
 
 import com.loitu.yourrefri.shared.db.YourRefriDatabase
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlin.coroutines.CoroutineContext
 
 class PantryBackupRepositoryImpl(
     private val db: YourRefriDatabase,
     private val ioContext: CoroutineContext,
 ) {
+    private val settingsJson = Json
+
     suspend fun exportJson(): String = withContext(ioContext) {
         val pantry = db.pantryEntityQueries.selectAll().executeAsList().map {
             PantryBackupItem(it.ingredientId, it.have, it.markedAt)
@@ -24,6 +29,25 @@ class PantryBackupRepositoryImpl(
         val cookLogs = db.cookLogEntityQueries.selectAll().executeAsList().map {
             CookLogBackup(it.id, it.recipeId, it.cookedOn, it.photoUri, it.savedIngredientIds)
         }
+        val mealToggles = db.mealSlotToggleEntityQueries.selectAll().executeAsList().map {
+            MealToggleBackup(it.day, it.mealSlot, it.enabled == 1L)
+        }
+        val weeklyMeals = db.weeklyMealPlanEntityQueries.selectAll().executeAsList().map {
+            WeeklyMealBackup(it.day, it.mealSlot, it.recipeId, it.portions.toInt())
+        }
+        val weeklySettings = db.weeklyMealPlanSettingsEntityQueries.selectAll().executeAsList().firstOrNull()?.let { row ->
+            WeeklyMealSettingsBackup(
+                weekStart = row.weekStart,
+                goalId = row.goalId,
+                preferenceIds = settingsJson.decodeFromString<List<String>>(row.preferenceIdsJson),
+                swappedOffsets = settingsJson.decodeFromString<List<WeeklyMealSwapOffsetBackup>>(row.swappedOffsetsJson),
+                uncheckedIds = settingsJson.decodeFromString<List<String>>(row.uncheckedIdsJson),
+                includeLunchMealPrep = row.includeLunchMealPrep == 1L,
+            )
+        }
+        val favorites = db.favoriteRecipeEntityQueries.selectAll().executeAsList().map {
+            FavoriteRecipeBackup(it.recipeId, it.createdAtEpochMs)
+        }
         BackupCodec.encode(
             PantryBackupSnapshot(
                 format = BackupCodec.FORMAT,
@@ -33,6 +57,10 @@ class PantryBackupRepositoryImpl(
                 quantities = quantities,
                 cookLogs = cookLogs,
                 units = units,
+                weeklyMeals = weeklyMeals,
+                mealToggles = mealToggles,
+                weeklySettings = weeklySettings,
+                favorites = favorites,
             ),
         )
     }
@@ -46,6 +74,10 @@ class PantryBackupRepositoryImpl(
                 db.pantryUnitEntityQueries.deleteAll()
                 db.userShelfEntityQueries.deleteAll()
                 db.pantryEntityQueries.deleteAll()
+                db.mealSlotToggleEntityQueries.deleteAll()
+                db.weeklyMealPlanEntityQueries.deleteAll()
+                db.weeklyMealPlanSettingsEntityQueries.deleteAll()
+                db.favoriteRecipeEntityQueries.deleteAll()
 
                 snapshot.pantry.forEach {
                     db.pantryEntityQueries.upsert(it.ingredientId, it.have, it.markedAt)
@@ -66,6 +98,26 @@ class PantryBackupRepositoryImpl(
                         cookedOn = it.cookedOn,
                         photoUri = it.photoUri,
                         savedIngredientIds = it.savedIngredientIds,
+                    )
+                }
+                snapshot.mealToggles.forEach {
+                    db.mealSlotToggleEntityQueries.upsert(it.day, it.mealSlot, if (it.enabled) 1L else 0L)
+                }
+                snapshot.weeklyMeals.forEach {
+                    db.weeklyMealPlanEntityQueries.upsert(it.day, it.meal, it.recipeId, it.portions.toLong())
+                }
+                snapshot.favorites.forEach {
+                    db.favoriteRecipeEntityQueries.upsert(it.recipeId, it.createdAtEpochMs)
+                }
+                snapshot.weeklySettings?.let { settings ->
+                    db.weeklyMealPlanSettingsEntityQueries.upsert(
+                        settingsId = 1L,
+                        weekStart = settings.weekStart,
+                        goalId = settings.goalId,
+                        preferenceIdsJson = settingsJson.encodeToString(settings.preferenceIds),
+                        swappedOffsetsJson = settingsJson.encodeToString(settings.swappedOffsets),
+                        uncheckedIdsJson = settingsJson.encodeToString(settings.uncheckedIds),
+                        includeLunchMealPrep = if (settings.includeLunchMealPrep) 1L else 0L,
                     )
                 }
             }

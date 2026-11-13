@@ -51,9 +51,9 @@ class DailyNoticeTest {
             listOf(ingredient("two"), ingredient("old"), ingredient("zero")), today, null,
         ))
         assertEquals("Gợi ý từ tủ nhà mình", notice.title)
-        // Contract W2-03 (copy theo spec): "Tối nay nhà mình có [món A, B] nên dùng trước, bạn xem gợi ý nhé!"
+        // Contract UX-18 (chỉ thị người dùng 2026-11-12) thay copy W2-03
         assertEquals(
-            "Tối nay nhà mình có Tên old, Tên zero, Tên two nên dùng trước, bạn xem gợi ý nhé!",
+            "Tên old, Tên zero và 1 món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.",
             notice.body,
         )
     }

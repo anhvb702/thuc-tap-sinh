@@ -11,6 +11,34 @@ data class PantryBackupSnapshot(
     val quantities: List<QuantityOverrideBackup>,
     val cookLogs: List<CookLogBackup>,
     val units: List<UnitOverrideBackup> = emptyList(),
+    val weeklyMeals: List<WeeklyMealBackup> = emptyList(),
+    val weeklySettings: WeeklyMealSettingsBackup? = null,
+    val mealToggles: List<MealToggleBackup> = emptyList(),
+    val favorites: List<FavoriteRecipeBackup> = emptyList(),
+)
+
+@Serializable
+data class WeeklyMealSettingsBackup(
+    val weekStart: String,
+    val goalId: String,
+    val preferenceIds: List<String>,
+    val swappedOffsets: List<WeeklyMealSwapOffsetBackup>,
+    val uncheckedIds: List<String>,
+    val includeLunchMealPrep: Boolean,
+)
+
+@Serializable
+data class WeeklyMealSwapOffsetBackup(
+    val dayIndex: Int,
+    val offset: Int,
+)
+
+@Serializable
+data class WeeklyMealBackup(
+    val day: String,
+    val meal: String,
+    val recipeId: String,
+    val portions: Int,
 )
 
 @Serializable
@@ -46,3 +74,18 @@ data class CookLogBackup(
     val photoUri: String?,
     val savedIngredientIds: List<String>,
 )
+
+@Serializable
+data class MealToggleBackup(
+    val day: String,
+    val mealSlot: String,
+    val enabled: Boolean,
+)
+
+
+@Serializable
+data class FavoriteRecipeBackup(
+    val recipeId: String,
+    val createdAtEpochMs: Long,
+)
+
