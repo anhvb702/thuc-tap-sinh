@@ -34,3 +34,7 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 .claude/worktrees/
+
+# Agent automation (chạy tự động)
+.agents/runs/
+.agents/locks/
