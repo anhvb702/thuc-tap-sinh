@@ -16,5 +16,5 @@ Việc cần làm:
                "gradle": [":shared:testDebugUnitTest"],
                "contract": "docs/tests/X-01.md", "est_diff": 120 } ] }
 ```
-`owns` là file code (không phải test). `tests` là file test sẽ được viết trước.
+`owns` là file code (không phải test), gồm cả file mới sẽ tạo: executor chỉ được ghi đúng các đường dẫn trong `owns`, file ngoài danh sách sẽ bị hoàn tác. `tests` là file test sẽ được viết trước. `contract` phải là `docs/tests/<ID>.md` và file đó phải được tạo trong bước này.
 `RESULT: DONE`

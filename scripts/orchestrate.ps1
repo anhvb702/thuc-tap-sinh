@@ -42,16 +42,20 @@ $MaxDiffPerTask = [int]$Flow.limits.maxDiffPerTask
 
 # ---------- Trạng thái ----------
 if (-not $RunId) { $RunId = (Get-Date).ToString("yyyyMMdd-HHmmss") }
+# RunId đi vào đường dẫn thư mục và tên nhánh, nên chỉ nhận một đoạn tên không có dấu phân cách hay '..'.
+if ($RunId -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$') { throw "RunId không hợp lệ: chỉ dùng chữ, số, '-' và '_' (tối đa 64 ký tự)." }
 $RunDir = Join-Path $Root ".agents\runs\$RunId"
 New-Item -ItemType Directory -Force -Path "$RunDir\prompts", "$RunDir\logs", "$RunDir\shots" | Out-Null
 $StatePath = Join-Path $RunDir "state.json"
 $State = @{ idea = ""; runId = $RunId; base = ""; worktree = ""; branch = ""; testsCommit = ""; outcome = ""; calls = 0; fixLoops = 0;
-            done = @(); stages = @(); gradle = @(); mutations = @(); notes = @(); verdicts = @(); shots = @() }
+            done = @(); stages = @(); gradle = @(); mutations = @(); notes = @(); verdicts = @(); shots = @(); fellBack = @() }
 if (Test-Path $StatePath) {
     $loaded = (Read-Text $StatePath) | ConvertFrom-Json
     foreach ($prop in $loaded.PSObject.Properties) {
         if ($prop.Value -is [System.Array]) { $State[$prop.Name] = @($prop.Value) } else { $State[$prop.Name] = $prop.Value }
     }
+    # Kết quả của lượt trước (BLOCKED/ERROR...) không được mang sang lượt chạy tiếp; báo cáo tính lại từ đầu.
+    $State.outcome = ""
 }
 if ($IdeaFile) { $Idea = Read-Text $IdeaFile }
 if ($Idea) { $State.idea = $Idea }
@@ -68,6 +72,8 @@ function Log-Event([hashtable]$ev) {
 function Get-Out([string]$name) { $p = Join-Path $RunDir $name; if (Test-Path $p) { return Read-Text $p } else { return "" } }
 function Clip([string]$s, [int]$n = 12000) { if ($null -eq $s) { return "" }; if ($s.Length -le $n) { return $s }; return $s.Substring(0, $n) + "`n...(cắt bớt)" }
 function Stop-Run([string]$outcome, [string]$reason) { throw ("STOP|{0}|{1}" -f $outcome, $reason) }
+# Khi một bước chạy lại, bỏ phán quyết cũ của bước đó để báo cáo không lẫn kết quả hai lượt.
+function Reset-Verdicts([string]$pattern) { $State.verdicts = @(@($State.verdicts) | Where-Object { $_ -notmatch $pattern }); Save-State }
 
 # ---------- Môi trường ----------
 $WT = $State.worktree
@@ -112,7 +118,9 @@ function With-Lock([string]$name, [scriptblock]$body) {
 
 # ---------- Git ----------
 function Invoke-Git([string[]]$a, [string]$dir = $WT) {
-    $o = & git -c core.quotepath=false -C $dir @a
+    # git coi -C "" là thư mục hiện tại, tức checkout của người dùng; không bao giờ chạy khi chưa có worktree.
+    if (-not $dir) { throw "Chưa có worktree nên không chạy git $($a -join ' ')." }
+    $o =& git -c core.quotepath=false -C $dir @a
     if ($LASTEXITCODE -ne 0) { throw ("git {0} thất bại (mã {1})" -f ($a -join " "), $LASTEXITCODE) }
     return $o
 }
@@ -138,18 +146,28 @@ function Revert-Path([string]$rel) {
     if ($tracked.Count -gt 0) { Invoke-Git @("checkout", "HEAD", "--", $rel) | Out-Null }
     else { Remove-Item -LiteralPath (Join-Path $WT $rel) -Force -ErrorAction SilentlyContinue }
 }
+# Đường dẫn do agent đưa ra: trả đường dẫn đầy đủ nếu nằm trong worktree, ngược lại $null ('..' hoặc đường dẫn tuyệt đối).
+function Resolve-InWorktree([string]$rel) {
+    if (-not $rel -or -not $WT) { return $null }
+    if ([IO.Path]::IsPathRooted($rel)) { return $null }
+    $rootFull = [IO.Path]::GetFullPath($WT).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    $full = [IO.Path]::GetFullPath((Join-Path $WT $rel))
+    if (-not $full.StartsWith($rootFull, [StringComparison]::OrdinalIgnoreCase)) { return $null }
+    return $full
+}
+function Test-ContractPath([string]$rel) { return [bool]($rel -match '^docs/tests/[A-Za-z0-9._-]+\.md$' -and $rel -notmatch '\.\.') }
 # Trả về danh sách file vi phạm quyền ghi của vai (đã hoàn tác).
 function Assert-Writes($plan, [string[]]$owned) {
     if ($DryRun) { return @() }
     $viol = @()
-    $ownedDirs = @($owned | ForEach-Object { (Split-Path $_ -Parent) -replace "\\", "/" })
+    $ownedPaths = @($owned | ForEach-Object { $_ -replace "\\", "/" })
     foreach ($c in (Get-Changed)) {
         $ok = $false
         foreach ($w in $plan.Writes) {
             if ($w -eq "@owned") {
                 if ($c -match $TestPattern) { continue }
-                if ($owned -contains $c) { $ok = $true }
-                elseif ($ownedDirs -contains ((Split-Path $c -Parent) -replace "\\", "/")) { $ok = $true }
+                # Chỉ khớp đúng đường dẫn trong `owns`; file mới cần được planner liệt kê sẵn.
+                if ($ownedPaths -contains $c) { $ok = $true }
             } elseif ($c -match $w) { $ok = $true }
         }
         if (-not $ok) { $viol += $c; Revert-Path $c }
@@ -166,6 +184,19 @@ function Revert-TestTampering {
     }
     if (@($changed).Count -gt 0) { Note ("Executor đụng file test, đã hoàn tác: {0}" -f (@($changed) -join ", ")) }
     return @($changed)
+}
+# Bước viết test chỉ được thêm: file test đã có mà bị xóa hoặc mất dòng thì hoàn tác về HEAD.
+function Revert-ExistingTestEdits {
+    if ($DryRun) { return @() }
+    $bad = @()
+    foreach ($l in @(Invoke-Git @("diff", "--numstat", "--no-renames", "HEAD"))) {
+        $p = $l -split "`t"
+        if ($p.Count -lt 3 -or $p[2] -notmatch $TestPattern) { continue }
+        if ($p[1] -ne "0") { $bad += $p[2] }
+    }
+    foreach ($f in $bad) { Invoke-Git @("checkout", "HEAD", "--", $f) | Out-Null }
+    if ($bad.Count -gt 0) { Note ("Test writer sửa hoặc xóa test đã có, đã hoàn tác: {0}" -f ($bad -join ", ")) }
+    return $bad
 }
 function Setup-Worktree {
     if ($DryRun -or $State.worktree) { return }
@@ -207,11 +238,16 @@ function Get-DiffFiles {
 }
 
 # ---------- Agent ----------
-function Get-RolePlan([string]$name) {
+function Get-RolePlan([string]$name, [bool]$forceFallback = $false) {
     $r = $Roster.roles.$name
     if (-not $r) { throw "Vai không có trong roster: $name" }
     $p = [string]$r.provider; $m = [string]$r.model; $fb = $false
-    if ($p -eq "gemini") { $p = [string]$r.fallback.provider; $m = [string]$r.fallback.model; $fb = $true }
+    # Vai Gemini chỉ dùng model dự phòng khi máy chưa có gemini CLI hoặc lượt gọi Gemini vừa lỗi.
+    if ($p -eq "gemini" -and ($forceFallback -or -not (Resolve-Exe "gemini"))) {
+        if (-not $r.fallback) { throw "Vai $name khai báo gemini, chưa có gemini CLI và roster không có fallback." }
+        $p = [string]$r.fallback.provider; $m = [string]$r.fallback.model; $fb = $true
+        if (@($State.fellBack) -notcontains $name) { Add-State "fellBack" $name }
+    }
     return [pscustomobject]@{ Name = $name; Provider = $p; Model = $m; Effort = $r.effort; Access = [string]$r.access; Writes = @($r.writes); Fallback = $fb; Declared = [string]$r.provider }
 }
 function Render([string]$tpl, [hashtable]$vars) {
@@ -230,8 +266,11 @@ function Get-Tag([string]$text) {
 }
 function Get-JsonBlock([string]$text) {
     $m = [regex]::Matches($text, '(?s)```json\s*(.*?)```')
-    if ($m.Count -eq 0) { return $null }
-    return ($m[$m.Count - 1].Groups[1].Value | ConvertFrom-Json)
+    $script:JsonError = ""
+    if ($m.Count -eq 0) { $script:JsonError = 'không có khối json'; return $null }
+    # JSON hỏng trả $null để vòng thử lại của bước gọi xử lý, thay vì làm dừng cả lượt chạy.
+    try { return ($m[$m.Count - 1].Groups[1].Value | ConvertFrom-Json) }
+    catch { $script:JsonError = $_.Exception.Message; return $null }
 }
 function Get-DryText($spec) {
     $l = $spec.Label
@@ -250,7 +289,7 @@ function Get-DryText($spec) {
 function Start-One($spec) {
     if ($State.calls -ge $MaxAgentCalls) { Stop-Run "BLOCKED" "Hết ngân sách $MaxAgentCalls lượt gọi agent" }
     $State.calls = [int]$State.calls + 1; Save-State
-    $plan = Get-RolePlan $spec.Role
+    $plan = Get-RolePlan $spec.Role ([int]$spec.Attempt -ge 1)
     $h = @{ Spec = $spec; Plan = $plan; Started = Get-Date; Proc = $null; Fake = $null; Attempt = [int]$spec.Attempt }
     Step ("Gọi {0} ({1}/{2}{3}) cho {4}" -f $spec.Role, $plan.Provider, $plan.Model, $(if ($plan.Fallback) { ", thay " + $plan.Declared } else { "" }), $spec.Label)
     if ($DryRun) { $h.Fake = Get-DryText $spec; return $h }
@@ -266,6 +305,10 @@ function Start-One($spec) {
         $a = @("exec", "-m", $plan.Model, "-s", $Roster.access.($plan.Access).codex, "-C", $spec.Cwd, "--skip-git-repo-check", "--ephemeral", "-o", $last)
         if ($plan.Effort) { $a += @("-c", "model_reasoning_effort=$($plan.Effort)") }
         $a += "-"
+    } elseif ($plan.Provider -eq "gemini") {
+        # Prompt đi qua stdin; không bật chế độ tự duyệt nên Gemini chỉ đọc. Lượt lỗi sẽ thử lại bằng model dự phòng.
+        $exe = Resolve-Exe "gemini"; if (-not $exe) { throw "Không tìm thấy gemini CLI." }
+        $a = @("-m", $plan.Model)
     } else { throw "Provider không hỗ trợ: $($plan.Provider)" }
     $argStr = ($a | ForEach-Object { Q ([string]$_) }) -join " "
     $h.Proc = Start-Process -FilePath $exe -ArgumentList $argStr -WorkingDirectory $spec.Cwd -RedirectStandardInput $pf -RedirectStandardOutput $out -RedirectStandardError $err -NoNewWindow -PassThru
@@ -328,7 +371,7 @@ function Invoke-Gradle([string[]]$tasks, [string]$label, [int]$dryExit = 0) {
     if ($DryRun) {
         Step "[dry-run] gradle $($tasks -join ' ')"
         Add-State "gradle" ("{0}|{1}|dry-run" -f $label, ($tasks -join " "))
-        return @{ Exit = $dryExit; Tail = "dry-run"; Compile = $false; Log = $log }
+        return @{ Exit = $dryExit; Tail = "dry-run"; Compile = $false; TestFail = $false; Log = $log }
     }
     Assert-Env
     $res = With-Lock "gradle" {
@@ -346,7 +389,8 @@ function Invoke-Gradle([string[]]$tasks, [string]$label, [int]$dryExit = 0) {
     $compile = [bool]($txt -match "Execution failed for task ':[^']*compile|^e: file:///" )
     Add-State "gradle" ("{0}|{1}|exit {2}" -f $label, ($tasks -join " "), $res.Exit)
     Log-Event @{ kind = "gradle"; label = $label; tasks = ($tasks -join " "); exit = $res.Exit }
-    return @{ Exit = $res.Exit; Tail = $tail; Compile = $compile; Log = $log }
+    $testFail = [bool]($txt -match "There were failing tests")
+    return @{ Exit = $res.Exit; Tail = $tail; Compile = $compile; TestFail = $testFail; Log = $log }
 }
 function Get-TestCounts {
     $r = @()
@@ -411,6 +455,7 @@ function Test-Plan($plan) {
         if (@($t.tests).Count -eq 0) { $err += "$($t.id): thiếu tests." }
         if ([int]$t.est_diff -gt $MaxDiffPerTask) { $err += "$($t.id): est_diff $($t.est_diff) > $MaxDiffPerTask, cần tách." }
         if (-not $t.contract) { $err += "$($t.id): thiếu contract." }
+        elseif (-not (Test-ContractPath ([string]$t.contract))) { $err += "$($t.id): contract phải có dạng docs/tests/<tên>.md, nhận '$($t.contract)'." }
         foreach ($o in @($t.owns)) {
             if ($o -match $TestPattern) { $err += "$($t.id): owns chứa file test $o." }
             if ($seen.ContainsKey($o)) { $err += "$($t.id): file $o đã thuộc $($seen[$o])." } else { $seen[$o] = $t.id }
@@ -471,13 +516,20 @@ function Stage-Plan($st) {
         Write-Text (Join-Path $RunDir $st.out) $r.Text
         [void](Assert-Writes (Get-RolePlan $st.role) @())
         $plan = Get-JsonBlock $r.Text
-        $errs = Test-Plan $plan
+        $errs = @(Test-Plan $plan)
+        if ($null -eq $plan -and $script:JsonError) { $errs += "Khối JSON không đọc được: $($script:JsonError)" }
+        # Các bước sau đọc contract, nên thiếu file contract cũng là kế hoạch chưa hợp lệ.
+        if ($errs.Count -eq 0 -and -not $DryRun) {
+            foreach ($t in $plan.tasks) {
+                $cf = Resolve-InWorktree ([string]$t.contract)
+                if (-not $cf -or -not (Test-Path -LiteralPath $cf -PathType Leaf) -or (Get-Item -LiteralPath $cf).Length -eq 0) {
+                    $errs += "$($t.id): chưa tạo contract $($t.contract) (file phải tồn tại và có nội dung)."
+                }
+            }
+        }
         if ($errs.Count -eq 0) {
             Write-Text "$RunDir\plan.json" ($plan | ConvertTo-Json -Depth 8); Load-Plan
             Commit-All "plan: contract $($plan.feature)"
-            if (-not $DryRun) {
-                foreach ($t in $plan.tasks) { if (-not (Test-Path (Join-Path $WT $t.contract))) { Note "Contract $($t.contract) chưa được tạo." } }
-            }
             Add-State "stages" "$($st.id)|xong|$(@($plan.tasks).Count) task"; return
         }
         $feedback = $errs -join "`n"
@@ -486,6 +538,7 @@ function Stage-Plan($st) {
 }
 function Stage-Design($st) {
     if (-not (Test-HasUi)) { Add-State "stages" "$($st.id)|bỏ qua|không có task ui"; return }
+    Reset-Verdicts '^design_review\|'
     $feedback = ""
     for ($i = 0; $i -le $MaxFixLoops; $i++) {
         $vars = @{ PLAN = (Get-Out "plan.json") }
@@ -493,7 +546,7 @@ function Stage-Design($st) {
         $r = Invoke-One "designer" (Build-Prompt "design" $vars) "s04_design-$i"
         Write-Text "$RunDir\04_design_spec.md" $r.Text
         $lint = (& "$Root\scripts\lint-copy.ps1" -Path "$RunDir\04_design_spec.md" | Out-String)
-        if ($LASTEXITCODE -ne 0) { $feedback = "Lint từ cấm:`n$lint"; $State.fixLoops = [int]$State.fixLoops + 1; continue }
+        if ($LASTEXITCODE -ne 0) { $feedback = "Lint từ cấm (không nhắc lại từ cấm trong đặc tả; dòng chỉ trích dẫn quy tắc thì thêm 'lint-copy: rule'):`n$lint"; $State.fixLoops = [int]$State.fixLoops + 1; continue }
         $rv = Invoke-One "design_reviewer" (Build-Prompt "design_review" @{ DESIGN = $r.Text; LINT = $lint }) "s05_design_review-$i"
         Write-Text "$RunDir\05_design_review.md" $rv.Text
         if ($rv.Tag -eq "PASS") {
@@ -501,9 +554,10 @@ function Stage-Design($st) {
         }
         $feedback = $rv.Text; $State.fixLoops = [int]$State.fixLoops + 1
     }
-    Note "Thiết kế chưa qua duyệt sau $MaxFixLoops lần sửa; tiếp tục với bản gần nhất."
     Add-State "stages" "s05_design_review|chưa đạt|xem 05_design_review.md"
     Add-State "verdicts" "design_review|FAIL"
+    # Bản thiết kế bị từ chối không được dùng cho handoff, test và code.
+    Stop-Run "BLOCKED" "Thiết kế chưa qua duyệt sau $MaxFixLoops lần sửa (xem 05_design_review.md); chạy lại từ s04_design sau khi quyết định"
 }
 function Stage-Handoff($st) {
     if (-not (Test-HasUi)) { Add-State "stages" "$($st.id)|bỏ qua|không có task ui"; return }
@@ -521,15 +575,43 @@ function Stage-TestsFirst($st) {
         $r = Invoke-One $st.role (Build-Prompt $st.prompt $vars) "$($st.id)-$i"
         Write-Text (Join-Path $RunDir $st.out) $r.Text
         [void](Assert-Writes (Get-RolePlan $st.role) @())
+        [void](Revert-ExistingTestEdits)
         Commit-All "tests-first: test cho $($PlanObj.feature)"
         if (-not $DryRun) { $State.testsCommit = (@(Invoke-Git @("rev-parse", "HEAD")) -join "").Trim() } else { $State.testsCommit = "dry" }
         Save-State
+        $missing = @()
+        if (-not $DryRun) {
+            foreach ($t in $PlanObj.tasks) { foreach ($tf in @($t.tests)) {
+                $full = Resolve-InWorktree ([string]$tf)
+                if (-not $full -or -not (Test-Path -LiteralPath $full -PathType Leaf)) { $missing += [string]$tf }
+            } }
+        }
+        if ($missing.Count -gt 0) { $feedback = "Chưa có các file test đã khai báo trong kế hoạch: $($missing -join ', '). Viết đủ các file đó (chỉ thêm, không sửa test cũ)."; continue }
         $red = Invoke-Gradle $planGradle "red-$i" 1
-        if ($red.Exit -ne 0) { Add-State "stages" "$($st.id)|xong|đỏ như kỳ vọng"; return }
+        if ($red.Exit -ne 0) {
+            # Chỉ lỗi biên dịch (thiếu code) hoặc test thất bại mới là bằng chứng đỏ; lỗi cấu hình hay mạng thì không.
+            if (-not $DryRun -and -not $red.Compile -and -not $red.TestFail) { Stop-Run "BLOCKED" "Gradle lỗi nhưng không phải do biên dịch hay test thất bại (logs\gradle-red-$i.log)" }
+            Add-State "stages" "$($st.id)|xong|đỏ như kỳ vọng"; return
+        }
         $feedback = "Test chạy XANH trước khi có code, nghĩa là chưa kiểm hành vi mới. Viết thêm test chặt hơn (chỉ thêm, không sửa test cũ)."
     }
-    Note "Test-first vẫn xanh khi chưa có code: test có thể không kiểm hành vi mới."
-    Add-State "stages" "$($st.id)|cảnh báo|test không đỏ"
+    Add-State "stages" "$($st.id)|chưa đạt|chưa có test đỏ trước khi code"
+    Stop-Run "BLOCKED" ("Chưa có bằng chứng test đỏ trước khi code: " + $feedback)
+}
+# Chạy executor lần lượt từng task và commit sau mỗi task, để kiểm quyền ghi theo đúng `owns` của chính task đó.
+function Invoke-Executors($tasks, [string]$labelPrefix, [string]$failures) {
+    foreach ($t in @($tasks)) {
+        $v = Task-Vars $t; $v.HANDOFF = (Get-Out "06_code_handoff.md")
+        if ($failures) { $v.FAILURES = $failures }
+        $label = "$labelPrefix-$($t.id)"
+        $res = Invoke-Agents @(@{ Role = "executor"; Prompt = (Build-Prompt "code" $v); Label = $label; Cwd = $WT })
+        $r = $res.Values | Select-Object -First 1
+        if (-not $r -or -not $r.Ok) { Stop-Run "BLOCKED" "Executor $label thất bại" }
+        if ($r.Tag -eq "BLOCKED") { Stop-Run "BLOCKED" "Executor báo test/contract mâu thuẫn ($label): xem logs, cần người quyết định" }
+        [void](Assert-Writes (Get-RolePlan "executor") @($t.owns))
+        [void](Revert-TestTampering)
+        Commit-All "code: $label"
+    }
 }
 function Stage-Code($st) {
     $wi = 0
@@ -537,21 +619,9 @@ function Stage-Code($st) {
         $wi++
         $failures = ""
         for ($loop = 0; $loop -le $MaxFixLoops; $loop++) {
-            $specs = @()
-            foreach ($t in $wave) {
-                $v = Task-Vars $t; $v.HANDOFF = (Get-Out "06_code_handoff.md")
-                if ($failures) { $v.FAILURES = "Lần chạy trước thất bại. Sửa theo log sau (không sửa test):`n$failures" }
-                $specs += @{ Role = $st.role; Prompt = (Build-Prompt "code" $v); Label = "s08-w$wi-$($t.id)-$loop"; Cwd = $WT }
-            }
-            $res = Invoke-Agents $specs
-            foreach ($k in $res.Keys) {
-                if (-not $res[$k].Ok) { Stop-Run "BLOCKED" "Executor $k thất bại" }
-                if ($res[$k].Tag -eq "BLOCKED") { Stop-Run "BLOCKED" "Executor báo test/contract mâu thuẫn ($k): xem logs, cần người quyết định" }
-            }
-            $owned = @(); foreach ($t in $wave) { $owned += @($t.owns) }
-            [void](Assert-Writes (Get-RolePlan $st.role) $owned)
-            [void](Revert-TestTampering)
-            Commit-All "code: wave $wi lần $loop"
+            $fl = ""
+            if ($failures) { $fl = "Lần chạy trước thất bại. Sửa theo log sau (không sửa test):`n$failures" }
+            Invoke-Executors $wave "s08-w$wi-l$loop" $fl
             $g = Invoke-Gradle (@($wave | ForEach-Object { @($_.gradle) } | Select-Object -Unique)) "s08-w$wi-$loop"
             if ($g.Exit -eq 0) { break }
             if ($loop -eq $MaxFixLoops) { Stop-Run "BLOCKED" "Wave $wi vẫn đỏ sau $MaxFixLoops lần sửa (logs\gradle-s08-w$wi-$loop.log)" }
@@ -568,39 +638,69 @@ function Get-ModuleTasks([string[]]$files) {
     if ($t.Count -eq 0) { $t = @(":shared:testDebugUnitTest") }
     return $t
 }
+$MutationsPerTask = 6
 function Run-Mutations($muts) {
-    $max = 24; $n = 0
+    $perTask = @{}; $extra = 0
     foreach ($m in $muts) {
-        if ($n -ge $max) { Note "Chỉ chạy $max mutation đầu để giới hạn thời gian."; break }
-        $n++
-        $row = "{0}|{1}|{2}|" -f $m.task, $m.id, $m.file
-        $file = Join-Path $WT $m.file
+        # Giới hạn theo từng task (6 mỗi task theo checklist), không cắt theo tổng số.
+        $tk = [string]$m.task
+        if (-not $perTask.ContainsKey($tk)) { $perTask[$tk] = 0 }
+        if ($perTask[$tk] -ge $MutationsPerTask) { $extra++; continue }
+        $perTask[$tk]++
+        $rel = ([string]$m.file) -replace "\\", "/"
+        $row = "{0}|{1}|{2}|" -f $m.task, $m.id, $rel
         if ($DryRun) { Add-State "mutations" ($row + "bị bắt (dry-run)"); continue }
-        if (-not (Test-Path $file) -or ($m.file -match $TestPattern)) { Add-State "mutations" ($row + "không hợp lệ: file không có/là test"); continue }
+        # File do agent chỉ định: phải nằm trong worktree, là file code đã theo dõi, để checkout hoàn tác được.
+        $file = Resolve-InWorktree $rel
+        if (-not $file) { Add-State "mutations" ($row + "không hợp lệ: đường dẫn nằm ngoài worktree"); continue }
+        $tracked = @(Invoke-Git @("ls-files", "--", $rel))
+        if ($tracked.Count -eq 0 -or ($rel -match $TestPattern) -or ($rel -notmatch '^(shared|composeApp)/src/')) { Add-State "mutations" ($row + "không hợp lệ: không phải file code đã theo dõi"); continue }
         $text = Read-Text $file
         $cnt = ([regex]::Matches($text, [regex]::Escape([string]$m.find))).Count
         if ($cnt -ne 1) { Add-State "mutations" ($row + "không hợp lệ: 'find' xuất hiện $cnt lần"); continue }
         try {
             Write-Text $file ($text.Replace([string]$m.find, [string]$m.replace))
-            $g = Invoke-Gradle (Get-ModuleTasks @($m.file)) "mut-$($m.task)-$($m.id)"
-        } finally { Invoke-Git @("checkout", "HEAD", "--", $m.file) | Out-Null }
+            $g = Invoke-Gradle (Get-ModuleTasks @($rel)) "mut-$($m.task)-$($m.id)"
+        } finally { Invoke-Git @("checkout", "HEAD", "--", $rel) | Out-Null }
         if ($g.Exit -eq 0) { Add-State "mutations" ($row + "SỐNG SÓT (test yếu)") }
         elseif ($g.Compile) { Add-State "mutations" ($row + "không hợp lệ: lỗi biên dịch, không chứng minh test bắt được") }
         else { Add-State "mutations" ($row + "bị bắt") }
     }
+    if ($extra -gt 0) { Note "Bỏ $extra mutation vượt quá $MutationsPerTask mỗi task." }
     if (-not $DryRun -and (Get-Changed).Count -gt 0) { Invoke-Git @("checkout", "HEAD", "--", ".") | Out-Null; Stop-Run "BLOCKED" "Working tree không sạch sau mutation, đã hoàn tác." }
 }
+# Quét từ cấm trong chuỗi hiển thị của các file Kotlin đã đổi; ghi thành phán quyết để báo cáo không thể READY khi còn vi phạm.
+function Invoke-CopyLint {
+    Reset-Verdicts '^lint_copy\|'
+    if ($DryRun) { return }
+    $kt = @(Get-DiffFiles | Where-Object { $_ -match '^(shared/src/(commonMain|androidMain)|composeApp/src/main)/.*\.kt$' } | ForEach-Object { Resolve-InWorktree $_ } | Where-Object { $_ -and (Test-Path -LiteralPath $_) })
+    if ($kt.Count -eq 0) { return }
+    $lint = (& "$Root\scripts\lint-copy.ps1" -Path $kt | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Text "$RunDir\09_lint_copy.txt" $lint
+        Add-State "verdicts" "lint_copy|FAIL"; Note "Lint từ cấm thấy vi phạm trong chuỗi hiển thị của code (xem 09_lint_copy.txt)."
+    } else { Add-State "verdicts" "lint_copy|PASS" }
+}
 function Stage-Verify($st) {
+    $State.mutations = @(); Reset-Verdicts '^mutation'
     $files = Get-DiffFiles
     $tasks = @(Get-ModuleTasks $files) + @(":composeApp:assembleDebug")
     $g = Invoke-Gradle $tasks "verify-final"
     if ($g.Exit -ne 0) { Stop-Run "BLOCKED" "Verify cuối đỏ (logs\gradle-verify-final.log)" }
     foreach ($c in (Get-TestCounts)) { Add-State "gradle" "đếm|$c|" }
+    Invoke-CopyLint
     $r = Invoke-One $st.role (Build-Prompt $st.prompt @{ DIFF_FILES = ($files -join "`n"); PLAN = (Get-Out "plan.json") }) "s09-mut"
     $muts = @(Get-JsonBlock $r.Text)
     Write-Text (Join-Path $RunDir $st.out) $r.Text
     if ($muts.Count -eq 0 -or $null -eq $muts[0]) { Note "Mutation designer không trả JSON hợp lệ; chưa có mutation."; Add-State "verdicts" "mutation|CHƯA CHẠY"; }
     else { Run-Mutations $muts }
+    # Task chưa đủ số mutation có kết quả thì ghi rõ là chưa đủ, để báo cáo không coi là đã kiểm.
+    if (-not $DryRun -and $PlanObj) {
+        foreach ($t in $PlanObj.tasks) {
+            $ran = @(@($State.mutations) | Where-Object { $_.StartsWith("$($t.id)|") -and $_ -match "\|(bị bắt|SỐNG SÓT)" }).Count
+            if ($ran -lt $MutationsPerTask) { Add-State "verdicts" "mutation $($t.id): $ran/$MutationsPerTask có kết quả|CHƯA ĐỦ" }
+        }
+    }
     $surv = @(@($State.mutations) | Where-Object { $_ -match "SỐNG SÓT" }).Count
     $valid = @(@($State.mutations) | Where-Object { $_ -match "\|bị bắt" }).Count
     Add-State "verdicts" ("mutation|bị bắt $valid, sống sót $surv")
@@ -608,6 +708,7 @@ function Stage-Verify($st) {
 }
 function Verify-Summary { return ((@($State.gradle) -join "`n") + "`n" + (@($State.mutations) -join "`n")) }
 function Stage-Bugcheck($st) {
+    Reset-Verdicts '^bugcheck\|'
     $dev = Invoke-Device
     $State.shots = @($dev.Shots); Save-State
     Add-State "stages" "device|ghi nhận|$($dev.Note)"
@@ -615,26 +716,31 @@ function Stage-Bugcheck($st) {
     for ($i = 0; $i -le $MaxFixLoops; $i++) {
         $r = Invoke-One $st.role (Build-Prompt $st.prompt @{ DIFF_FILES = ((Get-DiffFiles) -join "`n"); VERIFY = (Verify-Summary); DEVICE = $dev.Note }) "s10-$i"
         $bugs = $r.Text; Write-Text (Join-Path $RunDir $st.out) $bugs
-        if ($r.Tag -ne "FAIL" -and -not $dev.Crash) { Add-State "stages" "$($st.id)|PASS|lặp $i"; Add-State "verdicts" "bugcheck|PASS"; return }
+        if ($r.Tag -eq "PASS" -and -not $dev.Crash) { Add-State "stages" "$($st.id)|PASS|lặp $i"; Add-State "verdicts" "bugcheck|PASS"; return }
+        # Chỉ RESULT: PASS mới là đạt. Thiếu hoặc sai nhãn thì không coi là đạt và cũng không tự sửa theo nội dung không rõ.
+        if ($r.Tag -ne "PASS" -and $r.Tag -ne "FAIL") {
+            Note "Bug hunter không trả RESULT: PASS hoặc FAIL (nhận '$($r.Tag)'); không coi là đạt."
+            Add-State "stages" "$($st.id)|không rõ|thiếu RESULT hợp lệ, xem 10_bugs.md"; Add-State "verdicts" "bugcheck|LỖI"; return
+        }
         if ($i -eq $MaxFixLoops) { break }
-        Fix-Code "Bug cần sửa:`n$bugs" "s10fix-$i"
+        $fb = "Bug cần sửa:`n$bugs"
+        if ($dev.Crash) { $fb = "App crash khi khởi động trên thiết bị. Log:`n" + (Clip (Get-Out "logs\crash.txt") 2500) + "`n`n" + $fb }
+        Fix-Code $fb "s10fix-$i"
+        # Cài lại bản vừa sửa để trạng thái crash phản ánh code mới, không phải lần chạy đầu.
+        $dev = Invoke-Device
+        $State.shots = @($dev.Shots); Save-State
     }
     Add-State "stages" "$($st.id)|còn bug S1/S2|xem 10_bugs.md"; Add-State "verdicts" "bugcheck|FAIL"
 }
 function Fix-Code([string]$feedback, [string]$label) {
-    $specs = @(); $owned = @()
-    foreach ($t in $PlanObj.tasks) {
-        $v = Task-Vars $t; $v.HANDOFF = (Get-Out "06_code_handoff.md"); $v.FAILURES = "Sửa theo phản hồi sau (chỉ trong file được sửa, không sửa test):`n$(Clip $feedback 6000)"
-        $specs += @{ Role = "executor"; Prompt = (Build-Prompt "code" $v); Label = "$label-$($t.id)"; Cwd = $WT }; $owned += @($t.owns)
-    }
-    [void](Invoke-Agents $specs)
-    [void](Assert-Writes (Get-RolePlan "executor") $owned); [void](Revert-TestTampering)
-    Commit-All "fix: $label"
+    Invoke-Executors @($PlanObj.tasks) $label "Sửa theo phản hồi sau (chỉ trong file được sửa, không sửa test):`n$(Clip $feedback 6000)"
     $g = Invoke-Gradle ((Get-ModuleTasks (Get-DiffFiles)) + @(":composeApp:assembleDebug")) "$label"
     if ($g.Exit -ne 0) { Stop-Run "BLOCKED" "Sau khi sửa ($label) Gradle đỏ (logs\gradle-$label.log)" }
+    Invoke-CopyLint
     $State.fixLoops = [int]$State.fixLoops + 1; Save-State
 }
 function Stage-Review($st) {
+    Reset-Verdicts '^review1\|'
     $bugs = Get-Out "10_bugs.md"; $r = $null
     for ($i = 0; $i -le $MaxFixLoops; $i++) {
         $r = Invoke-One $st.role (Build-Prompt $st.prompt @{ PLAN = (Get-Out "plan.json"); VERIFY = (Verify-Summary); BUGS = $bugs; DIFF_FILES = ((Get-DiffFiles) -join "`n") }) "s11-$i"
@@ -646,6 +752,7 @@ function Stage-Review($st) {
     Add-State "stages" "$($st.id)|FAIL|xem 11_review1.md"; Add-State "verdicts" "review1|FAIL"
 }
 function Stage-Personas($st) {
+    Reset-Verdicts '^customer_'
     $shots = if (@($State.shots).Count -gt 0) { (@($State.shots) -join "`n") } else { "(không có ảnh thật)" }
     $names = @{ customer_mai = "Chị Mai (phụ huynh bận rộn, lướt nhanh tủ lạnh, thêm đồ sau khi đi chợ)"; customer_nam = "Anh Nam (người cùng nấu ăn, quan tâm gợi ý món, nguyên liệu, thao tác sau khi nấu)"; customer_hanh = "Cô Hạnh (thành viên lớn tuổi, cần chữ lớn, thao tác đơn giản, hiểu cài đặt và sao lưu)" }
     $design = Get-Out "04_design_spec.md"; if (-not $design) { $design = "(Không có thay đổi giao diện; đánh giá theo kế hoạch)`n" + (Get-Out "plan.json") }
@@ -669,7 +776,8 @@ function Stage-Final($st) {
 function Write-Evidence {
     if ($DryRun -or $null -eq $PlanObj) { return }
     foreach ($t in $PlanObj.tasks) {
-        $f = Join-Path $WT $t.contract; if (-not (Test-Path $f)) { continue }
+        if (-not (Test-ContractPath ([string]$t.contract))) { continue }
+        $f = Resolve-InWorktree ([string]$t.contract); if (-not $f -or -not (Test-Path -LiteralPath $f -PathType Leaf)) { continue }
         $sec = "`n`n## Biên bản tự động — run $RunId`n`nSinh bởi scripts/orchestrate.ps1 từ kết quả chạy thật; chi tiết ở .agents/runs/$RunId/.`n`n| Kiểm tra | Kết quả |`n| --- | --- |`n"
         foreach ($g in @($State.gradle)) { $p = $g -split "\|"; if ($p.Count -ge 3) { $sec += "| Gradle ``$($p[1])`` ($($p[0])) | $($p[2]) |`n" } }
         foreach ($m in @($State.mutations)) { $p = $m -split "\|"; if ($p[0] -eq $t.id) { $sec += "| Mutation $($p[1]) ($($p[2])) | $($p[3]) |`n" } }
@@ -682,7 +790,7 @@ function Build-Report {
     $o = $State.outcome
     if (-not $o -and @($State.done).Count -lt @($Flow.stages).Count) { $o = "PARTIAL"; $State.outcome = $o }
     if (-not $o) {
-        $bad = @(@($State.verdicts) | Where-Object { $_ -match "\|(FAIL|LỖI|CHƯA CHẠY)$" }).Count
+        $bad = @(@($State.verdicts) | Where-Object { $_ -match "\|(FAIL|LỖI|CHƯA CHẠY|CHƯA ĐỦ)$" }).Count
         $weak = @(@($State.mutations) | Where-Object { $_ -match "SỐNG SÓT|không hợp lệ" }).Count
         $chg = @(@($State.verdicts) | Where-Object { $_ -match "\|CHANGES$" }).Count
         if ($bad -gt 0 -or $weak -gt 0) { $o = "NEEDS_ATTENTION" } elseif ($chg -gt 0) { $o = "READY_WITH_FEEDBACK" } else { $o = "READY" }
@@ -703,8 +811,8 @@ function Build-Report {
     [void]$L.Add("`n## Phán quyết`n"); foreach ($v in @($State.verdicts)) { [void]$L.Add("- $v") }
     [void]$L.Add("`n## Ghi chú và lệch so với thiết kế`n")
     foreach ($n in @($State.notes)) { [void]$L.Add("- $n") }
-    $fb = @($Roster.roles.PSObject.Properties | Where-Object { $_.Value.provider -eq "gemini" } | ForEach-Object { $_.Name })
-    [void]$L.Add("- Vai khai báo Gemini chạy bằng model Claude thay thế (runner Gemini chưa kiểm chứng): $($fb -join ', ').")
+    $fb = @($State.fellBack)
+    if ($fb.Count -gt 0) { [void]$L.Add("- Vai khai báo Gemini đã chạy bằng model dự phòng (máy chưa có gemini CLI hoặc lượt gọi Gemini lỗi): $($fb -join ', ').") }
     [void]$L.Add("- Persona là walkthrough giả lập, không phải nghiên cứu người dùng thật. Ảnh thật: $(if (@($State.shots).Count) { @($State.shots).Count } else { 'không có' }).")
     [void]$L.Add("`n## Việc cần bạn (một cổng duy nhất)`n")
     [void]$L.Add("Script không push, không mở PR, không merge. Xem diff rồi tự quyết:`n")
@@ -724,11 +832,15 @@ $order = @($Flow.stages | ForEach-Object { $_.id })
 $fromIdx = 0; $toIdx = $order.Count - 1
 if ($From) { $fromIdx = [Array]::IndexOf($order, $From); if ($fromIdx -lt 0) { throw "Bước không có: $From" } }
 if ($To) { $toIdx = [Array]::IndexOf($order, $To); if ($toIdx -lt 0) { throw "Bước không có: $To" } }
+# Review thiết kế chạy trong vòng của s04 nên không thể bắt đầu riêng từ s05.
+if ($From -eq "s05_design_review") { throw "Không chạy riêng s05_design_review; dùng -From s04_design để thiết kế và review lại." }
 Load-Plan
 Step "Run $RunId$(if ($DryRun) { ' [DRY-RUN]' }); báo cáo cuối tại $RunDir\FINAL_REPORT.md"
 Log-Event @{ kind = "start"; dryRun = [bool]$DryRun }
 
 try {
+    # Tạo worktree trước mọi bước, kể cả khi bắt đầu giữa chừng bằng -From, để git không bao giờ chạy trên checkout của người dùng.
+    Setup-Worktree
     for ($i = $fromIdx; $i -le $toIdx; $i++) {
         $st = $Flow.stages[$i]
         if (@($State.done) -contains $st.id -and -not $From) { Step "Bỏ qua $($st.id) (đã xong)"; continue }
@@ -738,7 +850,10 @@ try {
             "s02_evaluate"      { Stage-Evaluate $st }
             "s03_plan"          { Stage-Plan $st }
             "s04_design"        { Stage-Design $st }
-            "s05_design_review" { }                         # đã gộp trong vòng của s04
+            "s05_design_review" {
+                # Review đã chạy trong vòng của s04; chỉ coi là xong khi có kết quả PASS (hoặc không có task UI).
+                if ((Test-HasUi) -and -not (@($State.stages) -match '^s05_design_review\|PASS\|')) { Stop-Run "BLOCKED" "Chưa có kết quả review thiết kế PASS; chạy lại từ s04_design" }
+            }
             "s06_handoff"       { Stage-Handoff $st }
             "s07_tests_first"   { Stage-TestsFirst $st }
             "s08_code"          { Stage-Code $st }

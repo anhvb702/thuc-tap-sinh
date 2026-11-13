@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Nguồn chân lý cho script orchestrate.ps1. Model theo bảng phân vai trong AGENTS.override.md; xác nhận ID model trước lần chạy thật. Vai gemini tự rơi về fallback khi chưa cài gemini CLI.",
+  "note": "Nguồn chân lý cho script orchestrate.ps1. Model theo bảng phân vai trong AGENTS.override.md; xác nhận ID model trước lần chạy thật. Vai gemini chạy bằng gemini CLI khi máy có cài; chưa cài hoặc lượt gọi lỗi thì rơi về fallback và được ghi trong báo cáo cuối. Runner gemini chưa được chạy thử trên máy phát triển.",
   "access": {
     "read":  { "claude": "Read,Grep,Glob", "codex": "read-only" },
     "write": { "claude": "Read,Grep,Glob,Edit,Write", "codex": "workspace-write" }
@@ -11,7 +11,7 @@
     "advisor":         { "provider": "gemini", "model": "gemini-3.1-pro-preview", "access": "read", "fallback": { "provider": "claude", "model": "sonnet" } },
     "planner":         { "provider": "claude", "model": "claude-opus-5-5", "effort": "high", "access": "write", "writes": ["^docs/tests/"] },
     "designer":        { "provider": "gemini", "model": "gemini-3.8-flash", "access": "read",  "fallback": { "provider": "claude", "model": "sonnet" } },
-    "design_reviewer": { "provider": "claude", "model": "sonnet", "access": "read" },
+    "design_reviewer": { "provider": "codex",  "model": "gpt-6.1-sol", "effort": "high", "access": "read" },
     "test_writer":     { "provider": "codex",  "model": "gpt-6.1-terra", "effort": "low", "access": "write", "writes": ["^(shared/src/(commonTest|androidUnitTest)|composeApp/src/test)/"] },
     "executor":        { "provider": "codex",  "model": "gpt-6.1-terra", "effort": "low", "access": "write", "writes": ["@owned"] },
     "mutation_designer": { "provider": "codex", "model": "gpt-6.1-sol", "effort": "high", "access": "read" },
@@ -20,11 +20,11 @@
     "customer_mai":    { "provider": "gemini", "model": "gemini-3.8-flash", "access": "read", "fallback": { "provider": "claude", "model": "haiku" } },
     "customer_nam":    { "provider": "gemini", "model": "gemini-3.8-flash", "access": "read", "fallback": { "provider": "claude", "model": "haiku" } },
     "customer_hanh":   { "provider": "gemini", "model": "gemini-3.8-flash", "access": "read", "fallback": { "provider": "claude", "model": "haiku" } },
-    "triage":          { "provider": "claude", "model": "sonnet", "access": "read" },
+    "triage":          { "provider": "codex",  "model": "gpt-6.1-terra", "effort": "low", "access": "read" },
     "docbot":          { "provider": "codex",  "model": "gpt-6-luna", "effort": "low", "access": "write", "writes": ["^docs/tests/"] }
   },
   "known_mismatches": [
-    ".claude/agents/planner.md dùng model fable, bảng phân vai ghi claude-opus-5-5 (roster theo bảng).",
+    "design_reviewer và triage chuyển sang Codex theo quy tắc Claude chỉ làm planner; model cụ thể (gpt-6.1-sol, gpt-6.1-terra) chọn theo vai Reviewer/Executor trong bảng, cần người dùng xác nhận.",
     ".claude/agents/executor.md, advisor.md, brainstormer.md, customer.md dùng Claude; bảng ghi Codex/Gemini.",
     ".codex/agents/*.toml: reviewer gpt-6.1-terra (bảng: gpt-6.1-sol), executor gpt-6-luna (bảng: gpt-6.1-terra).",
     "designer chưa có trong bảng phân vai; thêm theo đề xuất, cần người dùng xác nhận."
