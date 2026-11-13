@@ -2,13 +2,16 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.runtime.key
+import androidx.compose.ui.text.style.TextAlign
+import kotlinx.datetime.TimeZone
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,6 +31,17 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.Role
+import com.loitu.yourrefri.ui.theme.AppIcons
+import com.loitu.yourrefri.ui.theme.AppTheme
+import com.loitu.yourrefri.ui.theme.TerracottaSoft // guard:allow - reasonPillColors bị test khóa
+import com.loitu.yourrefri.ui.theme.WarmBeigeSoft // guard:allow - reasonPillColors bị test khóa
+import com.loitu.yourrefri.ui.theme.WarmBeigeText // guard:allow - reasonPillColors bị test khóa
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,21 +60,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.loitu.yourrefri.ui.theme.DeepCharcoal
-import com.loitu.yourrefri.ui.theme.MutedGray
-import com.loitu.yourrefri.ui.theme.SageGreen
-import com.loitu.yourrefri.ui.theme.SageGreenStrong
-import com.loitu.yourrefri.ui.theme.SageGreenText
-import com.loitu.yourrefri.ui.theme.SoftGreen
-import com.loitu.yourrefri.ui.theme.Terracotta
-import com.loitu.yourrefri.ui.theme.TerracottaText
-import com.loitu.yourrefri.ui.theme.WarmBeige
-import com.loitu.yourrefri.ui.theme.WarmIvory
+import com.loitu.yourrefri.ui.theme.DeepCharcoal // guard:allow - hàm màu cũ bị test khóa
+import com.loitu.yourrefri.ui.theme.SageGreen // guard:allow - hàm màu cũ
+import com.loitu.yourrefri.ui.theme.SageGreenText // guard:allow - hàm màu cũ
+import com.loitu.yourrefri.ui.theme.SoftGreen // guard:allow - hàm màu cũ
+import com.loitu.yourrefri.ui.theme.Terracotta // guard:allow - hàm màu cũ
+import com.loitu.yourrefri.ui.theme.TerracottaText // guard:allow - hàm màu cũ
+import com.loitu.yourrefri.ui.theme.WarmBeige // guard:allow - hàm màu cũ
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.canCook
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDurationInclusive
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.RandomPick
+import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
 import com.loitu.yourrefri.feature.recipe.logic.recommendRecipes
 import com.loitu.yourrefri.feature.recipe.logic.ingredientIdsToConsume
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
@@ -71,6 +85,7 @@ import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyShoppingList
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 
 @Composable
+@OptIn(ExperimentalTime::class)
 fun RecipeScreen(
     state: PantryGridState,
     recipes: List<Recipe>,
@@ -88,9 +103,29 @@ fun RecipeScreen(
     onWeeklyUncheckedIdsChange: ((Set<String>) -> Unit)? = null,
     weeklyIncludeLunchMealPrep: Boolean? = null,
     onWeeklyIncludeLunchMealPrepChange: ((Boolean) -> Unit)? = null,
+    onWeeklyAction: ((WeeklyMealPlanAction) -> Unit)? = null,
     onModeChange: ((RecipeScreenMode) -> Unit)? = null,
+    onOpenRecipe: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
+    // Yêu thích (dữ liệu do nơi gọi giữ) và Nấu rảnh tay (màn riêng); ẩn thẻ rảnh tay khi null.
+    favoriteIds: Set<String> = emptySet(),
+    onToggleFavorite: (String) -> Unit = {},
+    onOpenHandsFree: ((String) -> Unit)? = null,
+    // Thứ của hôm nay (T2 = 0 ... CN = 6) để tô nổi trong dải 7 ngày. Null: tự tính từ đồng hồ hệ thống.
+    todayIndexOverride: Int? = null,
+    // Nút "Nấu ngẫu nhiên": null thì ẩn. Truyền công thức CHƯA lọc chế độ ăn để nút bỏ qua khẩu vị.
+    randomPool: List<Recipe>? = null,
+    dietRestriction: DietRestriction = DietRestriction.NONE,
 ) {
+    val colors = AppTheme.colors
+    val randomSource = remember { kotlin.random.Random.Default }
+    var randomShown by remember { mutableStateOf(false) }
+    var randomPick by remember { mutableStateOf<RandomPick?>(null) }
+    fun rollRandom() {
+        // Rút lại thì tránh lặp món vừa ra; không còn món nào khác thì thẻ báo nhẹ và giữ nút "Quay lại".
+        randomPick = pickRandomRecipe(randomPool.orEmpty(), state, randomPick?.recipe?.id, randomSource)
+        randomShown = true
+    }
     var localMode by remember(initialMode) { mutableStateOf(initialMode) }
     val mode = localMode
     fun updateMode(newMode: RecipeScreenMode) {
@@ -102,13 +137,11 @@ fun RecipeScreen(
     var localPreferences by remember { mutableStateOf(emptySet<FamilyPreferenceTag>()) }
     var localSwappedOffsets by remember { mutableStateOf(emptyMap<Int, Int>()) }
     var localUncheckedIds by remember { mutableStateOf(emptySet<String>()) }
-    var localIncludeLunchMealPrep by remember { mutableStateOf(false) }
 
     val goal = weeklyGoal ?: localGoal
     val preferences = weeklyPreferences ?: localPreferences
     val swappedOffsets = weeklySwappedOffsets ?: localSwappedOffsets
     val uncheckedIds = weeklyUncheckedIds ?: localUncheckedIds
-    val includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: localIncludeLunchMealPrep
 
     var initialPantrySnapshot by remember { mutableStateOf(state) }
     LaunchedEffect(state.pantry.isNotEmpty()) {
@@ -128,7 +161,28 @@ fun RecipeScreen(
         recipeCookPresentation(recipe, state, callbackAvailable = onCookRecipe != null)
     }
 
-    if (showCookConfirmation) {
+    // Có nguyên liệu sắp trừ thì hỏi từng món "Dùng hết hay còn lại?"; không có thì dùng hộp xác nhận cũ.
+    val askLeftover = showCookConfirmation && onCookRecipe != null && !pendingCookPresentation?.ingredientIds.isNullOrEmpty()
+    if (askLeftover) {
+        val presentation = pendingCookPresentation!!
+        val recipe = pendingCookRecipe!!
+        val names = state.ingredients.associate { it.id to it.nameVi }
+        CookLeftoverDialog(
+            ingredients = presentation.ingredientIds.distinct().map { it to (names[it] ?: it) },
+            onConfirm = { kept ->
+                val consumed = ingredientsToConsume(presentation.ingredientIds, kept)
+                showCookConfirmation = false
+                pendingCookRecipe = null
+                // Luôn báo "nấu xong" (kể cả khi giữ lại hết) để hiện màn chúc mừng và ghi vào "Đã nấu".
+                onCookRecipe?.invoke(recipe, consumed)
+                updatedRecipeResult = recipe.id to cookResultMessage(consumed.mapNotNull { names[it] })
+            },
+            onDismiss = {
+                showCookConfirmation = false
+                pendingCookRecipe = null
+            },
+        )
+    } else if (showCookConfirmation) {
         AlertDialog(
             onDismissRequest = {
                 showCookConfirmation = false
@@ -155,7 +209,7 @@ fun RecipeScreen(
                                 confirmed = true,
                                 callbackAvailable = onCookRecipe != null,
                             )
-                            if (idsToDispatch.isNotEmpty()) onCookRecipe?.invoke(recipe, idsToDispatch)
+                            onCookRecipe?.invoke(recipe, idsToDispatch)
                             if (onCookRecipe != null) {
                                 presentation.resultMessage?.let { updatedRecipeResult = recipe.id to it }
                             }
@@ -181,290 +235,330 @@ fun RecipeScreen(
         )
     }
 
-    if (mode == RecipeScreenMode.WEEKLY) {
-        WeeklyMealPlanContent(
-            plan = weeklyPlan,
-            shopping = buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = includeLunchMealPrep),
-            goal = goal,
-            preferences = preferences,
-            includeLunchMealPrep = includeLunchMealPrep,
-            onToggleLunchMealPrep = {
-                localIncludeLunchMealPrep = it
-                onWeeklyIncludeLunchMealPrepChange?.invoke(it)
-            },
-            uncheckedIds = uncheckedIds,
-            onToggleChecked = { id, checked ->
-                val next = if (checked) uncheckedIds - id else uncheckedIds + id
-                localUncheckedIds = next
-                onWeeklyUncheckedIdsChange?.invoke(next)
-            },
-            onGoal = {
-                localGoal = it
-                onWeeklyGoalChange?.invoke(it)
-            },
-            onPreference = { tag ->
-                val next = togglePreferenceTag(preferences, tag)
-                localPreferences = next
-                onWeeklyPreferencesChange?.invoke(next)
-            },
-            onSwap = { dayIdx ->
-                val next = bumpDaySwapOffset(swappedOffsets, dayIdx)
-                localSwappedOffsets = next
-                onWeeklySwappedOffsetsChange?.invoke(next)
-            },
-            onRequestCook = { recipe ->
-                pendingCookRecipe = recipe
-                showCookConfirmation = true
-            },
-            updatedRecipeResult = updatedRecipeResult,
-            onStock = onStockIngredients,
-            onDaily = { updateMode(RecipeScreenMode.DAILY) },
-            modifier = modifier,
-        )
-        return
+    val shopping = remember(weeklyPlan, state, preferences) {
+        buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = LUNCH_MEAL_PREP_ENABLED)
     }
     val recommendations = recommendRecipes(recipes, state)
     val recommendationIds = recommendations.map { it.recipe.id }
     val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
+    // Có onOpenRecipe thì chạm thẻ mở màn chi tiết; không có thì bung cách nấu ngay dưới thẻ nổi bật.
+    val expandInPlace = onOpenRecipe == null
     var selectedRecipeId by remember(recommendationIds, initialRecipeId) {
-        mutableStateOf(resolvedInitialRecipeId)
+        mutableStateOf(resolvedInitialRecipeId.takeIf { initialRecipeId != null })
     }
     var selectedDuration by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(initialRecipeId) {
         if (shouldClearDurationForRequest(initialRecipeId)) selectedDuration = null
     }
+    val todayIndex = todayIndexOverride
+        ?: remember { todayDayIndex(Clock.System.now(), TimeZone.currentSystemDefault()) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(WarmIvory)
+            .background(colors.background)
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = true, onClick = {}, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("🍲 Gợi ý hôm nay") })
-            FilterChip(selected = false, onClick = { updateMode(RecipeScreenMode.WEEKLY) }, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
-        }
-        Text(
-            text = "Hôm nay nấu gì? 🍲",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            color = DeepCharcoal,
-        )
-        Text(
-            text = "3 gợi ý phù hợp nhất với nguyên liệu đang có trong nhà",
-            style = MaterialTheme.typography.bodySmall,
-            color = MutedGray,
-            modifier = Modifier.padding(top = 2.dp, bottom = 16.dp),
+        RecipeScreenTitle()
+        RecipeTabChips(
+            selected = mode,
+            onSelect = { updateMode(it) },
+            modifier = Modifier.padding(top = 12.dp, bottom = 16.dp),
         )
 
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            recipeDurationFilterOptions().forEach { option ->
-                FilterChip(
-                    modifier = Modifier.heightIn(min = 48.dp),
-                    selected = selectedDuration == option.threshold,
-                    onClick = { selectedDuration = option.threshold },
-                    label = { Text(option.label) },
-                )
-            }
-        }
-
-        val visibleRecipes = filterRecipesByDurationInclusive(recommendations, selectedDuration) { item ->
-            item.recipe.minutes
-        }
-        if (recommendations.isEmpty()) {
-            Text(
-                "Chưa có công thức để gợi ý.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MutedGray,
-                modifier = Modifier.padding(vertical = 24.dp),
+        when (mode) {
+            RecipeScreenMode.WEEKLY -> WeeklyMealPlanSection(
+                plan = weeklyPlan,
+                goal = goal,
+                preferences = preferences,
+                onGoal = {
+                    localGoal = it
+                    if (onWeeklyAction != null) onWeeklyAction(WeeklyMealPlanAction.SetGoal(it))
+                    else onWeeklyGoalChange?.invoke(it)
+                },
+                onPreference = { tag ->
+                    val next = togglePreferenceTag(preferences, tag)
+                    localPreferences = next
+                    if (onWeeklyAction != null) onWeeklyAction(WeeklyMealPlanAction.TogglePreference(tag))
+                    else onWeeklyPreferencesChange?.invoke(next)
+                },
+                onSwap = { dayIdx ->
+                    val next = bumpDaySwapOffset(swappedOffsets, dayIdx)
+                    localSwappedOffsets = next
+                    if (onWeeklyAction != null) onWeeklyAction(WeeklyMealPlanAction.SwapDay(dayIdx))
+                    else onWeeklySwappedOffsetsChange?.invoke(next)
+                },
+                onRequestCook = { recipe ->
+                    pendingCookRecipe = recipe
+                    showCookConfirmation = true
+                },
+                updatedRecipeResult = updatedRecipeResult,
             )
-        } else if (visibleRecipes.isEmpty()) {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text("Chưa có món trong khoảng thời gian này.", color = DeepCharcoal)
-                FilterChip(
-                    selected = false,
-                    onClick = { selectedDuration = null },
-                    label = { Text("Xem tất cả món") },
-                    modifier = Modifier.padding(top = 12.dp),
-                )
-            }
-        }
 
-        // Danh sách món theo thứ tự gợi ý
-        visibleRecipes.forEach { recommendation ->
-            val recipe = recommendation.recipe
-            val isSelected = recipe.id == selectedRecipeId
-            val bringIntoViewRequester = remember(recipe.id) { BringIntoViewRequester() }
-            LaunchedEffect(initialRecipeId, recipe.id) {
-                if (shouldBringRecipeIntoView(initialRecipeId, resolvedInitialRecipeId, recipe.id)) {
-                    bringIntoViewRequester.bringIntoView()
+            RecipeScreenMode.SHOPPING -> WeeklyShoppingSection(
+                shopping = shopping,
+                uncheckedIds = uncheckedIds,
+                onToggleChecked = { id, checked ->
+                    val next = if (checked) uncheckedIds - id else uncheckedIds + id
+                    localUncheckedIds = next
+                    if (onWeeklyAction != null) onWeeklyAction(WeeklyMealPlanAction.ToggleIngredient(id, checked))
+                    else onWeeklyUncheckedIdsChange?.invoke(next)
+                },
+                onStock = onStockIngredients,
+            )
+
+            RecipeScreenMode.DAILY -> {
+                // Bộ lọc thời gian gọn, cuộn ngang được khi chữ lớn.
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    recipeDurationFilterOptions().forEach { option ->
+                        PillChip(
+                            label = option.label,
+                            selected = selectedDuration == option.threshold,
+                            onClick = { selectedDuration = option.threshold },
+                        )
+                    }
+                    if (randomPool != null) {
+                        PillChip(
+                            label = RandomRecipeCopy.button,
+                            selected = randomShown,
+                            onClick = { rollRandom() },
+                            icon = AppIcons.ChefHat,
+                        )
+                    }
                 }
-            }
-            val pantryItems = state.pantry.values.toList()
-            val availableIds = pantryItems.filter { it.have }.map { it.ingredientId }.toSet()
-            val allNames = state.ingredients.associate { it.id to it.nameVi }
-            val urgentIds = cellsOf(state)
-                .filter { it.have && it.daysLeft in 0..2 }
-                .mapTo(HashSet()) { it.ingredientId }
-            val haveNames = ingredientIdsToConsume(recipe, availableIds, urgentIds).mapNotNull(allNames::get)
-            val missingNames = recipe.required.filter { slot -> slot.anyOf.none { it in availableIds } }
-                .mapNotNull { slot -> slot.anyOf.firstOrNull()?.let(allNames::get) ?: slot.anyOf.firstOrNull() }
-            val readyToCook = canCook(recipe, pantryItems)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bringIntoViewRequester(bringIntoViewRequester)
-                    .padding(bottom = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .border(
-                        if (isSelected) 2.dp else 1.dp,
-                        if (isSelected) SageGreenStrong else Color(0xFFE5E7EB),
-                        RoundedCornerShape(16.dp)
+                if (randomShown) {
+                    RandomRecipeCard(
+                        pick = randomPick,
+                        outsideDiet = randomPick?.let { isOutsideDiet(it.recipe, dietRestriction, state.ingredients) } == true,
+                        onOpen = { randomPick?.let { onOpenRecipe?.invoke(it.recipe.id) } },
+                        onTryAnother = { rollRandom() },
+                        onBack = { randomShown = false; randomPick = null },
+                        modifier = Modifier.padding(top = 12.dp),
                     )
-                    .clickable {
-                        selectedRecipeId = recipe.id
-                        updatedRecipeResult = null
-                    },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) Color(0xFFF9FBF8) else Color.White
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
-                    if (readyToCook) {
-                        Surface(shape = RoundedCornerShape(6.dp), color = SageGreenStrong) {
-                            Text(
-                                text = "Nấu được ngay",
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelMedium,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                }
+
+                val visibleRecipes = filterRecipesByDurationInclusive(recommendations, selectedDuration) { item ->
+                    item.recipe.minutes
+                }
+                val hero = heroRecommendations(visibleRecipes, resolvedInitialRecipeId.takeIf { initialRecipeId != null })
+
+                Spacer(modifier = Modifier.height(12.dp))
+                if (recommendations.isEmpty()) {
+                    HeroEmptyCard()
+                } else if (visibleRecipes.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = recommendationColor(recommendation.reason).copy(alpha = 0.15f)
-                        ) {
-                            Text(
-                                text = recommendationLabel(recommendation.reason),
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
-                                color = recommendationTextColor(recommendation.reason),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
-                        Text(
-                            text = recipe.minutes?.let { "$it phút" } ?: "Thời gian chưa rõ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedGray
+                        Text("Chưa có món trong khoảng thời gian này.", color = colors.text)
+                        PillChip(
+                            label = "Xem tất cả món",
+                            selected = false,
+                            onClick = { selectedDuration = null },
+                            modifier = Modifier.padding(top = 12.dp),
                         )
                     }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Text(
-                        text = recipe.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = DeepCharcoal
-                    )
-
-                    if (haveNames.isNotEmpty()) {
-                        Text(
-                            text = "Đã có: ${haveNames.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = SageGreenText,
-                            modifier = Modifier.padding(top = 4.dp)
+                } else {
+                    // Đổi bộ lọc thì pager quay về thẻ đầu.
+                    key(hero.map { it.recipe.id }) {
+                        val pagerState = rememberPagerState(initialPage = 0) { hero.size }
+                        RecipeHeroPager(
+                            items = hero,
+                            pagerState = pagerState,
+                            favoriteIds = favoriteIds,
+                            onToggleFavorite = onToggleFavorite,
+                            onOpen = { id ->
+                                if (onOpenRecipe != null) {
+                                    onOpenRecipe(id)
+                                } else {
+                                    selectedRecipeId = id
+                                    updatedRecipeResult = null
+                                }
+                            },
                         )
-                    }
-
-                    if (missingNames.isNotEmpty()) {
-                        Text(
-                            text = "Cần thêm: ${missingNames.joinToString(", ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TerracottaText,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-
-                    // Nếu món được chọn: bung chi tiết công thức 4 bước
-                    if (isSelected) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Cách nấu",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
-                            color = DeepCharcoal,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        recipe.steps.forEachIndexed { index, step ->
-                            val key = "${recipe.id}_$index"
-                            val isChecked = stepChecks[key] ?: false
-                            Row(
-                            modifier = Modifier
-                                    .fillMaxWidth()
-                                .heightIn(min = 48.dp)
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { stepChecks[key] = it },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = SageGreenStrong,
-                                        uncheckedColor = MutedGray
-                                    )
-                                )
-                                Text(
-                                    text = step,
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = if (isChecked) MutedGray else DeepCharcoal
-                                    ),
-                                    modifier = Modifier.padding(top = 12.dp)
+                        val current = hero.getOrNull(pagerState.currentPage) ?: hero.first()
+                        HeroIngredientHints(current.recipe, state)
+                        if (expandInPlace) {
+                            hero.firstOrNull { it.recipe.id == selectedRecipeId }?.let { selected ->
+                                InlineRecipeSteps(
+                                    recipe = selected.recipe,
+                                    stepChecks = stepChecks,
+                                    resultMessage = updatedRecipeResult?.takeIf { it.first == selected.recipe.id }?.second,
+                                    onCooked = {
+                                        pendingCookRecipe = selected.recipe
+                                        showCookConfirmation = true
+                                    },
                                 )
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Nút hành động sau khi nấu xong
-                        Button(
-                            onClick = {
-                                pendingCookRecipe = recipe
-                                showCookConfirmation = true
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = SageGreenStrong),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Đã nấu xong món này 🎉", color = Color.White, fontWeight = FontWeight.Medium)
-                        }
-
-                        if (updatedRecipeResult?.first == recipe.id) {
-                            Text(
-                                text = updatedRecipeResult?.second.orEmpty(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = SageGreenText,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+                        DailyShortcuts(weeklyPlan, todayIndex, shopping, { updateMode(it) }, current.recipe.id.takeIf { onOpenHandsFree != null }, onOpenHandsFree)
                     }
+                }
+                // Chưa có gợi ý hoặc đang lọc: vẫn cho xem thực đơn tuần và đi chợ.
+                if (recommendations.isEmpty() || visibleRecipes.isEmpty()) {
+                    DailyShortcuts(weeklyPlan, todayIndex, shopping, { updateMode(it) }, null, null)
                 }
             }
         }
     }
 }
 
+/** Trạng thái rỗng của khu thẻ nổi bật. */
+@Composable
+private fun HeroEmptyCard() {
+    val colors = AppTheme.colors
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 140.dp)
+            .clip(shape)
+            .background(colors.ctaSoft),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(AppIcons.Pot, contentDescription = null, tint = colors.ctaText, modifier = Modifier.size(36.dp))
+        Text(
+            text = HERO_EMPTY_MESSAGE,
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.ctaText,
+            modifier = Modifier.padding(top = 8.dp, start = 16.dp, end = 16.dp),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+/** Dòng "Đã có / Có thể thêm" của món đang ở thẻ nổi bật (giữ thông tin từ danh sách cũ). */
+@Composable
+private fun HeroIngredientHints(recipe: Recipe, state: PantryGridState) {
+    val colors = AppTheme.colors
+    val pantryItems = state.pantry.values.toList()
+    val availableIds = pantryItems.filter { it.have }.map { it.ingredientId }.toSet()
+    val allNames = state.ingredients.associate { it.id to it.nameVi }
+    val urgentIds = cellsOf(state)
+        .filter { it.have && it.daysLeft in 0..2 }
+        .mapTo(HashSet()) { it.ingredientId }
+    val haveNames = ingredientIdsToConsume(recipe, availableIds, urgentIds).mapNotNull(allNames::get)
+    val missingNames = recipe.required.filter { slot -> slot.anyOf.none { it in availableIds } }
+        .mapNotNull { slot -> slot.anyOf.firstOrNull()?.let(allNames::get) ?: slot.anyOf.firstOrNull() }
+    if (haveNames.isNotEmpty()) {
+        Text(
+            text = "Đã có: ${haveNames.joinToString(", ")}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.accentText,
+            modifier = Modifier.padding(top = 10.dp),
+        )
+    }
+    if (missingNames.isNotEmpty()) {
+        Text(
+            text = "Có thể thêm: ${missingNames.joinToString(", ")}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.warnText,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+    }
+}
+
+/** Cách nấu bung tại chỗ (khi người gọi không truyền onOpenRecipe). */
+@Composable
+private fun InlineRecipeSteps(
+    recipe: Recipe,
+    stepChecks: MutableMap<String, Boolean>,
+    resultMessage: String?,
+    onCooked: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .clip(shape)
+            .background(colors.surface)
+            .border(2.dp, colors.primary, shape)
+            .padding(14.dp),
+    ) {
+        Text(
+            text = "Cách nấu",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = colors.text,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        recipe.steps.forEachIndexed { index, step ->
+            val key = "${recipe.id}_$index"
+            val isChecked = stepChecks[key] ?: false
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 4.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Checkbox(
+                    checked = isChecked,
+                    onCheckedChange = { stepChecks[key] = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = colors.primary,
+                        uncheckedColor = colors.muted,
+                        checkmarkColor = colors.onPrimary,
+                    ),
+                )
+                Text(
+                    text = step,
+                    style = MaterialTheme.typography.bodyMedium.copy(color = if (isChecked) colors.muted else colors.text),
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+        }
+        Button(
+            onClick = onCooked,
+            colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
+        ) {
+            Text("Đã nấu xong món này", fontWeight = FontWeight.SemiBold)
+        }
+        if (resultMessage != null) {
+            Text(
+                text = resultMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.accentText,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+    }
+}
+
+/** Dải 7 ngày, thẻ đi chợ và (nếu có) thẻ Nấu rảnh tay. */
+@Composable
+private fun DailyShortcuts(
+    weeklyPlan: List<com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal>,
+    todayIndex: Int,
+    shopping: List<com.loitu.yourrefri.feature.recipe.logic.ShoppingListItem>,
+    onGoTo: (RecipeScreenMode) -> Unit,
+    handsFreeRecipeId: String?,
+    onOpenHandsFree: ((String) -> Unit)?,
+) {
+    // Thực đơn tuần đã có nút riêng ở Trang chủ và tab "Thực đơn tuần"; không lặp lại dải 7 ngày ở đây.
+    Spacer(modifier = Modifier.height(20.dp))
+    ShortcutCard(
+        icon = AppIcons.Cart,
+        title = SHOPPING_CARD_TITLE,
+        subtitle = SHOPPING_CARD_SUBTITLE,
+        extraLine = shoppingCardCountText(shopping.count { !it.alreadyInPantry || it.missingQuantity > 0 }),
+        onClick = { onGoTo(RecipeScreenMode.SHOPPING) },
+    )
+    if (onOpenHandsFree != null && handsFreeRecipeId != null) {
+        Spacer(modifier = Modifier.height(12.dp))
+        ShortcutCard(
+            icon = AppIcons.ChefHat,
+            title = HANDS_FREE_CARD_TITLE,
+            subtitle = HANDS_FREE_CARD_SUBTITLE,
+            onClick = { onOpenHandsFree(handsFreeRecipeId) },
+        )
+    }
+}
 internal fun recommendationColor(reason: RecommendationReason): Color = when (reason) {
     RecommendationReason.USE_SOON -> Terracotta
     RecommendationReason.READY -> SageGreen
@@ -486,157 +580,56 @@ internal fun recipeDurationFilterOptions(): List<RecipeDurationFilterOption> = l
     RecipeDurationFilterOption("Tối đa 30 phút", 30),
 )
 
+// Màu nhãn lý do: cùng bảng màu với thẻ gợi ý ở màn Hôm nay.
+internal fun reasonPillColors(reason: RecommendationReason): Pair<Color, Color> = when (reason) {
+    RecommendationReason.USE_SOON -> TerracottaSoft to TerracottaText
+    RecommendationReason.QUICK -> WarmBeigeSoft to WarmBeigeText
+    RecommendationReason.READY, RecommendationReason.OTHER -> SoftGreen to DeepCharcoal
+}
+
+// Bản vẽ theo chế độ sáng/tối của nhãn lý do (bản hằng số ở trên giữ cho test).
 @Composable
-private fun WeeklyMealPlanContent(
-    plan: List<com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal>,
-    shopping: List<com.loitu.yourrefri.feature.recipe.logic.ShoppingListItem>,
-    goal: DietGoal,
-    preferences: Set<FamilyPreferenceTag>,
-    includeLunchMealPrep: Boolean,
-    onToggleLunchMealPrep: (Boolean) -> Unit,
-    uncheckedIds: Set<String>,
-    onToggleChecked: (String, Boolean) -> Unit,
-    onGoal: (DietGoal) -> Unit,
-    onPreference: (FamilyPreferenceTag) -> Unit,
-    onSwap: (Int) -> Unit,
-    onRequestCook: (Recipe) -> Unit,
-    updatedRecipeResult: Pair<String, String>?,
-    onStock: ((List<String>) -> Unit)?,
-    onDaily: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var openedDay by remember { mutableStateOf<Int?>(null) }
-    var result by remember { mutableStateOf<String?>(null) }
-    val buyItems = shopping.filter { !it.alreadyInPantry || it.missingQuantity > 0 }
-    val selectedIds = shoppingIdsToStock(shopping, uncheckedIds)
-    val stockListForAction = remember(shopping, uncheckedIds) {
-        shopping.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
-            .flatMap { item -> List(item.missingQuantity.coerceAtLeast(1)) { item.ingredient.id } }
+internal fun reasonPillColorsThemed(reason: RecommendationReason): Pair<Color, Color> {
+    val colors = AppTheme.colors
+    return when (reason) {
+        RecommendationReason.USE_SOON -> colors.warnSoft to colors.warnText
+        RecommendationReason.QUICK -> colors.beigeSoft to colors.beigeText
+        RecommendationReason.READY, RecommendationReason.OTHER -> colors.primarySoft to colors.text
     }
-    Column(modifier.fillMaxSize().background(WarmIvory).verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = false, onClick = onDaily, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("🍲 Gợi ý hôm nay") })
-            FilterChip(selected = true, onClick = {}, modifier = Modifier.weight(1f).heightIn(min = 48.dp), label = { Text("📅 Thực đơn tuần & Đi chợ") })
-        }
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = Color(0xFFF3F6F2),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2EBE0))
-        ) {
-            Column(Modifier.padding(12.dp)) {
-                Text(
-                    text = "💡 Lưu ý về bữa cơm gia đình:",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = DeepCharcoal,
-                )
-                Text(
-                    text = "Thực đơn được thiết kế cho Bữa cơm chính trong ngày (Trưa hoặc Tối) gồm 1 món mặn + 1 món canh/rau để cả nhà ăn ngon mà không bị áp lực lên lịch quá nhiều bữa.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = DeepCharcoal,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-        Text("Chọn định hướng và khẩu vị, mình xếp sẵn mâm cơm (Món mặn + Canh/Rau) cả tuần.", style = MaterialTheme.typography.bodyMedium, color = MutedGray, modifier = Modifier.padding(bottom = 6.dp))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            DietGoal.entries.forEach { item -> FilterChip(item == goal, { onGoal(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
-            FamilyPreferenceTag.entries.forEach { item -> FilterChip(item in preferences, { onPreference(item) }, label = { Text(item.labelVi) }, modifier = Modifier.heightIn(min = 48.dp)) }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            FilterChip(
-                selected = includeLunchMealPrep,
-                onClick = { onToggleLunchMealPrep(!includeLunchMealPrep) },
-                modifier = Modifier.heightIn(min = 48.dp),
-                label = { Text(if (includeLunchMealPrep) "🍱 Đang tính thêm phần cơm trưa hôm sau" else "🍱 Nấu thêm phần cơm trưa hôm sau") }
-            )
-        }
-        plan.forEach { day ->
-            val isExpanded = openedDay == day.dayIndex
-            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = Color.White), shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(dayMealCardHeader(day.dayLabelVi, day.mealTypeVi), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = SageGreenText)
-                        val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
-                        Text(totalMinutes?.let { "⏱️ ~$it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = MutedGray)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    Text("🍖 Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
-                    day.sideRecipe?.let { side ->
-                        Text("🥬 Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = DeepCharcoal, modifier = Modifier.padding(top = 2.dp))
-                    }
-                    Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = SageGreenText, modifier = Modifier.padding(top = 4.dp))
-                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
-                            onClick = { openedDay = if (isExpanded) null else day.dayIndex },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text(if (isExpanded) "Thu gọn cách nấu ▲" else "Xem cách nấu ▼", color = SageGreenText, fontWeight = FontWeight.SemiBold)
-                        }
-                        TextButton(
-                            onClick = { onSwap(day.dayIndex) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text("Đổi thực đơn ↻", color = DeepCharcoal)
-                        }
-                    }
-                    if (isExpanded) {
-                        day.dishes.forEach { dish ->
-                            Spacer(Modifier.height(8.dp))
-                            Text("Cách nấu ${dish.title}:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = DeepCharcoal)
-                            dish.steps.forEachIndexed { index, step ->
-                                Text("${index + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = DeepCharcoal, modifier = Modifier.padding(vertical = 3.dp))
-                            }
-                            Button(
-                                onClick = { onRequestCook(dish) },
-                                colors = ButtonDefaults.buttonColors(containerColor = SageGreenStrong),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
-                            ) {
-                                Text("Đã nấu xong: ${dish.title} 🎉", color = Color.White)
-                            }
-                            if (updatedRecipeResult?.first == dish.id) {
-                                Text(updatedRecipeResult.second, style = MaterialTheme.typography.bodySmall, color = SageGreenText, modifier = Modifier.padding(top = 4.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        Text("🛒 Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = DeepCharcoal, modifier = Modifier.padding(top = 14.dp))
-        Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = SageGreenText)
-        buyItems.forEach { item ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = item.ingredient.id !in uncheckedIds, onCheckedChange = { onToggleChecked(item.ingredient.id, it) })
-                Column {
-                    Text(item.ingredient.nameVi, color = DeepCharcoal, fontWeight = FontWeight.Medium)
+}
+
+// Thanh chia đoạn "Hôm nay | Cả tuần"; mỗi nửa cao >= 48dp.
+@Composable
+internal fun RecipeSegmentBar(selectedMode: RecipeScreenMode, onSelect: (RecipeScreenMode) -> Unit) {
+    val modes = listOf(RecipeScreenMode.DAILY, RecipeScreenMode.WEEKLY)
+    val labels = recipeSegmentLabels()
+    val colors = AppTheme.colors
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = colors.surfaceSoft,
+        border = BorderStroke(1.dp, colors.line),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(modifier = Modifier.padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            modes.forEachIndexed { index, segmentMode ->
+                val selected = segmentMode == selectedMode
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) colors.primary else Color.Transparent)
+                        .selectable(selected = selected, role = Role.Tab, onClick = { onSelect(segmentMode) })
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
                     Text(
-                        text = shoppingItemSubtitle(
-                            mealCount = item.mealCount,
-                            availableQuantity = item.availableQuantity,
-                            missingQuantity = item.missingQuantity,
-                            isLunchPrep = includeLunchMealPrep,
-                        ),
-                        color = MutedGray,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = labels[index],
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (selected) colors.onPrimary else colors.text,
                     )
                 }
             }
         }
-        val haveItems = shopping.filter { it.alreadyInPantry && it.missingQuantity == 0 }
-        if (haveItems.isNotEmpty()) {
-            Text("Đã đủ cho cả tuần: ${haveItems.joinToString(", ") { it.ingredient.nameVi }}", color = MutedGray, modifier = Modifier.padding(top = 4.dp))
-        }
-        if (buyItems.isEmpty()) {
-            Text("Tuần này nhà mình đã đủ nguyên liệu 🎉", Modifier.padding(top = 8.dp), color = SageGreenText)
-        } else {
-            Button(onClick = {
-                onStock?.invoke(stockListForAction)
-                if (onStock != null) result = stockResultMessage(selectedIds.size)
-            }, enabled = onStock != null && selectedIds.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(stockActionButtonLabel(selectedIds.size))
-            }
-        }
-        result?.let { Text(it, Modifier.padding(top = 8.dp), color = SageGreenText) }
     }
 }

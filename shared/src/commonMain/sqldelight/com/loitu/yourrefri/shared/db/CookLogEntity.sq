@@ -20,6 +20,12 @@ SELECT last_insert_rowid();
 selectAll:
 SELECT * FROM CookLogEntity ORDER BY cookedOn DESC, id DESC;
 
+selectAllWithMeal:
+SELECT c.id, c.recipeId, c.cookedOn, c.photoUri, c.savedIngredientIds, m.meal
+FROM CookLogEntity c
+LEFT JOIN CookLogMealEntity m ON m.cookLogId = c.id
+ORDER BY c.cookedOn DESC, c.id DESC;
+
 selectSince:
 SELECT * FROM CookLogEntity WHERE cookedOn >= :since ORDER BY cookedOn DESC, id DESC;
 

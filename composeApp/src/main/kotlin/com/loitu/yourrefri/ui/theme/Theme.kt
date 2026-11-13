@@ -3,13 +3,17 @@ package com.loitu.yourrefri.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.loitu.yourrefri.R
 
 // Warm Minimalism Signature Palette (DESIGN.md)
 val WarmIvory = Color(0xFFF7F5EF)     // Nền chính
@@ -24,6 +28,27 @@ val TerracottaText = Color(0xFF8C4A35) // Chữ cảnh báo đạt tương phả
 val DeepCharcoal = Color(0xFF343B34)  // Màu chữ chính
 val MutedGray = Color(0xFF596057)     // Chữ phụ / ngày tháng đạt tương phản AA
 val SurfaceWhite = Color(0xFFFFFFFF)  // Thẻ trắng
+val TerracottaSoft = Color(0xFFF7E4DA) // Nền nhãn "nên dùng trước", đi với TerracottaText
+val WarmBeigeSoft = Color(0xFFEFE4CB)  // Nền nhãn "khoảng còn vài ngày", đi với WarmBeigeText
+val WarmBeigeText = Color(0xFF5E4B22)  // Chữ trên WarmBeigeSoft
+val LineSoft = Color(0xFFE3E7DC)       // Viền thẻ nhẹ, thay màu viền viết cứng
+val TerracottaStrong = Color(0xFFB4553A) // Nền nút chính cam đất, chữ trắng đạt AA
+
+// Bảng màu tối: nền xanh than ấm, không đen tuyền.
+val DarkBackground = Color(0xFF1B1F1B)
+val DarkSurface = Color(0xFF252A25)
+val DarkSurfaceVariant = Color(0xFF2B312B)
+val DarkPrimary = Color(0xFF9DBB9C)
+val DarkOnPrimary = Color(0xFF14200F)
+val DarkPrimarySoft = Color(0xFF34402F)
+val DarkText = Color(0xFFECEFE8)
+val DarkMutedText = Color(0xFFAAB2A6)
+val DarkWarnSoft = Color(0xFF3F2C24)
+val DarkWarnText = Color(0xFFF2BBA5)
+val DarkBeigeSoft = Color(0xFF3A3322)
+val DarkBeigeText = Color(0xFFE8D8B9)
+val DarkLine = Color(0xFF394039)
+val DarkSnackbar = Color(0xFF3A423A)   // Thanh thông báo ngắn, sáng hơn nền một chút
 
 private val LightColorScheme = lightColorScheme(
     primary = SageGreenStrong,
@@ -44,56 +69,89 @@ private val LightColorScheme = lightColorScheme(
     onError = Color.White,
 )
 
+internal val DarkColorScheme = darkColorScheme(
+    primary = DarkPrimary,
+    onPrimary = DarkOnPrimary,
+    primaryContainer = DarkPrimarySoft,
+    onPrimaryContainer = DarkText,
+    secondary = DarkBeigeSoft,
+    onSecondary = DarkBeigeText,
+    tertiary = DarkWarnText,
+    onTertiary = DarkWarnSoft,
+    background = DarkBackground,
+    onBackground = DarkText,
+    surface = DarkSurface,
+    onSurface = DarkText,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkMutedText,
+    outline = DarkLine,
+    error = DarkWarnText,
+    onError = DarkWarnSoft,
+)
+
+// Font nhúng sẵn trong app (res/font), dùng được khi không có mạng. Đủ dấu tiếng Việt.
+val BeVietnamPro = FontFamily(
+    Font(R.font.be_vietnam_pro_regular, FontWeight.Normal),
+    Font(R.font.be_vietnam_pro_medium, FontWeight.Medium),
+    Font(R.font.be_vietnam_pro_semibold, FontWeight.SemiBold),
+    Font(R.font.be_vietnam_pro_bold, FontWeight.Bold),
+)
+
 val AppTypography = Typography(
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
-        color = DeepCharcoal,
+        lineHeight = 32.sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
-        color = DeepCharcoal,
+        lineHeight = 28.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
-        color = DeepCharcoal,
+        lineHeight = 24.sp,
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        color = DeepCharcoal,
+        lineHeight = 24.sp,
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        color = DeepCharcoal,
+        lineHeight = 21.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
-        color = MutedGray,
+        lineHeight = 21.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = BeVietnamPro,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
-        color = SageGreenText,
+        lineHeight = 20.sp,
     ),
 )
 
 @Composable
-fun YourRefriTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = LightColorScheme,
-        typography = AppTypography,
-        content = content,
-    )
+fun YourRefriTheme(
+    darkTheme: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(LocalAppColors provides appColorsFor(darkTheme)) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
+            typography = AppTypography,
+            content = content,
+        )
+    }
 }

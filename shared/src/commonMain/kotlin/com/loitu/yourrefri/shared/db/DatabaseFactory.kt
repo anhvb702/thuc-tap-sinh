@@ -13,7 +13,22 @@ object IdListAdapter : ColumnAdapter<List<String>, String> {
     }
 }
 
-fun createDatabase(driver: SqlDriver): YourRefriDatabase = YourRefriDatabase(
-    driver,
-    CookLogEntityAdapter = CookLogEntity.Adapter(savedIngredientIdsAdapter = IdListAdapter),
-)
+fun createDatabase(driver: SqlDriver): YourRefriDatabase {
+    driver.execute(
+        identifier = null,
+        sql = """CREATE TABLE IF NOT EXISTS WeeklyMealPlanSettingsEntity (
+            settingsId INTEGER NOT NULL PRIMARY KEY CHECK (settingsId = 1),
+            weekStart TEXT NOT NULL,
+            goalId TEXT NOT NULL,
+            preferenceIdsJson TEXT NOT NULL,
+            swappedOffsetsJson TEXT NOT NULL,
+            uncheckedIdsJson TEXT NOT NULL,
+            includeLunchMealPrep INTEGER NOT NULL
+        )""",
+        parameters = 0,
+    )
+    return YourRefriDatabase(
+        driver,
+        CookLogEntityAdapter = CookLogEntity.Adapter(savedIngredientIdsAdapter = IdListAdapter),
+    )
+}

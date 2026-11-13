@@ -1,0 +1,21 @@
+CREATE TABLE WeeklyMealPlanSettingsEntity (
+    settingsId INTEGER NOT NULL PRIMARY KEY CHECK (settingsId = 1),
+    weekStart TEXT NOT NULL,
+    goalId TEXT NOT NULL,
+    preferenceIdsJson TEXT NOT NULL,
+    swappedOffsetsJson TEXT NOT NULL,
+    uncheckedIdsJson TEXT NOT NULL,
+    includeLunchMealPrep INTEGER NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO WeeklyMealPlanSettingsEntity(
+    settingsId, weekStart, goalId, preferenceIdsJson, swappedOffsetsJson, uncheckedIdsJson, includeLunchMealPrep
+)
+VALUES (:settingsId, :weekStart, :goalId, :preferenceIdsJson, :swappedOffsetsJson, :uncheckedIdsJson, :includeLunchMealPrep);
+
+selectAll:
+SELECT * FROM WeeklyMealPlanSettingsEntity ORDER BY settingsId;
+
+deleteAll:
+DELETE FROM WeeklyMealPlanSettingsEntity;

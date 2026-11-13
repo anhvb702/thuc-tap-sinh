@@ -227,8 +227,6 @@ function Setup-Worktree {
         Note "Base là snapshot working tree lúc bắt đầu ($($dirtyTracked.Count) file đã theo dõi, $($untracked.Count) file chưa theo dõi). Merge nhánh này vào working tree có sẵn thay đổi cũ có thể xung đột."
     }
     $State.base = (@(Invoke-Git @("rev-parse", "HEAD") $wt) -join "").Trim()
-    $lp = Join-Path $Root "local.properties"
-    if (Test-Path $lp) { Copy-Item $lp (Join-Path $wt "local.properties") -Force }
     Save-State
     Step "Worktree: $wt (nhánh $branch, base $($State.base.Substring(0,8)))"
 }

@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.backup.data
 
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
@@ -8,10 +9,12 @@ import kotlinx.serialization.json.Json
 
 object BackupCodec {
     const val FORMAT = "yourrefri-backup"
-    const val VERSION = 1
+    const val LEGACY_VERSION = 1
+    const val VERSION = 2
 
     private val json = Json {
         ignoreUnknownKeys = false
+        encodeDefaults = true
     }
 
     fun encode(snapshot: PantryBackupSnapshot): String {
@@ -36,7 +39,14 @@ object BackupCodec {
 
     private fun validate(snapshot: PantryBackupSnapshot) {
         require(snapshot.format == FORMAT) { "Unsupported backup format" }
-        require(snapshot.version == VERSION) { "Unsupported backup version" }
+        require(snapshot.version == LEGACY_VERSION || snapshot.version == VERSION) { "Unsupported backup version" }
+        if (snapshot.version == LEGACY_VERSION) {
+            require(snapshot.weeklyMeals.isEmpty()) { "Version 1 cannot contain weekly meals" }
+            require(snapshot.mealToggles.isEmpty()) { "Version 1 cannot contain meal toggles" }
+            require(snapshot.weeklySettings == null) { "Version 1 cannot contain weekly settings" }
+            require(snapshot.favorites.isEmpty()) { "Version 1 cannot contain favorites" }
+            require(snapshot.cookMeals.isEmpty()) { "Version 1 cannot contain cook meals" }
+        }
 
         validateUniqueIds("pantry", snapshot.pantry.map { it.ingredientId })
         snapshot.pantry.forEach { LocalDate.parse(it.markedAt) }
@@ -58,6 +68,48 @@ object BackupCodec {
             LocalDate.parse(log.cookedOn)
             require(log.savedIngredientIds.all { it.isNotEmpty() && ',' !in it }) {
                 "Saved ingredient ids must be non-empty and contain no commas"
+            }
+        }
+
+        val cookLogIds = snapshot.cookLogs.mapTo(HashSet()) { it.id }
+        validateUniqueIds("cookMeals", snapshot.cookMeals.map { it.cookLogId.toString() })
+        snapshot.cookMeals.forEach { meal ->
+            require(meal.cookLogId in cookLogIds) { "Cook meal must belong to a cook log" }
+            require(meal.meal == MealSlot.LUNCH.name || meal.meal == MealSlot.DINNER.name) { "Unsupported meal slot" }
+        }
+
+        validateUniqueIds("favorites", snapshot.favorites.map { it.recipeId })
+        snapshot.favorites.forEach {
+            require(it.recipeId.isNotBlank()) { "Favorite recipe id must not be blank" }
+            require(it.createdAtEpochMs >= 0) { "Favorite createdAt must be non-negative" }
+        }
+
+        val toggleKeys = HashSet<Pair<String, String>>()
+        snapshot.mealToggles.forEach { toggle ->
+            LocalDate.parse(toggle.day)
+            require(toggle.mealSlot == MealSlot.LUNCH.name || toggle.mealSlot == MealSlot.DINNER.name) { "Unsupported meal slot" }
+            require(toggleKeys.add(toggle.day to toggle.mealSlot)) { "Meal toggle day and slot must be unique" }
+        }
+
+        val weeklyKeys = HashSet<Pair<String, String>>()
+        snapshot.weeklyMeals.forEach { meal ->
+            LocalDate.parse(meal.day)
+            require(meal.meal == MealSlot.LUNCH.name || meal.meal == MealSlot.DINNER.name) { "Unsupported meal slot" }
+            require(meal.recipeId.isNotBlank()) { "Weekly recipe id must not be blank" }
+            require(meal.portions >= 1) { "Weekly portions must be positive" }
+            require(weeklyKeys.add(meal.day to meal.meal)) { "Weekly day and meal must be unique" }
+        }
+
+        snapshot.weeklySettings?.let { settings ->
+            LocalDate.parse(settings.weekStart)
+            require(settings.goalId.isNotBlank()) { "Weekly goal id must not be blank" }
+            validateUniqueIds("weekly preferences", settings.preferenceIds)
+            validateUniqueIds("weekly unchecked ids", settings.uncheckedIds)
+            val swapDays = HashSet<Int>()
+            settings.swappedOffsets.forEach { swap ->
+                require(swap.dayIndex in 0..6) { "Weekly swap day must be between 0 and 6" }
+                require(swap.offset >= 0) { "Weekly swap offset must be non-negative" }
+                require(swapDays.add(swap.dayIndex)) { "Weekly swap day must be unique" }
             }
         }
     }

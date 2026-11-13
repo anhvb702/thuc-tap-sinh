@@ -2,7 +2,23 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 
-enum class RecipeScreenMode { DAILY, WEEKLY }
+// SHOPPING là tab "Đi chợ" (chỉ phần danh sách đi chợ của thực đơn tuần).
+enum class RecipeScreenMode { DAILY, WEEKLY, SHOPPING }
+
+// Nút vào thực đơn tuần ở Trang chủ.
+internal const val WEEKLY_BUTTON_LABEL = "Lên thực đơn cả tuần"
+
+internal const val WEEKLY_DIET_GOAL_LABEL = "Định hướng"
+internal const val WEEKLY_FAMILY_PREFERENCE_LABEL = "Khẩu vị"
+
+// Người dùng bỏ tính năng nấu thêm phần cơm trưa hôm sau ngày 2026-11-12.
+internal const val LUNCH_MEAL_PREP_ENABLED = false
+
+// Giữ các chuỗi và nhánh cũ vì contract SW-02 đã khóa chúng.
+internal fun lunchPrepSummaryText(affectedIngredientCount: Int): String =
+    "Danh sách đi chợ đã tính thêm phần cơm trưa cho $affectedIngredientCount nguyên liệu."
+
+internal fun lunchPrepDayLabel(): String = "🍱 + cơm trưa"
 
 internal fun togglePreferenceTag(
     selected: Set<FamilyPreferenceTag>, tag: FamilyPreferenceTag,

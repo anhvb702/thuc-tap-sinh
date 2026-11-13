@@ -5,6 +5,18 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class WeeklyMealPlanPresentationTest {
+    @Test
+    fun weeklyChipSections_haveSeparateShortLabels() {
+        assertEquals("Định hướng", WEEKLY_DIET_GOAL_LABEL)
+        assertEquals("Khẩu vị", WEEKLY_FAMILY_PREFERENCE_LABEL)
+    }
+
+    @Test
+    fun lunchPrepFeedbackNamesAffectedIngredientsAndDayLabel() {
+        assertEquals("Danh sách đi chợ đã tính thêm phần cơm trưa cho 6 nguyên liệu.", lunchPrepSummaryText(6))
+        assertEquals("🍱 + cơm trưa", lunchPrepDayLabel())
+    }
+
     @Test fun preferenceToggleAddsAndRemoves() {
         assertEquals(setOf(FamilyPreferenceTag.SEAFOOD), togglePreferenceTag(emptySet(), FamilyPreferenceTag.SEAFOOD))
         assertEquals(emptySet(), togglePreferenceTag(setOf(FamilyPreferenceTag.SEAFOOD), FamilyPreferenceTag.SEAFOOD))

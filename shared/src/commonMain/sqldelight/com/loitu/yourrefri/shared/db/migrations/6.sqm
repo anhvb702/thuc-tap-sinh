@@ -1,0 +1,4 @@
+CREATE TABLE CookLogMealEntity (
+    cookLogId INTEGER NOT NULL PRIMARY KEY,
+    meal TEXT NOT NULL
+);

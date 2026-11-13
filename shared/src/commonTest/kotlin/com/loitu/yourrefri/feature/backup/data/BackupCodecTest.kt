@@ -88,9 +88,47 @@ class BackupCodecTest {
     }
 
     @Test
+    fun versionTwo_roundTripsWeeklyMealsAndPreservesOrder() {
+        val snapshot = expected.copy(
+            version = 2,
+            weeklyMeals = listOf(
+                WeeklyMealBackup("2026-12-31", "LUNCH", "omelette", 2),
+                WeeklyMealBackup("2026-12-31", "DINNER", "soup", 1),
+                WeeklyMealBackup("2027-01-01", "LUNCH", "rice", 4),
+            ),
+        )
+
+        val encoded = BackupCodec.encode(snapshot)
+
+        assertTrue(encoded.contains("\"version\":2"))
+        assertEquals(snapshot, BackupCodec.decode(encoded))
+    }
+
+    @Test
+    fun decode_versionOneWithoutWeeklyField_defaultsToEmptySchedule() {
+        val decoded = BackupCodec.decode(validJson)
+
+        assertEquals(1, decoded.version)
+        assertEquals(emptyList(), decoded.weeklyMeals)
+    }
+
+    @Test
+    fun encode_rejectsDuplicateWeeklyDayAndMeal() {
+        val duplicate = expected.copy(
+            version = 2,
+            weeklyMeals = listOf(
+                WeeklyMealBackup("2026-12-31", "LUNCH", "omelette", 2),
+                WeeklyMealBackup("2026-12-31", "LUNCH", "soup", 1),
+            ),
+        )
+
+        assertFailsWith<IllegalArgumentException> { BackupCodec.encode(duplicate) }
+    }
+
+    @Test
     fun decode_rejectsUnsupportedVersionOrFormat() {
         for (json in listOf(
-            validJson.replace("\"version\":1", "\"version\":2"),
+            validJson.replace("\"version\":1", "\"version\":3"),
             validJson.replace("yourrefri-backup", "another-format"),
         )) assertFailsWith<IllegalArgumentException> { BackupCodec.decode(json) }
     }
