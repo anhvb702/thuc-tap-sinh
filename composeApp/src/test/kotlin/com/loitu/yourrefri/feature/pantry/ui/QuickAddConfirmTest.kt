@@ -39,7 +39,6 @@ class QuickAddConfirmTest {
     @Test fun ambiguousOrBlankQuery_doesNothing() {
         assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "Sữa", null))
         assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "  ", null))
-        assertEquals(emptyList(), quickAddConfirmActions(state, emptySet(), "Sữa", null)) // mơ hồ, vẫn không làm gì
         val mixed = state.copy(pantry = state.pantry + ("milk" to PantryItem("milk", true, today)))
         assertEquals(emptyList(), quickAddConfirmActions(mixed, emptySet(), "Sữa", null))
     }
