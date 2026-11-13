@@ -104,6 +104,34 @@
 - **W6-01 & W6-02 (Zero-Input Pantry Loop — Thực đơn tuần & Đi chợ 1 chạm theo góp ý PR #5):**
   - Giải quyết triệt để rào cản "ngại nhập liệu thủ công mỗi lần đi chợ/nấu ăn" bằng vòng lặp ngược: Lập thực đơn tuần (cá nhân hóa theo `DietGoal` & `FamilyPreferenceTag` của các thành viên, chống lặp ngày liền kề, ưu tiên đồ sẵn có đầu tuần) → Tự động tổng hợp danh sách đi chợ tuần (trừ đồ đã có trong tủ, đếm số bữa dùng) → 1 chạm `"Đã mua xong · Cất vào tủ lạnh 🧊"` tự động nạp nguyên liệu vào tủ lạnh. Chi tiết tại `docs/tests/W6-01.md` và `docs/tests/W6-02.md`.
 
+### Smart Weekend Loop (SW-*)
+
+- **Đợt 1 — nền dữ liệu và tách cấu trúc:**
+  - **SW-01a:** Bảng lưu thực đơn tuần, migration schema v3→v4. Contract: `docs/tests/SW-01a.md`.
+  - **SW-01b:** Đưa thực đơn tuần vào backup JSON.
+  - **SW-01c:** ViewModel theo MVI; bỏ state `remember` trong `MainScaffold`.
+  - **SW-02:** Tách `RecipeScreen.kt`, giữ nguyên hành vi.
+  - **W2-03:** Sửa lập lịch thông báo sau khởi động máy.
+- **Đợt 2 — cấu hình bữa ăn:**
+  - **SW-03:** `MealSchedulePreset` và số bữa theo ngày.
+  - **SW-04:** Bỏ qua ngày ăn ngoài; định lượng theo số bữa.
+  - **SW-05:** UI preset và lựa chọn Trưa/Tối/Bỏ qua.
+    - *Đối chiếu 2026-11-13 với đợt A góp ý người dùng:* không đụng nhau. Đợt A chỉ chuyển lối vào thực đơn tuần thành nút "Lên thực đơn cả tuần" ở Trang chủ (A-07) và thêm chip Trưa/Tối đổi câu chào ở Trang chủ (A-12); SW-05 làm lựa chọn từng ngày ngay trong màn thực đơn tuần. SW-05 không đưa lại dải 7 ngày vào chế độ "Hôm nay" của màn Món ăn (đã bỏ ở A-07).
+- **Đợt 3 — công thức, gợi ý và thông báo:**
+  - **SW-06:** Độ bền nguyên liệu và tầng công thức.
+  - **SW-07:** Mở rộng catalog/bundle.
+  - **SW-08:** Ràng buộc xếp món theo tầng.
+  - **SW-09:** Nội dung thông báo theo ngày.
+    - *Đối chiếu 2026-11-13 với đợt A góp ý người dùng:* phần **cuối tuần đã làm xong** ở A-05/A-06 theo quyết định mới (Chủ Nhật 8:00, thay thông báo thường; xem `DECISIONS.md`), nên SW-09 chỉ còn phần Thứ 4. Hãy mở rộng `planDailyNotice` (đã có tham số `sundayShopping`) và `reminderTimeFor` thay vì viết hàm mới, và giữ quy tắc tối đa một thông báo mỗi ngày. Thông báo "món ngon hôm nay" (đợt B) dùng chung kênh này.
+  - **SW-10a/b:** Ngăn bảo quản và hạn ước tính khi cấp đông; bị chặn bởi quyết định “món hết rồi có lại thì tính ngày nào”.
+- **Đợt 4 — mua sắm và nghiệm thu:**
+  - **SW-11:** Đi chợ theo 3 quầy.
+  - **SW-12:** Gợi ý ngăn mát/đông.
+  - **SW-13:** Compose UI test luồng tuần.
+  - **SW-14:** Nghiệm thu emulator và người thật.
+
+Phụ thuộc và rủi ro: **SW-01 chặn mọi task UI; SW-07 chặn SW-08; SW-10 là rủi ro cao nhất.**
+
 ### Bằng chứng và snapshot
 
 Test count, ảnh runtime, trạng thái emulator và giới hạn kiểm chứng thay đổi theo phiên; xem snapshot mới nhất ở đầu `HANDOFF.md`. Số test/build trong từng task là bằng chứng lịch sử tại thời điểm task chạy, không phải xác nhận trạng thái hiện tại. Release APK unsigned cần khóa ký do chủ dự án quản lý.
