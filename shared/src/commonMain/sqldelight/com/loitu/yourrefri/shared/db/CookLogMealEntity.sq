@@ -1,0 +1,17 @@
+-- Bảng phụ: bữa (LUNCH/DINNER) của từng lần nấu. Không có dòng nghĩa là bản ghi cũ chưa biết bữa.
+CREATE TABLE CookLogMealEntity (
+    cookLogId INTEGER NOT NULL PRIMARY KEY,
+    meal TEXT NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO CookLogMealEntity(cookLogId, meal) VALUES (:cookLogId, :meal);
+
+selectAll:
+SELECT * FROM CookLogMealEntity ORDER BY cookLogId;
+
+deleteByCookLogId:
+DELETE FROM CookLogMealEntity WHERE cookLogId = :cookLogId;
+
+deleteAll:
+DELETE FROM CookLogMealEntity;

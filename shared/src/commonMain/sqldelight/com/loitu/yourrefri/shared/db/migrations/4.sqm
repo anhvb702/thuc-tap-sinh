@@ -1,0 +1,6 @@
+CREATE TABLE MealSlotToggleEntity (
+    day TEXT NOT NULL,
+    mealSlot TEXT NOT NULL,
+    enabled INTEGER NOT NULL,
+    PRIMARY KEY (day, mealSlot)
+);

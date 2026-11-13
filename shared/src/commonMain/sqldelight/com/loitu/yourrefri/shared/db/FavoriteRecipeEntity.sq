@@ -1,0 +1,22 @@
+CREATE TABLE FavoriteRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    createdAtEpochMs INTEGER NOT NULL
+);
+
+insertIfAbsent:
+INSERT OR IGNORE INTO FavoriteRecipeEntity(recipeId, createdAtEpochMs) VALUES (?, ?);
+
+upsert:
+INSERT OR REPLACE INTO FavoriteRecipeEntity(recipeId, createdAtEpochMs) VALUES (?, ?);
+
+exists:
+SELECT COUNT(*) FROM FavoriteRecipeEntity WHERE recipeId = ?;
+
+deleteById:
+DELETE FROM FavoriteRecipeEntity WHERE recipeId = ?;
+
+selectAll:
+SELECT * FROM FavoriteRecipeEntity ORDER BY createdAtEpochMs, recipeId;
+
+deleteAll:
+DELETE FROM FavoriteRecipeEntity;

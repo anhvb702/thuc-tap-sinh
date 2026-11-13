@@ -49,6 +49,7 @@ class PantryBackupRepositoryTest {
         logId: Long = 10,
         recipeId: String = "soup",
         cookedOn: String = "2026-11-02",
+        weeklyMeals: List<WeeklyMealBackup> = listOf(WeeklyMealBackup("2026-11-01", "LUNCH", "soup", 2)),
     ) = PantryBackupSnapshot(
         format = BackupCodec.FORMAT,
         version = BackupCodec.VERSION,
@@ -57,6 +58,7 @@ class PantryBackupRepositoryTest {
         quantities = listOf(QuantityOverrideBackup(quantityId, quantity)),
         units = listOf(UnitOverrideBackup(unitId, unit)),
         cookLogs = listOf(CookLogBackup(logId, recipeId, cookedOn, "content://photos/$logId", listOf(pantryId))),
+        weeklyMeals = weeklyMeals,
     )
 
     private fun insertSnapshotRows(data: PantryBackupSnapshot) {
@@ -66,6 +68,9 @@ class PantryBackupRepositoryTest {
         data.units.forEach { db.pantryUnitEntityQueries.upsert(it.ingredientId, it.unit) }
         data.cookLogs.forEach {
             db.cookLogEntityQueries.insertWithId(it.id, it.recipeId, it.cookedOn, it.photoUri, it.savedIngredientIds)
+        }
+        data.weeklyMeals.forEach {
+            db.weeklyMealPlanEntityQueries.upsert(it.day, it.meal, it.recipeId, it.portions.toLong())
         }
     }
 
@@ -87,6 +92,9 @@ class PantryBackupRepositoryTest {
         cookLogs = db.cookLogEntityQueries.selectAll().executeAsList().map {
             CookLogBackup(it.id, it.recipeId, it.cookedOn, it.photoUri, it.savedIngredientIds)
         },
+        weeklyMeals = db.weeklyMealPlanEntityQueries.selectAll().executeAsList().map {
+            WeeklyMealBackup(it.day, it.mealSlot, it.recipeId, it.portions.toInt())
+        },
     )
 
     @Test
@@ -99,6 +107,11 @@ class PantryBackupRepositoryTest {
             quantities = listOf(QuantityOverrideBackup("egg", 4)),
             units = listOf(UnitOverrideBackup("egg", "kg")),
             cookLogs = listOf(CookLogBackup(1, "soup", "2026-11-02", "content://photos/1", listOf("egg"))),
+            weeklyMeals = listOf(
+                WeeklyMealBackup("2026-12-31", "LUNCH", "omelette", 2),
+                WeeklyMealBackup("2026-12-31", "DINNER", "soup", 1),
+                WeeklyMealBackup("2027-01-01", "LUNCH", "rice", 4),
+            ),
         )
         insertSnapshotRows(expected)
 
@@ -117,6 +130,10 @@ class PantryBackupRepositoryTest {
             listOf(QuantityOverrideBackup("new", 2)),
             listOf(CookLogBackup(25, "stew", "2026-11-06", null, listOf("new"))),
             listOf(UnitOverrideBackup("new", "chai")),
+            listOf(
+                WeeklyMealBackup("2026-12-31", "LUNCH", "omelette", 2),
+                WeeklyMealBackup("2026-12-31", "DINNER", "soup", 1),
+            ),
         )
 
         repository().restoreJson(BackupCodec.encode(replacement))
@@ -171,6 +188,7 @@ class PantryBackupRepositoryTest {
             listOf(QuantityOverrideBackup("replacement", 5)),
             listOf(CookLogBackup(99, "fail", "2026-11-08", null, emptyList())),
             listOf(UnitOverrideBackup("replacement", "kg")),
+            listOf(WeeklyMealBackup("2026-11-08", "DINNER", "fail-plan", 2)),
         )
 
         assertFailsWith<Exception> { repository().restoreJson(BackupCodec.encode(replacement)) }
@@ -191,5 +209,49 @@ class PantryBackupRepositoryTest {
         assertTrue(db.pantryQuantityEntityQueries.selectAll().executeAsList().isEmpty())
         assertTrue(db.pantryUnitEntityQueries.selectAll().executeAsList().isEmpty())
         assertTrue(db.cookLogEntityQueries.selectAll().executeAsList().isEmpty())
+        assertTrue(db.weeklyMealPlanEntityQueries.selectAll().executeAsList().isEmpty())
+    }
+
+    @Test
+    fun restore_versionOneWithoutWeeklyField_clearsExistingWeeklyRows() = runTest {
+        insertSnapshotRows(snapshot())
+        val legacyJson = """{"format":"yourrefri-backup","version":1,"pantry":[],"shelfOverrides":[],"quantities":[],"cookLogs":[]}"""
+
+        repository().restoreJson(legacyJson)
+
+        assertEquals(emptyList(), BackupCodec.decode(legacyJson).weeklyMeals)
+        assertEquals(emptyList(), db.weeklyMealPlanEntityQueries.selectAll().executeAsList())
+        assertEquals(PantryBackupSnapshot(BackupCodec.FORMAT, BackupCodec.VERSION, emptyList(), emptyList(), emptyList(), emptyList()), readSnapshot())
+    }
+
+    @Test
+    fun restore_invalidWeeklyRows_rejectsBeforeChangingAnyTable() = runTest {
+        val original = snapshot()
+        insertSnapshotRows(original)
+        val payload = PantryBackupSnapshot(
+            format = BackupCodec.FORMAT,
+            version = BackupCodec.VERSION,
+            pantry = emptyList(),
+            shelfOverrides = emptyList(),
+            quantities = emptyList(),
+            cookLogs = emptyList(),
+            weeklyMeals = listOf(
+                WeeklyMealBackup("2026-12-31", "LUNCH", "first", 2),
+                WeeklyMealBackup("2026-12-31", "DINNER", "second", 3),
+            ),
+        )
+        val valid = BackupCodec.encode(payload)
+        val invalid = listOf(
+            valid.replace("2026-12-31", "2026-02-30"),
+            valid.replace("\"meal\":\"LUNCH\"", "\"meal\":\"BRUNCH\""),
+            valid.replace("\"recipeId\":\"first\"", "\"recipeId\":\" \""),
+            valid.replace("\"portions\":2", "\"portions\":0"),
+            valid.replace("\"meal\":\"DINNER\"", "\"meal\":\"LUNCH\""),
+        )
+
+        invalid.forEach { json ->
+            assertFailsWith<IllegalArgumentException> { repository().restoreJson(json) }
+            assertEquals(original, readSnapshot())
+        }
     }
 }
