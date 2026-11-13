@@ -4,6 +4,12 @@ import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
+import kotlinx.datetime.minus
 
 enum class DietGoal(val labelVi: String) {
     BALANCED("Cân bằng gia đình"), LIGHT("Thanh đạm · Nhiều rau"),
@@ -22,6 +28,7 @@ data class PlannedDayMeal(
     val matchReasonVi: String,
     val sideRecipe: Recipe? = null,
     val mealTypeVi: String = "Bữa cơm chính",
+    val mealSlot: MealSlot = MealSlot.DINNER,
 ) {
     val dishes: List<Recipe>
         get() = listOfNotNull(recipe, sideRecipe)
@@ -163,11 +170,15 @@ fun buildWeeklyShoppingList(
     state: PantryGridState,
     preferences: Set<FamilyPreferenceTag> = emptySet(),
     includeLunchMealPrep: Boolean = false,
+    disabledMeals: List<MealSlotKey> = emptyList(),
+    weekStart: LocalDate = state.today.minus(DatePeriod(days = state.today.dayOfWeek.ordinal)),
 ): List<ShoppingListItem> {
     val preferredIds = preferences.flatMapTo(HashSet()) { it.ingredientIds() }
     val counts = linkedMapOf<String, Int>()
     val portionMultiplier = if (includeLunchMealPrep) 2 else 1
+    val disabled = disabledMeals.toSet()
     plan.forEach { meal ->
+        if (MealSlotKey(weekStart.plus(DatePeriod(days = meal.dayIndex)), meal.mealSlot) in disabled) return@forEach
         meal.dishes.forEach { dish ->
             dish.required.forEach { slot ->
                 val selected = slot.anyOf.firstOrNull { state.pantry[it]?.have == true }
