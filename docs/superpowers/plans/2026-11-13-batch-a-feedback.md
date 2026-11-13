@@ -218,7 +218,7 @@
 ### Task A11: Cột bữa trong `CookLog` (migration)
 
 **Files:**
-- Create: `shared/src/commonMain/sqldelight/com/loitu/yourrefri/shared/db/migrations/6.sqm` (thêm cột `mealSlot TEXT` cho `CookLogEntity`; xác minh số phiên bản kế tiếp bằng cách đếm file `.sqm` hiện có: 1..5)
+- Create: `shared/src/commonMain/sqldelight/com/loitu/yourrefri/shared/db/migrations/6.sqm` (thêm cột `mealSlot TEXT` cho `CookLogEntity`; số phiên bản kế tiếp phải lấy bằng cách đếm file `.sqm` thực có trong thư mục migrations lúc làm task, không lấy theo con số ghi ở đây. Kế hoạch này viết khi working tree đã có `3.sqm`–`5.sqm` của SW-01, các file đó nằm ở nhánh `feat/batch-a-ui-v2-weekly-plan`; trên nhánh chỉ có `1.sqm`–`2.sqm` thì file kế tiếp là `3.sqm`)
 - Modify: `CookLogEntity.sq`, `cooklog/data/Models.kt`, `CookLogRepository.kt`, `backup/data/BackupCodec.kt`, `PantryBackupModels.kt`
 - Test: `shared/src/androidUnitTest/.../cooklog/data/CookLogRepositoryTest.kt` (thêm test mới), test migration theo mẫu của SW-01a, `PantryBackupRepositoryTest.kt` (thêm test mới)
 - Create: `docs/tests/A-11.md`

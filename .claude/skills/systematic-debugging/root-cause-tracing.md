@@ -98,13 +98,7 @@ npm test 2>&1 | grep 'DEBUG git init'
 
 If something appears during tests but you don't know which test:
 
-Use the bisection script `find-polluter.sh` in this directory:
-
-```bash
-bash ./find-polluter.sh '.git' 'src/**/*.test.ts'
-```
-
-Runs tests one-by-one, stops at first polluter. See script for usage.
+Bisect by hand: run the test files one at a time (or half the suite at a time), check for the unwanted artifact after each run, and stop at the first run that creates it. The upstream bisection script is not bundled with this copy of the skill.
 
 ## Real Example: Empty projectDir
 
