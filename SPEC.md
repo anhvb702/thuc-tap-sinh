@@ -55,7 +55,7 @@
 
 ### 1.4. Cá Nhân & Thiết Lập (Settings Screen)
 - **Tôn trọng người dùng:**
-  - Bật/tắt thông báo cố định lúc 17:30, tối đa 1 lần/ngày; người dùng không chỉnh giờ.
+  - Bật/tắt thông báo, tối đa 1 lần/ngày. Giờ nhắc ngày thường mặc định 16:00, chỉnh được trong khung 14:00–20:00; Chủ Nhật dùng giờ riêng (quyết định 2026-11-16).
   - Sao lưu/khôi phục tệp trên thiết bị; định dạng dữ liệu nội bộ là JSON.
   - Đơn vị được chọn trực tiếp trên từng thẻ món ở Tủ lạnh.
 

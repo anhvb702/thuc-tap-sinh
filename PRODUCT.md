@@ -40,9 +40,9 @@
 - **Hành trình một ngày cùng YourRefri:**
   1. *Buổi sáng:* Mở app 5 giây xem tủ còn gì trước khi đi chợ.
   2. *Sau khi đi chợ:* Chọn nhanh các món vừa mua vào tủ lạnh.
-  3. *Chiều (17:30):* Nhận 1 thông báo ngắn gợi ý món từ đồ cần dùng sớm.
+  3. *Chiều (mặc định 16:00, trước giờ tan làm):* Nhận 1 thông báo ngắn gợi ý món từ đồ cần dùng sớm.
   4. *Buổi tối:* Xem gợi ý 3 món, mở công thức 4 bước nấu cơm.
-  5. *Sau khi nấu:* Chạm nhẹ để cập nhật nguyên liệu đã dùng.
+  5. *Sau khi nấu:* Một chạm "Đã nấu xong" là trừ nguyên liệu; còn đồ dư hoặc thức ăn thừa thì cất lại bằng một chạm.
 
 ---
 

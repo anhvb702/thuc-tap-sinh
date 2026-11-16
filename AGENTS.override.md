@@ -29,7 +29,8 @@ YourRefri KHÔNG PHẢI là phần mềm quản lý kho hàng thu nhỏ. YourRef
 - MVI: State / Action / Effect + ViewModel + StateFlow.
 - Navigation Compose type-safe, tham số route chỉ kiểu nguyên thủy, mọi route trong `composeApp/.../nav/Routes.kt`.
 - Luôn tiêm `Clock` (là `kotlin.time.Clock`) và `TimeZone`; không gọi giờ hệ thống trực tiếp.
-- Công thức là JSON bundle đọc lúc chạy, không vào DB.
+- Công thức gốc là JSON bundle đọc lúc chạy, chỉ đọc; món gia đình tự thêm lưu trong DB và có trong sao lưu JSON (quyết định 2026-11-16).
+- Ngoại lệ phân vai (2026-11-16): Claude soạn nội dung `recipes.json` và `shelf_table.json`; Codex viết code và test kiểm tra bundle.
 - Thông báo: `AlarmManager` không chính xác (`setAndAllowWhileIdle` / `setWindow`), đặt lại sau reboot và đổi múi giờ; mở app luôn thấy nội dung.
 
 ## Cách làm mỗi task (ba bước theo thứ tự, phân vai theo Team agent)
