@@ -68,7 +68,20 @@ Nguồn chung: người dùng trả lời "đồng ý hết theo đề xuất" c
 | Q19 | Gia vị không bao giờ chặn "nấu được" và không bị trừ khi nấu; công thức chỉ ghi gia vị ở phần tùy chọn để hiển thị. |
 | Q20 | Thêm mục "Cần mua thêm" lưu trong DB, hiện ở đầu danh sách đi chợ tuần; dùng cho mọi món người dùng bấm "Hết rồi → Đi chợ". "Đã mua xong · Cất vào tủ" đánh dấu "Còn" cho các món này. |
 | Q21 | Đồ ăn liền và đồ uống: chỉ thêm tab lọc trong Tủ lạnh; chưa gợi ý bữa sáng (giữ quyết định "chưa có bữa sáng"). |
-| Q22 | Lưu khảo sát 50 persona vào `docs/ux/` với dòng đầu ghi rõ là persona giả lập. Chờ người dùng gửi file. |
+| Q22 | Lưu khảo sát 50 persona vào `docs/ux/` với dòng đầu ghi rõ là persona giả lập. Đã lưu tại `docs/ux/pantry-expansion-survey-2026-11-16.md`. |
+
+### Quyết định 2026-11-16 (vòng 2, Q23–Q28)
+
+Nguồn chung: người dùng trả lời "đồng ý hết theo đề xuất" cho vòng hỏi Q23–Q28 trong hội thoại ngày 2026-11-16, sau khi đọc khảo sát `docs/ux/pantry-expansion-survey-2026-11-16.md`.
+
+| # | Quyết định |
+|---|---|
+| Q23 | Nhắc rã đông: ngày nào bữa tối đã xếp có nguyên liệu đang ở ngăn đông thì thông báo duy nhất của ngày đó dời sang 08:00 cố định, nhắc rã đông kèm đồ nên dùng sớm; các ngày khác nhắc theo giờ ngày thường. Có thẻ "Nhớ rã đông" trên Trang chủ buổi sáng. Chủ Nhật gộp một câu nhắc rã đông vào thông báo đi chợ. Vẫn tối đa 1 thông báo mỗi ngày (Q4). |
+| Q24 | Hạn ngăn đông theo từng nguyên liệu: trường `freezerShelfDays` trong `shelf_table.json`, tính lại từ ngày chuyển ngăn. Món không có trường này không hiện lựa chọn "chuyển ngăn đông". Không dùng hệ số nhân chung. |
+| Q25 | Đồ ngăn đông ẩn khỏi dải "Cần dùng sớm" ở Trang chủ và khỏi thông báo ngày, vẫn thấy trong tab Ngăn đông. Ngoại lệ: món ngăn đông đã quá hạn ước tính vẫn hiện với câu "kiểm tra lại xem còn dùng được không". |
+| Q26 | Món ăn nhanh (món gia đình tự thêm): chỉ gồm tên và danh sách nguyên liệu chọn từ danh mục; bước nấu và ảnh không bắt buộc. Có trong 3 gợi ý, thực đơn tuần, nấu ngẫu nhiên và chịu bộ lọc chế độ ăn theo nguyên liệu. Thiếu bước nấu thì màn chi tiết ẩn phần các bước, chỉ còn nút "Đã nấu xong". |
+| Q27 | Đồ ăn thừa chọn được ngăn, mặc định ngăn mát (2 ngày, Q17); ở ngăn đông hạn ước tính mặc định 14 ngày, sửa được, và áp dụng Q25. Nhắc rã đông (Q23) tính cả đồ ăn thừa ngăn đông nằm trong bữa đã xếp. |
+| Q28 | Tủ lạnh mở mặc định ở bộ lọc "Đồ tươi"; có đồ ăn thừa nên dùng sớm thì hiện một dòng nhắc ở đầu tab, chạm để chuyển tab; không tự đổi tab. Thay "mặc định hiển thị toàn catalog" trong `SPEC.md`. |
 
 ## Đang triển khai theo spec (không đồng nghĩa người dùng đã chốt riêng từng giá trị)
 
@@ -84,14 +97,7 @@ Nguồn chung: người dùng trả lời "đồng ý hết theo đề xuất" c
 |---|---|
 Bốn mục còn mở trước đây (số món trong thông báo, ngày tính khi món có lại, ngưỡng 0–2 ngày, chiều cao thẻ) đã chốt ở Q13 ngày 2026-11-16.
 
-Các mục dưới đây là đề xuất của planner cho phần góp ý chưa được hỏi riêng. Chỉ áp dụng khi người dùng duyệt.
-
-| Mục | Đề xuất |
-|---|---|
-| Nhắc rã đông buổi sáng | Ngày có bữa tối đã xếp dùng món đang ở ngăn đông thì thông báo duy nhất của ngày đó dời sang 08:00 và nhắc rã đông kèm đồ nên dùng sớm. Các ngày khác giữ giờ nhắc ngày thường. Phụ thuộc Q9, Q11, Q4. |
-| Hạn khi chuyển ngăn đông | Mỗi nguyên liệu có `freezerShelfDays` riêng trong `shelf_table.json` thay cho hệ số nhân 10 chung. Chuyển ngăn tính lại hạn từ ngày chuyển. |
-| Ẩn đồ ngăn đông khỏi "Cần dùng sớm" | Ẩn khỏi dải ở Trang chủ và khỏi thông báo; vẫn thấy trong tab Ngăn đông. |
-| Món ăn nhanh (món gia đình tự thêm) | Chỉ gồm tên món và danh sách nguyên liệu (chọn từ danh mục); bước nấu và ảnh không bắt buộc. |
+Bốn đề xuất planner (nhắc rã đông, hạn ngăn đông, ẩn đồ ngăn đông, món ăn nhanh) đã được duyệt ở Q23–Q26 ngày 2026-11-16. Hiện không còn đề xuất nào chờ duyệt.
 
 ## Quy ước ghi nhận
 

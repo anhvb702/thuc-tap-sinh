@@ -166,7 +166,7 @@ Phần này thay thế các mục SW-03 trở đi ở trên khi có chỗ khác 
 
 | Mã | Việc | Quyết định | Phụ thuộc |
 |---|---|---|---|
-| R3-01 | Thêm trường `kind` (`fresh`, `seasoning`, `ready`) và chỗ cho hạn ngăn đông vào `shelf_table.json`, parser và test | Q15 | — |
+| R3-01 | Thêm trường `kind` (`fresh`, `seasoning`, `ready`) và `freezerShelfDays` (tùy chọn) vào `shelf_table.json`, parser và test | Q15, Q24 | — |
 | R3-02 | Nội dung đợt 1: khoảng 40 nguyên liệu và 20 công thức. Claude soạn, người dùng duyệt danh sách tên món trước; Codex làm test kiểm bundle | Q6, Q7, Q19 | R3-01 |
 | R3-03 | Nội dung đợt 2: lên 50–60 nguyên liệu và 25–30 công thức | Q6 | R3-02 |
 
@@ -174,29 +174,29 @@ Phần này thay thế các mục SW-03 trở đi ở trên khi có chỗ khác 
 
 | Mã | Việc | Quyết định | Phụ thuộc |
 |---|---|---|---|
-| R4-01 | Ngăn bảo quản lưu theo món (bảng mới, migration, sao lưu), đổi một chạm trên thẻ; bỏ gán cứng `isFreezerItem` | Q9 | — (thay SW-10a) |
-| R4-02 | Đồ ăn thừa: bản ghi trong DB, nút "Còn thừa, cất tủ" ở màn chúc mừng và thêm tay; hạn 2 ngày; "Đã ăn hết" xóa bản ghi; đứng đầu dải "Cần dùng sớm" và thông báo | Q16–Q18 | R1-01 |
-| R4-03 | Gia vị: không chặn "nấu được", không bị trừ; "Hết rồi → Đi chợ" đưa vào "Cần mua thêm" | Q19, Q20 | R3-01, R2-02 |
-| R4-04 | Tab lọc "Đồ ăn liền & đồ uống" trong Tủ lạnh, không gợi ý bữa sáng | Q21 | R3-01 |
+| R4-01 | Ngăn bảo quản lưu theo món (bảng mới, migration, sao lưu), đổi một chạm trên thẻ; bỏ gán cứng `isFreezerItem`. Chuyển ngăn đông dùng `freezerShelfDays`, tính lại hạn từ ngày chuyển; món không có trường này không chuyển được | Q9, Q24 | R3-01 (thay SW-10a) |
+| R4-02 | Đồ ăn thừa: bản ghi trong DB, nút "Còn thừa, cất tủ" ở màn chúc mừng và thêm tay; chọn ngăn (ngăn mát 2 ngày, ngăn đông 14 ngày); "Đã ăn hết" xóa bản ghi; đứng đầu dải "Cần dùng sớm" và thông báo | Q16–Q18, Q27 | R1-01, R4-01 |
+| R4-03 | Gia vị: mặc định "Còn", không chặn "nấu được", không bị trừ, không lên "Cần dùng sớm"; "Hết rồi → Đi chợ" đưa vào "Cần mua thêm" | Q19, Q20 | R3-01, R2-02 |
+| R4-04 | Bộ lọc nhóm trong Tủ lạnh (Đồ tươi, Đồ ăn thừa, Ăn liền & Uống, Gia vị), mặc định "Đồ tươi", dòng nhắc đồ ăn thừa ở đầu tab; không gợi ý bữa sáng | Q21, Q28 | R3-01, R4-02 |
+| R4-05 | Đồ ngăn đông ẩn khỏi dải "Cần dùng sớm" và thông báo, trừ món đã quá hạn ước tính | Q25 | R4-01 |
 
 **Đợt R5 — Món gia đình tự thêm**
 
 | Mã | Việc | Quyết định | Phụ thuộc |
 |---|---|---|---|
-| R5-01 | Bảng món gia đình trong SQLite, migration, sao lưu; gợi ý đọc cả bundle và món tự thêm | Q8 | — |
-| R5-02 | UI tạo món nhanh (tên + nguyên liệu) | Đề xuất, chờ duyệt | R5-01 |
+| R5-01 | Bảng món gia đình trong SQLite, migration, sao lưu; gợi ý, thực đơn tuần và nấu ngẫu nhiên đọc cả bundle và món tự thêm, có bộ lọc chế độ ăn | Q8, Q26 | R0-01 |
+| R5-02 | UI tạo món nhanh (tên + nguyên liệu từ danh mục); màn chi tiết ẩn phần các bước khi không có bước | Q26 | R5-01 |
 
 **Đợt R6 — Phần còn lại của Smart Weekend Loop**
 
 - SW-06/SW-08: độ tươi và xếp món theo tầng (cần R3-02 xong).
 - SW-09: nội dung thông báo Thứ 4.
-- Nhắc rã đông buổi sáng: đề xuất, chờ duyệt; cần R4-01 và R2-01.
-- Ẩn đồ ngăn đông khỏi "Cần dùng sớm" và hạn ngăn đông theo từng nguyên liệu: đề xuất, chờ duyệt; cần R4-01.
+- R6-01 Nhắc rã đông (Q23, Q27): ngày có bữa tối đã xếp dùng đồ ngăn đông thì thông báo duy nhất dời sang 08:00, kèm thẻ "Nhớ rã đông" trên Trang chủ; Chủ Nhật gộp vào thông báo đi chợ. Cần R4-01, R4-02, R2-01 và R0-02.
 - SW-11 (đi chợ theo 3 quầy), SW-12 (gợi ý ngăn), SW-13 (Compose UI test), SW-14 (nghiệm thu emulator và người thật).
 
-**Thứ tự đề xuất:** R0 → R1 → R2 → R3-01 → (R3-02 song song R4-01) → R4-02/R4-03/R4-04 → R5 → R6. Rủi ro cao nhất: R4-01 (đổi cách tính "nên dùng trước" mà thông báo và Trang chủ cùng dùng) và R3-02 (nội dung công thức cần người dùng duyệt).
+**Thứ tự đề xuất:** R0 → R1 → R2 → R3-01 → (R3-02 song song R4-01) → R4-05, R4-02 → R4-03, R4-04 → R5 → R6. Rủi ro cao nhất: R4-01 (đổi cách tính "nên dùng trước" mà thông báo và Trang chủ cùng dùng), R6-01 (đổi giờ thông báo theo thực đơn, cần kiểm tay trên máy) và R3-02 (nội dung công thức cần người dùng duyệt).
 
-**Chờ người dùng:** file khảo sát 50 persona để lưu vào `docs/ux/` (Q22); duyệt 4 đề xuất cuối `DECISIONS.md`.
+**Chờ người dùng:** duyệt danh sách tên món và nguyên liệu trước R3-02. Mọi quyết định khác đã chốt (Q1–Q28); khảo sát lưu tại `docs/ux/pantry-expansion-survey-2026-11-16.md`.
 
 ### Bằng chứng và snapshot
 

@@ -17,7 +17,7 @@
   - Chạm thẻ gợi ý mở đúng công thức được chọn ở tab Món ăn; request recipe ID đi theo thẻ và công thức được chọn, cuộn vào tầm nhìn.
 
 ### 1.2. Tủ Lạnh (Pantry Screen) — Quản lý trực quan & 1 chạm
-- **Tổ chức không gian:** Bộ lọc **Tất cả món (n)**, **Ngăn mát**, **Ngăn đông**; có công tắc **Chỉ xem món đang có**. Mặc định hiển thị toàn catalog để người dùng thêm lại món.
+- **Tổ chức không gian:** Bộ lọc **Tất cả món (n)**, **Ngăn mát**, **Ngăn đông**; có công tắc **Chỉ xem món đang có**. Từ 2026-11-16 (Q28) Tủ lạnh mở mặc định ở bộ lọc **Đồ tươi**; các bộ lọc nhóm gồm **Đồ tươi**, **Đồ ăn thừa**, **Ăn liền & Uống**, **Gia vị**. Có đồ ăn thừa nên dùng sớm thì hiện một dòng nhắc ở đầu tab, không tự đổi tab.
 - **Tóm tắt:** Dòng “Trong tủ: n món” đếm món đang có; `Tất cả món (n)` vẫn đếm toàn catalog. Khi bộ lọc rỗng có đường quay về tất cả món.
 - **Thẻ thực phẩm trực quan:**
   - Hình ảnh/icon đồ ăn nhận diện nhanh.
