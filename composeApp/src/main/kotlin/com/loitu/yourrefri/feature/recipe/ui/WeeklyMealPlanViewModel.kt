@@ -83,6 +83,10 @@ class WeeklyMealPlanViewModel(
                     Event.SettingsLoadFailed -> {
                         if (!mutableState.value.isLoaded) {
                             mutableState.value = mutableState.value.copy(isLoaded = true)
+                            // Thao tác đã xếp hàng khi đang tải phải được áp dụng, không được bỏ rơi.
+                            val queued = pendingActions.toList()
+                            pendingActions.clear()
+                            queued.forEach { apply(it) }
                         }
                         mutableEffects.send(WeeklyMealPlanEffect.SettingsLoadFailed)
                     }

@@ -132,6 +132,72 @@
 
 Phụ thuộc và rủi ro: **SW-01 chặn mọi task UI; SW-07 chặn SW-08; SW-10 là rủi ro cao nhất.**
 
+### Kế hoạch lại 2026-11-16 (theo quyết định Q1–Q22 trong `DECISIONS.md`)
+
+Phần này thay thế các mục SW-03 trở đi ở trên khi có chỗ khác nhau. Các mục tuần 2 và tuần 4 ghi "cố định 17:30, không chỉnh giờ" là lịch sử; giờ nhắc mới theo Q5. Mỗi task ≤ khoảng 300 dòng diff, có contract `docs/tests/<mã>.md`, test trước và 6 mutation. Mỗi task một nhánh và một PR vào `main`.
+
+**Đợt R0 — Sửa luật đã đổi (làm trước, ít phụ thuộc)**
+
+| Mã | Việc | Quyết định | Ghi chú |
+|---|---|---|---|
+| R0-01 | Chế độ ăn là bộ lọc cứng cho nấu ngẫu nhiên, 3 gợi ý và thực đơn tuần; hết món thì hiện câu gợi ý đổi chế độ ăn | Q2 | Sửa contract `A-03` có ghi chú lý do |
+| R0-02 | Giờ nhắc ngày thường mặc định 16:00, chỉnh được 14:00–20:00 trong Cài đặt; thông báo liệt kê tối đa 3 món | Q5, Q13a | Mở rộng `reminderTimeFor` và màn Cài đặt Chủ Nhật sẵn có; sửa assert 17:30 có ghi chú |
+| R0-03 | Món hết rồi có lại: hạn tính từ ngày bấm "Có" | Q13b | Gỡ chặn SW-10 |
+| R0-04 | Sửa contract `W4-03` (180/320dp là chiều rộng cột) | Q13d | Chỉ tài liệu |
+
+**Đợt R1 — Sau khi nấu và hoàn tác**
+
+| Mã | Việc | Quyết định | Phụ thuộc |
+|---|---|---|---|
+| R1-01 | Một chạm "Đã nấu xong" trừ hết nguyên liệu chính; nút phụ "Giữ lại đồ còn dư"; dòng nguyên liệu đã giảm ở màn chúc mừng | Q3 | Sửa `A-12`, `A-15` |
+| R1-02 | Thanh Hoàn tác 5 giây: khôi phục số lượng tủ và dòng lịch sử vừa ghi | Q10 | R1-01 |
+| R1-03 | Nút "Xóa dòng ghi nhầm" ở màn "Đã nấu", có xác nhận, không trả nguyên liệu | Q10 | — |
+
+**Đợt R2 — Thực đơn tuần**
+
+| Mã | Việc | Quyết định | Phụ thuộc |
+|---|---|---|---|
+| SW-03 | Preset số bữa; tối đa 2 mâm mỗi ngày theo bữa đang bật | Q12 | — |
+| R2-01 | Lưu thực đơn đã xếp vào `WeeklyMealPlanEntity`; chỉ tính lại khi sang tuần hoặc bấm "Đổi món" | Q11 | SW-03 |
+| SW-04/05 | Ẩn bữa: giữ món, danh sách đi chợ bỏ nguyên liệu của mâm đó; UI Trưa/Tối/Bỏ qua | Q12 | SW-03, R2-01 |
+| R2-02 | Mục "Cần mua thêm" lưu trong DB, ở đầu danh sách đi chợ; "Cất vào tủ" đánh dấu "Còn" | Q20 | — |
+
+**Đợt R3 — Dữ liệu gốc**
+
+| Mã | Việc | Quyết định | Phụ thuộc |
+|---|---|---|---|
+| R3-01 | Thêm trường `kind` (`fresh`, `seasoning`, `ready`) và `freezerShelfDays` (tùy chọn) vào `shelf_table.json`, parser và test | Q15, Q24 | — |
+| R3-02 | Nội dung đợt 1: khoảng 40 nguyên liệu và 20 công thức. Claude soạn, người dùng duyệt danh sách tên món trước; Codex làm test kiểm bundle | Q6, Q7, Q19 | R3-01 |
+| R3-03 | Nội dung đợt 2: lên 50–60 nguyên liệu và 25–30 công thức | Q6 | R3-02 |
+
+**Đợt R4 — Tủ lạnh mở rộng**
+
+| Mã | Việc | Quyết định | Phụ thuộc |
+|---|---|---|---|
+| R4-01 | Ngăn bảo quản lưu theo món (bảng mới, migration, sao lưu), đổi một chạm trên thẻ; bỏ gán cứng `isFreezerItem`. Chuyển ngăn đông dùng `freezerShelfDays`, tính lại hạn từ ngày chuyển; món không có trường này không chuyển được | Q9, Q24 | R3-01 (thay SW-10a) |
+| R4-02 | Đồ ăn thừa: bản ghi trong DB, nút "Còn thừa, cất tủ" ở màn chúc mừng và thêm tay; chọn ngăn (ngăn mát 2 ngày, ngăn đông 14 ngày); "Đã ăn hết" xóa bản ghi; đứng đầu dải "Cần dùng sớm" và thông báo | Q16–Q18, Q27 | R1-01, R4-01 |
+| R4-03 | Gia vị: mặc định "Còn", không chặn "nấu được", không bị trừ, không lên "Cần dùng sớm"; "Hết rồi → Đi chợ" đưa vào "Cần mua thêm" | Q19, Q20 | R3-01, R2-02 |
+| R4-04 | Bộ lọc nhóm trong Tủ lạnh (Đồ tươi, Đồ ăn thừa, Ăn liền & Uống, Gia vị), mặc định "Đồ tươi", dòng nhắc đồ ăn thừa ở đầu tab; không gợi ý bữa sáng | Q21, Q28 | R3-01, R4-02 |
+| R4-05 | Đồ ngăn đông ẩn khỏi dải "Cần dùng sớm" và thông báo, trừ món đã quá hạn ước tính | Q25 | R4-01 |
+
+**Đợt R5 — Món gia đình tự thêm**
+
+| Mã | Việc | Quyết định | Phụ thuộc |
+|---|---|---|---|
+| R5-01 | Bảng món gia đình trong SQLite, migration, sao lưu; gợi ý, thực đơn tuần và nấu ngẫu nhiên đọc cả bundle và món tự thêm, có bộ lọc chế độ ăn | Q8, Q26 | R0-01 |
+| R5-02 | UI tạo món nhanh (tên + nguyên liệu từ danh mục); màn chi tiết ẩn phần các bước khi không có bước | Q26 | R5-01 |
+
+**Đợt R6 — Phần còn lại của Smart Weekend Loop**
+
+- SW-06/SW-08: độ tươi và xếp món theo tầng (cần R3-02 xong).
+- SW-09: nội dung thông báo Thứ 4.
+- R6-01 Nhắc rã đông (Q23, Q27): ngày có bữa tối đã xếp dùng đồ ngăn đông thì thông báo duy nhất dời sang 08:00, kèm thẻ "Nhớ rã đông" trên Trang chủ; Chủ Nhật gộp vào thông báo đi chợ. Cần R4-01, R4-02, R2-01 và R0-02.
+- SW-11 (đi chợ theo 3 quầy), SW-12 (gợi ý ngăn), SW-13 (Compose UI test), SW-14 (nghiệm thu emulator và người thật).
+
+**Thứ tự đề xuất:** R0 → R1 → R2 → R3-01 → (R3-02 song song R4-01) → R4-05, R4-02 → R4-03, R4-04 → R5 → R6. Rủi ro cao nhất: R4-01 (đổi cách tính "nên dùng trước" mà thông báo và Trang chủ cùng dùng), R6-01 (đổi giờ thông báo theo thực đơn, cần kiểm tay trên máy) và R3-02 (nội dung công thức cần người dùng duyệt).
+
+**Chờ người dùng:** duyệt danh sách tên món và nguyên liệu trước R3-02. Mọi quyết định khác đã chốt (Q1–Q28); khảo sát lưu tại `docs/ux/pantry-expansion-survey-2026-11-16.md`.
+
 ### Bằng chứng và snapshot
 
 Test count, ảnh runtime, trạng thái emulator và giới hạn kiểm chứng thay đổi theo phiên; xem snapshot mới nhất ở đầu `HANDOFF.md`. Số test/build trong từng task là bằng chứng lịch sử tại thời điểm task chạy, không phải xác nhận trạng thái hiện tại. Release APK unsigned cần khóa ký do chủ dự án quản lý.

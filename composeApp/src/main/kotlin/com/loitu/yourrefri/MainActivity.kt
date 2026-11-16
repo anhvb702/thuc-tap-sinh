@@ -53,8 +53,40 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+private object AppGraph {
+    @Volatile private var cached: AppDependencies? = null
+
+    fun get(context: android.content.Context): AppDependencies =
+        cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
+
+    private fun build(context: android.content.Context): AppDependencies {
+        val driver = DriverFactory(context).create()
+        val db = createDatabase(driver)
+        val repo = PantryRepositoryImpl(
+            db = db,
+            clock = Clock.System,
+            timeZone = TimeZone.currentSystemDefault(),
+            ioContext = Dispatchers.IO,
+        )
+        val json = context.assets.open("shelf_table.json").bufferedReader().use { it.readText() }
+        val parsedIngredients = ShelfTable.parse(json)
+        val recipeJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
+        return AppDependencies(
+            pantryRepository = repo,
+            ingredients = parsedIngredients,
+            backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
+            recipes = RecipeBundle.parse(recipeJson),
+            weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
+            favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
+            cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
+        )
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -96,28 +128,8 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         ReminderScheduler.setEnabled(context, granted)
     }
     LaunchedEffect(Unit) { ReminderScheduler.schedule(context) }
-    val dependencies = remember(context) {
-        val driver = DriverFactory(context.applicationContext).create()
-        val db = createDatabase(driver)
-        val repo = PantryRepositoryImpl(
-            db = db,
-            clock = Clock.System,
-            timeZone = TimeZone.currentSystemDefault(),
-            ioContext = Dispatchers.IO,
-        )
-        val json = context.assets.open("shelf_table.json").bufferedReader().use { it.readText() }
-        val parsedIngredients = ShelfTable.parse(json)
-        val recipeJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
-        AppDependencies(
-            pantryRepository = repo,
-            ingredients = parsedIngredients,
-            backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
-            recipes = RecipeBundle.parse(recipeJson),
-            weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
-            favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
-            cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
-        )
-    }
+    // Một bộ phụ thuộc cho cả tiến trình: xoay màn hình không mở thêm SqlDriver mới cho các ViewModel đang giữ lại.
+    val dependencies = remember(context) { AppGraph.get(context) }
 
     val pantryRepository = dependencies.pantryRepository
     val ingredients = dependencies.ingredients
@@ -291,6 +303,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         appVersionName = appVersionName,
         cookHistoryState = cookHistoryState,
         onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
+        currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
         sundayTime = sundayTime,
         onSundayTimeChange = { time ->
             sundayTime = time
