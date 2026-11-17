@@ -11,14 +11,18 @@ import android.app.PendingIntent
 import android.os.Build
 import com.loitu.yourrefri.MainActivity
 import com.loitu.yourrefri.R
+import com.loitu.yourrefri.feature.notice.logic.DailyNotice
 import com.loitu.yourrefri.feature.notice.logic.defrostNamesForDay
 import com.loitu.yourrefri.feature.notice.logic.planDailyNotice
 import com.loitu.yourrefri.feature.pantry.data.LeftoverRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.ShelfTable
-import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
 import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
@@ -34,7 +38,8 @@ import kotlin.time.ExperimentalTime
 class ReminderReceiver : BroadcastReceiver() {
     @OptIn(ExperimentalTime::class)
     override fun onReceive(context: Context, intent: Intent?) {
-        if (!ReminderScheduler.enabled(context)) return
+        val forceTest = intent?.getBooleanExtra(ReminderScheduler.EXTRA_FORCE_TEST, false) == true
+        if (!forceTest && !ReminderScheduler.enabled(context)) return
         val pending = goAsync()
         Thread {
             var driver: app.cash.sqldelight.db.SqlDriver? = null
@@ -60,28 +65,30 @@ class ReminderReceiver : BroadcastReceiver() {
                 hasFrozenDinnerForDay = { date ->
                     defrostNamesForDay(date, weeklyPlan, allRecipes, ingredients, pantry, leftovers).isNotEmpty()
                 }
-                val notice = planDailyNotice(
+                val notice = createReminderNotice(
                     pantry = pantry,
                     ingredients = ingredients,
                     today = today,
-                    lastSent = prefs.getString("last_sent", null)?.let(LocalDate::parse),
                     recipes = allRecipes,
                     dietRestriction = DietPrefs.read(context),
-                    lastNudgeSent = prefs.getString("last_nudge_sent", null)?.let(LocalDate::parse),
                     leftovers = leftovers,
                     defrostNames = defrostNames,
+                    lastSent = if (forceTest) null else prefs.getString("last_sent", null)?.let(LocalDate::parse),
+                    lastNudgeSent = if (forceTest) null else prefs.getString("last_nudge_sent", null)?.let(LocalDate::parse),
+                    forceTest = forceTest,
                 )
                 val isContextualNudge = notice?.isContextualNudge == true
                 val lastSentKey = "last_sent"
                 val notificationId = 1730
-                if (notice != null && prefs.getString(lastSentKey, null) != today.toString() &&
+                if (notice != null && (forceTest || prefs.getString(lastSentKey, null) != today.toString()) &&
                     (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     val manager = context.getSystemService(NotificationManager::class.java)
                     if (Build.VERSION.SDK_INT >= 26) {
                         manager.createNotificationChannel(NotificationChannel("daily_reminder", "Nhắc nhở YourRefri", NotificationManager.IMPORTANCE_DEFAULT))
                     }
-                    if (prefs.edit().putString(lastSentKey, today.toString()).commit()) {
-                        if (isContextualNudge) prefs.edit().putString("last_nudge_sent", today.toString()).commit()
+                    val shouldNotify = forceTest || prefs.edit().putString(lastSentKey, today.toString()).commit()
+                    if (shouldNotify) {
+                        if (!forceTest && isContextualNudge) prefs.edit().putString("last_nudge_sent", today.toString()).commit()
                         val openApp = PendingIntent.getActivity(
                             context,
                             notificationId,
@@ -108,6 +115,49 @@ class ReminderReceiver : BroadcastReceiver() {
             }
         }.start()
     }
+}
+
+internal fun createReminderNotice(
+    pantry: List<com.loitu.yourrefri.feature.pantry.data.PantryItem>,
+    ingredients: List<com.loitu.yourrefri.feature.pantry.data.Ingredient>,
+    today: LocalDate,
+    recipes: List<Recipe>,
+    dietRestriction: DietRestriction,
+    leftovers: List<com.loitu.yourrefri.feature.pantry.data.LeftoverItem>,
+    defrostNames: List<String>,
+    lastSent: LocalDate?,
+    lastNudgeSent: LocalDate?,
+    forceTest: Boolean,
+): DailyNotice? {
+    val notice = planDailyNotice(
+        pantry = pantry,
+        ingredients = ingredients,
+        today = today,
+        lastSent = if (forceTest) null else lastSent,
+        recipes = recipes,
+        dietRestriction = dietRestriction,
+        lastNudgeSent = if (forceTest) null else lastNudgeSent,
+        leftovers = leftovers,
+        defrostNames = defrostNames,
+    )
+    if (!forceTest) return notice
+    return notice ?: forceTestDishSuggestion(recipes, ingredients, dietRestriction, today)
+}
+
+internal fun forceTestDishSuggestion(
+    recipes: List<Recipe>,
+    ingredients: List<com.loitu.yourrefri.feature.pantry.data.Ingredient>,
+    dietRestriction: DietRestriction,
+    today: LocalDate,
+): DailyNotice? {
+    val dish = filterRecipesByDiet(recipes, dietRestriction, ingredients).firstOrNull() ?: return null
+    return DailyNotice(
+        day = today,
+        ingredientIds = emptyList(),
+        title = "Gợi ý món ngon hôm nay",
+        body = "Nay trời dịu nhẹ, tối nay làm món ${dish.title} là hết ý luôn nè!",
+        isContextualNudge = true,
+    )
 }
 
 @Suppress("DEPRECATION")

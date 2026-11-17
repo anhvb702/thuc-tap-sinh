@@ -31,12 +31,17 @@ object ReminderScheduler {
     private const val REQUEST = 1730
     private const val LEGACY_DEFROST_REQUEST = 800
     internal const val EXTRA_KIND = "reminder_kind"
+    internal const val EXTRA_FORCE_TEST = "force_test"
     internal const val KIND_DAILY = "daily"
     private const val LEGACY_KIND_DEFROST = "defrost"
     private const val PREFS = "daily_reminder"
     private const val SUNDAY_MINUTES_KEY = "sunday_minutes"
     private const val WEEKDAY_MINUTES_KEY = "weekday_minutes"
     fun enabled(context: Context) = context.getSharedPreferences(PREFS, 0).getBoolean("enabled", false)
+
+    fun triggerTestNow(context: Context) {
+        context.sendBroadcast(Intent(context, ReminderReceiver::class.java).putExtra(EXTRA_FORCE_TEST, true))
+    }
     fun setEnabled(context: Context, value: Boolean) {
         context.getSharedPreferences(PREFS, 0).edit().putBoolean("enabled", value).apply()
         if (value) schedule(context) else cancel(context)

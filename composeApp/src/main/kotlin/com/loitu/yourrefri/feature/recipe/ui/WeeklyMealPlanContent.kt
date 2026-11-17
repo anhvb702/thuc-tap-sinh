@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -348,6 +349,7 @@ internal fun WeeklyShoppingSection(
 ) {
     val colors = AppTheme.colors
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
     var result by remember { mutableStateOf<String?>(null) }
     var compartments by remember(shopping) {
         mutableStateOf(shopping.associate { it.ingredient.id to suggestedWeeklyCompartment(it) })
@@ -453,8 +455,12 @@ internal fun WeeklyShoppingSection(
         if (buyItems.isEmpty() && extraDisplayItems.isEmpty()) {
             Text("Tuần này nhà mình đã đủ nguyên liệu", Modifier.padding(top = 8.dp), color = colors.accentText)
         } else {
-            TextButton(onClick = { clipboard.setText(AnnotatedString(weeklyChecklistText(checklist))) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("Sao chép gửi Zalo")
+            TextButton(onClick = {
+                val text = weeklyChecklistText(checklist)
+                clipboard.setText(AnnotatedString(text))
+                shareToZaloOrChooser(context, text)
+            }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Gửi qua Zalo")
             }
             Button(onClick = {
                 if (onStockWithCompartments != null) {

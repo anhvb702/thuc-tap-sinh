@@ -96,6 +96,10 @@ internal fun DailyShoppingSection(state: PantryGridState, onStock: ((List<DailyS
     TextButton(onClick = {
         customFoodId(customName)?.let { id -> save(mergeShoppingItems(items, listOf(DailyShoppingItem(id, customName.trim())))); customName = "" }
     }, enabled = customFoodId(customName) != null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Thêm món khác") }
-    TextButton(onClick = { clipboard.setText(AnnotatedString(shoppingChecklist(items))) }, enabled = selected.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Sao chép gửi Zalo") }
+    TextButton(onClick = {
+        val text = shoppingChecklist(items)
+        clipboard.setText(AnnotatedString(text))
+        shareToZaloOrChooser(context, text)
+    }, enabled = selected.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) { Text("Gửi qua Zalo") }
     Button(onClick = { onStock?.invoke(selected); save(items.filterNot { it.checked }) }, enabled = onStock != null && selected.isNotEmpty(), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Đã mua xong · Cất vào tủ lạnh") }
 }

@@ -1,5 +1,10 @@
 package com.loitu.yourrefri.feature.settings.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -50,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.reminder.ReminderScheduler
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -84,6 +91,15 @@ fun SettingsScreen(
 ) {
     val colors = AppTheme.colors
     val context = LocalContext.current
+    var testReminderStatus by rememberSaveable { mutableStateOf<String?>(null) }
+    val testPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            ReminderScheduler.triggerTestNow(context)
+            testReminderStatus = "Đã gửi thông báo thử"
+        } else {
+            testReminderStatus = "Cần cấp quyền thông báo"
+        }
+    }
     if (restoreConfirmationPending) {
         AlertDialog(
             onDismissRequest = onCancelRestore,
@@ -217,6 +233,26 @@ fun SettingsScreen(
                 color = colors.muted,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
             )
+            OutlinedButton(
+                onClick = {
+                    val permissionGranted = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(
+                        Manifest.permission.POST_NOTIFICATIONS,
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (permissionGranted) {
+                        ReminderScheduler.triggerTestNow(context)
+                        testReminderStatus = "Đã gửi thông báo thử"
+                    } else if (Build.VERSION.SDK_INT >= 33) {
+                        testPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 48.dp),
+                border = BorderStroke(1.dp, colors.line),
+            ) {
+                Text("Thử thông báo ngay", color = colors.ctaText)
+            }
+            testReminderStatus?.let { status ->
+                Text(status, color = colors.muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            }
         }
 
         GroupHeader(AppIcons.Utensils, "Khẩu vị & Thói quen")
