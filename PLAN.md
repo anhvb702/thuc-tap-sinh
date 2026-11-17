@@ -15,7 +15,7 @@
       ┌────────────────┬───────────┴────┬─────────────────┐
       ▼                ▼                 ▼                 ▼
  🏠 TRANG CHỦ     🧊 TỦ LẠNH        🍲 MÓN ĂN         ⚙️ CÁ NHÂN
- (5 giây nắm bắt) (Ngăn mát/đông)   (3 gợi ý thông minh) (Nhắc 17:30)
+ (5 giây nắm bắt) (Ngăn mát/đông)   (3 gợi ý thông minh) (Nhắc theo giờ)
  - Lời chào ấm áp - Thẻ có icon      - Đồ sắp hỏng lên đầu - 1 lần/ngày
  - Tổng quan tủ   - Nút +/- số lượng - Công thức 4 bước    - Sao lưu
  - Cần dùng gấp   - Chạm 1 lần Có/Hết - Checkmark từng bước- Quyền riêng tư
@@ -41,7 +41,7 @@
 
 ---
 
-### ✅ Tuần 2: Trang Chủ "5 Giây Nắm Bắt", Theme Warm Minimalism & Nhắc Nhở 17:30
+### ✅ Tuần 2: Trang Chủ "5 Giây Nắm Bắt", Theme Warm Minimalism & Nhắc Nhở 17:30 (giờ nhắc lịch sử; đổi theo Q5/R0-02)
 - **W2-01 (Theme Warm Minimalism):**
   - Triển khai bộ màu theo `DESIGN.md`: Warm Ivory `#F7F5EF`, Sage Green `#789477`, Soft Green `#DDE8D9`, Warm Beige `#E8D8B9`, Terracotta `#D98C70`, Deep Charcoal `#343B34`.
   - Dựng Bottom Navigation chuẩn 4 tab.
@@ -51,7 +51,7 @@
   - Thanh cuộn ngang các món cần ưu tiên dùng trong 0–2 ngày tới (nhãn Terracotta/Beige dịu mắt).
   - 3 Thẻ món ăn gợi ý hôm nay (xem nhanh nguyên liệu sẵn có).
 - **W2-03 (Thông báo nhắc nhở nhẹ nhàng 17:30):**
-  - Giờ nhắc cố định 17:30; chỉ bật/tắt, không chỉnh giờ. Dùng `AlarmManager` không chính xác, tối đa 1 thông báo/ngày.
+  - Lịch sử (đã bị thay bởi Q5 ngày 2026-11-16, xem R0-02): giờ nhắc cố định 17:30; chỉ bật/tắt, không chỉnh giờ. Dùng `AlarmManager` không chính xác, tối đa 1 thông báo/ngày.
   - Nội dung ấm áp, không phán xét: *"Tối nay nhà mình có [món A, B] nên dùng trước, bạn xem gợi ý nhé!"*.
   - **Hoàn tất:** toggle bền vững, xin quyền notification theo hành động bật, receiver kiểm tra dữ liệu và chống gửi lặp; đặt lại sau reboot/đổi giờ/múi giờ/cập nhật. Logic có 6 mutation tests. Thiết bị ADB đang kết nối nhưng notification thực tế chưa được thử.
 
@@ -74,7 +74,7 @@
 
 ### ✅ Tuần 4: Trang Cá Nhân, Đơn Vị Đo & Sao Lưu Offline
 - **W4-01 (Cá nhân & Cài đặt thông báo):**
-  - Bật/tắt thông báo cố định lúc 17:30 theo ràng buộc sản phẩm; không cho chỉnh giờ.
+  - Lịch sử (đã bị thay bởi Q5, xem R0-02): bật/tắt thông báo cố định lúc 17:30 theo ràng buộc sản phẩm; không cho chỉnh giờ.
   - Đơn vị đo lường chọn riêng trên từng thẻ ở Tủ lạnh (hộp, quả, g, kg, bó...).
 - **W4-02 (Xuất/Nhập dữ liệu sao lưu JSON):**
   - **Đã hoàn tất:** xuất/khôi phục JSON qua Android Storage Access Framework; validate trước khi import và yêu cầu xác nhận trước khi thay dữ liệu. Restore transaction bảo toàn dữ liệu nếu lỗi. Ảnh chỉ giữ URI metadata, không đưa nội dung ảnh vào file. Android `allowBackup=false`; backup rules loại trừ dữ liệu khỏi cloud backup và device transfer. Chi tiết `docs/tests/W4-02.md`.
@@ -132,7 +132,9 @@
 
 Phụ thuộc và rủi ro: **SW-01 chặn mọi task UI; SW-07 chặn SW-08; SW-10 là rủi ro cao nhất.**
 
-### Kế hoạch lại 2026-11-16 (theo quyết định Q1–Q22 trong `DECISIONS.md`)
+### Kế hoạch lại 2026-11-16 (theo quyết định Q1–Q28 trong `DECISIONS.md`)
+
+**Trạng thái 2026-11-17:** các đợt R0–R6 chưa bắt đầu viết code. Đã có trên `main`: SW-01a/b/c, SW-02, UX-11/12, đợt A, giao diện v2, thêm món ngoài danh mục (PR #4–#7). Trạng thái chi tiết và rủi ro đã biết ở `HANDOFF.md`.
 
 Phần này thay thế các mục SW-03 trở đi ở trên khi có chỗ khác nhau. Các mục tuần 2 và tuần 4 ghi "cố định 17:30, không chỉnh giờ" là lịch sử; giờ nhắc mới theo Q5. Mỗi task ≤ khoảng 300 dòng diff, có contract `docs/tests/<mã>.md`, test trước và 6 mutation. Mỗi task một nhánh và một PR vào `main`.
 

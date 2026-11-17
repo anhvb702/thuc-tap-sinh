@@ -28,7 +28,7 @@ description: Bộ tiêu chuẩn và kịch bản Persona khách hàng (phụ huy
 - Các bước nấu có ngắn gọn, gia vị thông dụng trong bếp Việt không?
 
 ### D. Thông báo (Notification)
-- Chỉ tối đa 1 thông báo/ngày (khoảng 17h30 chiều khi chuẩn bị tan sở).
+- Chỉ tối đa 1 thông báo/ngày. Giờ nhắc ngày thường hiện là 17:30; đã chốt đổi mặc định 16:00 (trước giờ tan sở) và cho chỉnh giờ (`DECISIONS.md` Q5, task R0-02). Đánh giá theo giờ đang có trong app, ghi chú nếu khác.
 - Nội dung thông báo phải hữu ích, gợi ý món nhẹ nhàng, không spam.
 
 ## 3. Cách ghi nhận một lượt trải nghiệm

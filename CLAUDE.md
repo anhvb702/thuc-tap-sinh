@@ -18,6 +18,7 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 Ấm, ngắn, gợi ý không ra lệnh, luôn có đường lui.
 - Cấm: "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", điểm số, so sánh, streak, ngôn ngữ gây tội lỗi.
 - Dùng: "ước tính", "khoảng", "nên dùng trước". Đồ quá hạn: "kiểm tra lại xem còn dùng được không".
+- Danh sách từ cấm này là bản gốc; các tài liệu khác chỉ trỏ về đây.
 - `scripts/lint-copy.ps1 -Path <file>` quét từ cấm (file `.kt` chỉ quét chuỗi; dòng trích quy tắc ghi kèm `lint-copy: rule`).
 
 ## Lệnh thường dùng
@@ -36,10 +37,10 @@ Chạy trong PowerShell ở gốc repo, sau khi đặt `JAVA_HOME` (JDK 21) và 
 - MVI: State / Action / Effect + ViewModel + StateFlow.
 - Điều hướng: hiện chưa dùng Navigation Compose và chưa có `nav/Routes.kt`. Bốn tab là enum `NavTab` trong `ui/MainScaffold.kt`; màn phụ (chi tiết công thức, nấu rảnh tay, chúc mừng, lịch sử "Đã nấu") mở bằng state trong scaffold. Nếu thêm Navigation Compose: route type-safe, tham số chỉ kiểu nguyên thủy (id `Long`, ngày dạng chuỗi ISO), mọi route trong `composeApp/.../nav/Routes.kt`.
 - Thời gian: luôn tiêm `kotlin.time.Clock` và `kotlinx.datetime.TimeZone`, không gọi giờ hệ thống trực tiếp.
-- Công thức gốc là JSON bundle đọc lúc chạy, chỉ đọc; món gia đình tự thêm lưu trong DB (SQLDelight) và có trong sao lưu JSON (quyết định 2026-11-16).
+- Công thức gốc là JSON bundle đọc lúc chạy, chỉ đọc; món gia đình tự thêm lưu trong DB (SQLDelight) và có trong sao lưu JSON (quyết định 2026-11-16, chưa làm: R5).
 
 ### Luồng phụ thuộc
-- `MainActivity.kt` dựng một `AppGraph` cho cả tiến trình (driver SQLDelight, các repository, danh mục, công thức). Xoay màn hình không tạo driver mới; ViewModel nhận repository qua `ViewModelProvider.Factory`.
+- `MainActivity.kt` dựng một `AppGraph` cho cả tiến trình (driver SQLDelight, các repository, danh mục, công thức). Xoay màn hình không tạo driver mới; ViewModel nhận repository qua `ViewModelProvider.Factory`. Ngoại lệ đã biết: `PantryGridViewModel` tạo bằng `remember`, chưa qua factory (xem `HANDOFF.md`, rủi ro đã biết).
 - `ui/MainScaffold.kt` giữ tab, các màn phụ và nối callback giữa các feature (ví dụ nấu xong thì trừ tủ qua `PantryGridAction` rồi ghi `CookHistoryViewModel`).
 - `PantryGridViewModel` + `PantryGridReducer` (`:shared`) là nguồn trạng thái tủ; Trang chủ, gợi ý món và thực đơn tuần đều đọc `PantryGridState`.
 - Chữ hiển thị và quy tắc trình bày tách ra hàm thuần trong file `*Presentation.kt` / `*Copy.kt` cạnh màn hình, để test JVM được mà không cần Compose UI test.
@@ -52,7 +53,7 @@ Chạy trong PowerShell ở gốc repo, sau khi đặt `JAVA_HOME` (JDK 21) và 
 
 ### Thông báo
 - Code ở `composeApp/.../reminder/` (`ReminderScheduler`, `ReminderReceiver`); nội dung và giờ tính trong `:shared` `feature/notice/logic` (`planDailyNotice`, `nextReminderTrigger`, `reminderTimeFor`).
-- Tối đa 1 thông báo mỗi ngày.
+- Tối đa 1 thông báo mỗi ngày. Giờ ngày thường hiện là 17:30; đã chốt đổi mặc định 16:00 và cho chỉnh giờ (Q5, R0-02).
 - Dùng `AlarmManager` không chính xác (`setAndAllowWhileIdle` / `setWindow`), không exact alarm.
 - Lên lịch lại sau khởi động máy và khi đổi múi giờ.
 - Mở app luôn thấy nội dung, dù OS chặn thông báo.
