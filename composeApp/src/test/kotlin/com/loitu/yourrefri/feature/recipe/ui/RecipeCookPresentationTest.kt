@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -108,6 +109,24 @@ class RecipeCookPresentationTest {
 
         assertEquals(listOf("tofu"), presentation.ingredientIds)
         assertEquals(listOf("Đậu phụ"), presentation.ingredientNames)
+    }
+
+    @Test
+    fun stockedSeasoningIsNotIncludedInCookingDeduction() {
+        val seasoning = Ingredient("nuoc-mam", "Nước mắm", "gia-vi", 180, kind = IngredientKind.SEASONING)
+        val recipeWithSeasoning = recipe.copy(
+            required = listOf(Slot(listOf("egg")), Slot(listOf("nuoc-mam"))),
+        )
+        val state = PantryGridState(
+            today = today,
+            ingredients = ingredients + seasoning,
+            pantry = mapOf(
+                "egg" to PantryItem("egg", true, today),
+                "nuoc-mam" to PantryItem("nuoc-mam", true, today),
+            ),
+        )
+
+        assertEquals(listOf("egg"), recipeCookPresentation(recipeWithSeasoning, state, true).ingredientIds)
     }
 
     @Test

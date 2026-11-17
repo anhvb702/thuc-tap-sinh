@@ -34,9 +34,10 @@ class CookLogMealRepositoryTest {
     @AfterTest
     fun tearDown() = driver.close()
 
+    // Qodo PR #9 Finding 15 added migrations/7.sqm, advancing Schema.version to 8.
     @Test
     fun schemaVersionIs7() {
-        assertEquals(7L, YourRefriDatabase.Schema.version)
+        assertEquals(8L, YourRefriDatabase.Schema.version)
     }
 
     @Test

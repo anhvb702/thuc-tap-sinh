@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
@@ -94,8 +95,12 @@ fun SettingsScreen(
     var testReminderStatus by rememberSaveable { mutableStateOf<String?>(null) }
     val testPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
-            ReminderScheduler.triggerTestNow(context)
-            testReminderStatus = "Đã gửi thông báo thử"
+            if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                ReminderScheduler.triggerTestNow(context)
+                testReminderStatus = "Đã yêu cầu gửi thông báo thử"
+            } else {
+                testReminderStatus = "Thông báo đang bị tắt trong cài đặt máy"
+            }
         } else {
             testReminderStatus = "Cần cấp quyền thông báo"
         }
@@ -238,9 +243,11 @@ fun SettingsScreen(
                     val permissionGranted = Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(
                         Manifest.permission.POST_NOTIFICATIONS,
                     ) == PackageManager.PERMISSION_GRANTED
-                    if (permissionGranted) {
+                    if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+                        testReminderStatus = "Thông báo đang bị tắt trong cài đặt máy"
+                    } else if (permissionGranted) {
                         ReminderScheduler.triggerTestNow(context)
-                        testReminderStatus = "Đã gửi thông báo thử"
+                        testReminderStatus = "Đã yêu cầu gửi thông báo thử"
                     } else if (Build.VERSION.SDK_INT >= 33) {
                         testPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }

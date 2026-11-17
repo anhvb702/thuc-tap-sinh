@@ -12,6 +12,8 @@ object BackupCodec {
     const val FORMAT = "yourrefri-backup"
     const val LEGACY_VERSION = 1
     const val VERSION = 2
+    private const val CUSTOM_RECIPE_PREFIX = "custom-"
+    private const val MAX_CUSTOM_RECIPE_STEPS = 8
 
     private val json = Json {
         ignoreUnknownKeys = false
@@ -128,7 +130,13 @@ object BackupCodec {
         validateUniqueIds("customRecipes", snapshot.customRecipes.map { it.recipeId })
         snapshot.customRecipes.forEach { recipe ->
             require(recipe.recipeId.isNotBlank()) { "Custom recipe id must not be blank" }
+            require(recipe.recipeId.startsWith(CUSTOM_RECIPE_PREFIX)) {
+                "Custom recipe id must use the $CUSTOM_RECIPE_PREFIX prefix"
+            }
             require(recipe.title.isNotBlank()) { "Custom recipe title must not be blank" }
+            // Cùng ràng buộc với Recipe: tối đa 8 bước, không bước rỗng.
+            require(recipe.steps.size <= MAX_CUSTOM_RECIPE_STEPS) { "Custom recipe must have at most 8 steps" }
+            require(recipe.steps.all(String::isNotBlank)) { "Custom recipe steps must not be blank" }
             require(recipe.required.isNotEmpty()) { "Custom recipe must have at least one required slot" }
             require(recipe.required.all { slot -> slot.isNotEmpty() && slot.all(String::isNotBlank) }) {
                 "Custom recipe required slots must be non-empty"
@@ -147,11 +155,23 @@ object BackupCodec {
             require(leftover.title.isNotBlank()) { "Leftover title must not be blank" }
             require(leftover.compartment in compartmentNames) { "Unsupported pantry compartment" }
             require(leftover.shelfDays >= 0) { "Leftover shelfDays must be non-negative" }
+            requireEpochDay(leftover.markedAtEpochDays, "Leftover markedAtEpochDays")
         }
 
         validateUniqueIds("extraShoppingItems", snapshot.extraShoppingItems.map { it.ingredientId })
         snapshot.extraShoppingItems.forEach {
             require(it.ingredientId.isNotBlank()) { "Extra shopping ingredientId must not be blank" }
+            requireEpochDay(it.addedAtEpochDays, "Extra shopping addedAtEpochDays")
+        }
+    }
+
+    // Repository đọc lại bằng toInt() rồi LocalDate.fromEpochDays, nên giá trị phải vừa Int và là ngày hợp lệ.
+    private fun requireEpochDay(value: Long, name: String) {
+        require(value in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()) { "$name is out of range" }
+        try {
+            LocalDate.fromEpochDays(value.toInt())
+        } catch (error: Exception) {
+            throw IllegalArgumentException("$name is not a valid date", error)
         }
     }
 

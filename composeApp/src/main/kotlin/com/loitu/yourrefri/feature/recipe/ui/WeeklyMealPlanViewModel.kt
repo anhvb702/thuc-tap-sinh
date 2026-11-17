@@ -222,13 +222,28 @@ class WeeklyMealPlanViewModel(
                 else current.uncheckedIds + action.id
                 current.copy(uncheckedIds = unchecked)
             }
-            is WeeklyMealPlanAction.SetLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
-            is WeeklyMealPlanAction.ToggleLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
+            is WeeklyMealPlanAction.SetLunchMealPrep -> {
+                val next = current.copy(includeLunchMealPrep = action.enabled)
+                mutableState.value = next
+                save(next)
+                lastRecipes?.let { recipes -> lastPantryState?.let { pantry -> persistSchedule(recipes, pantry, next) } }
+                return
+            }
+            is WeeklyMealPlanAction.ToggleLunchMealPrep -> {
+                val next = current.copy(includeLunchMealPrep = action.enabled)
+                mutableState.value = next
+                save(next)
+                lastRecipes?.let { recipes -> lastPantryState?.let { pantry -> persistSchedule(recipes, pantry, next) } }
+                return
+            }
             is WeeklyMealPlanAction.ToggleMealSlot -> {
                 if (action.dayIndex !in 0..6) return
                 val date = current.weekStart + DatePeriod(days = action.dayIndex)
                 val key = MealSlotKey(date, action.slot)
                 repository.setMealEnabled(date, action.slot, key in current.disabledMeals)
+                val disabled = if (key in current.disabledMeals) current.disabledMeals - key else (current.disabledMeals + key).distinct()
+                val next = current.copy(disabledMeals = disabled)
+                lastRecipes?.let { recipes -> lastPantryState?.let { pantry -> persistSchedule(recipes, pantry, next) } }
                 return
             }
             is WeeklyMealPlanAction.ApplyMealPreset -> {
@@ -239,6 +254,12 @@ class WeeklyMealPlanViewModel(
                         repository.setMealEnabled(date, slot, slot in enabledSlots)
                     }
                 }
+                val disabled = (0..6).flatMap { day ->
+                    val date = current.weekStart + DatePeriod(days = day)
+                    WEEKLY_MEAL_SLOTS.filter { it !in enabledMealSlots(action.preset, day) }.map { MealSlotKey(date, it) }
+                }
+                val next = current.copy(disabledMeals = disabled)
+                lastRecipes?.let { recipes -> lastPantryState?.let { pantry -> persistSchedule(recipes, pantry, next) } }
                 return
             }
         }
@@ -319,9 +340,12 @@ class WeeklyMealPlanViewModel(
                 portions = portions,
             )
         }
-        newEntries.forEach { repository.save(it) }
+        val enabledEntries = newEntries.filter { entry ->
+            MealSlotKey(entry.day, entry.meal) !in state.disabledMeals
+        }
+        repository.replaceWeek(state.weekStart, enabledEntries)
         val weekEnd = state.weekStart + DatePeriod(days = 6)
-        allSavedEntries = allSavedEntries.filterNot { it.day in state.weekStart..weekEnd } + newEntries
+        allSavedEntries = allSavedEntries.filterNot { it.day in state.weekStart..weekEnd } + enabledEntries
         mutableState.value = mutableState.value.copy(
             savedEntries = entriesForWeek(allSavedEntries, state.weekStart),
         )

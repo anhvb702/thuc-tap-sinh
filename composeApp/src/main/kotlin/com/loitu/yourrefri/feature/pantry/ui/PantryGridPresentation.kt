@@ -6,8 +6,10 @@ import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.Urgency
+import com.loitu.yourrefri.feature.pantry.logic.daysLeft
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -75,6 +77,13 @@ internal fun soonCount(
 internal fun compartmentChangeMessage(target: String, oldDays: Int, newDays: Int): String =
     "Đã chuyển sang $target (hạn ước tính: $oldDays ngày → $newDays ngày)"
 
+internal fun compartmentChangeDays(
+    item: PantryItem,
+    ingredient: Ingredient,
+    next: PantryCompartment,
+    today: LocalDate,
+): Int = daysLeft(item.copy(compartment = next, markedAt = today), ingredient.copy(userShelfDays = null), today)
+
 internal const val LEFTOVER_REMINDER_BANNER = "Có đồ ăn thừa cần dùng sớm — chạm để xem"
 
 internal fun leftoverDaysLeft(item: LeftoverItem, today: LocalDate): Int {
@@ -83,8 +92,12 @@ internal fun leftoverDaysLeft(item: LeftoverItem, today: LocalDate): Int {
 }
 
 internal fun hasUrgentLeftovers(leftovers: List<LeftoverItem>, today: LocalDate): Boolean =
-    leftovers.any { item ->
-        item.compartment == PantryCompartment.CHILL || leftoverDaysLeft(item, today) <= URGENT_DAYS
+    leftovers.any { isLeftoverUrgent(it, today) }
+
+internal fun isLeftoverUrgent(item: LeftoverItem, today: LocalDate): Boolean =
+    when (item.compartment) {
+        PantryCompartment.CHILL -> leftoverDaysLeft(item, today) <= 2
+        PantryCompartment.FREEZE -> leftoverDaysLeft(item, today) < 0
     }
 
 internal fun leftoverReminderBanner(leftovers: List<LeftoverItem>, today: LocalDate): String? =

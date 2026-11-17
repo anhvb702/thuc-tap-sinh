@@ -1,0 +1,36 @@
+CREATE TABLE IF NOT EXISTS PantryCompartmentEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    compartment TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS CustomRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    stepsJson TEXT NOT NULL,
+    requiredJson TEXT NOT NULL,
+    optionalJson TEXT NOT NULL,
+    minutes INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS WeeklyMealPlanSettingsEntity (
+    settingsId INTEGER NOT NULL PRIMARY KEY CHECK (settingsId = 1),
+    weekStart TEXT NOT NULL,
+    goalId TEXT NOT NULL,
+    preferenceIdsJson TEXT NOT NULL,
+    swappedOffsetsJson TEXT NOT NULL,
+    uncheckedIdsJson TEXT NOT NULL,
+    includeLunchMealPrep INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ExtraShoppingItemEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    addedAtEpochDays INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS LeftoverEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    compartment TEXT NOT NULL DEFAULT 'CHILL',
+    markedAtEpochDays INTEGER NOT NULL,
+    shelfDays INTEGER NOT NULL DEFAULT 2
+);

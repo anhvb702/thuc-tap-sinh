@@ -58,6 +58,15 @@ internal fun extraShoppingDisplayItems(
     return extraShoppingItems.map { it.ingredientId to (namesById[it.ingredientId] ?: it.ingredientId) }
 }
 
+internal fun extraShoppingCompartments(
+    extraShoppingItems: List<ExtraShoppingItem>,
+    _ingredients: List<Ingredient>,
+): Map<String, PantryCompartment> {
+    return extraShoppingItems.associate { item ->
+        item.ingredientId to PantryCompartment.CHILL
+    }
+}
+
 internal fun combinedWeeklyStockIds(
     weeklyStockIds: List<String>,
     extraShoppingItems: List<ExtraShoppingItem>,

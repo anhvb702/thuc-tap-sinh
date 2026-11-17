@@ -28,7 +28,7 @@ internal fun recipeCookPresentation(
     val cells = cellsOf(state)
     val availableIds = cells.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
     val preferredIds = cells.filter { it.have && it.daysLeft in 0..2 }.mapTo(HashSet()) { it.ingredientId }
-    val ingredientIds = ingredientIdsToConsume(recipe, availableIds, preferredIds)
+    val ingredientIds = ingredientIdsToConsume(recipe, availableIds, preferredIds, state.ingredients)
     val namesById = state.ingredients.associate { it.id to it.nameVi }
     val ingredientNames = ingredientIds.mapNotNull(namesById::get)
 

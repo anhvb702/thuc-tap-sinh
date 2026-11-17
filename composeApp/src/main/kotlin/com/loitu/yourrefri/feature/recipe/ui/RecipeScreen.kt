@@ -168,8 +168,8 @@ fun RecipeScreen(
     }
 
     val includeLunchPrep = weeklyIncludeLunchMealPrep ?: localLunchPrep
-    val weeklyPlan = remember(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets) {
-        buildWeeklyMealSchedule(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets, includeLunchMealPrep = false)
+    val weeklyPlan = remember(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets, includeLunchPrep) {
+        buildWeeklyMealSchedule(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets, includeLunchMealPrep = includeLunchPrep)
     }
     val stepChecks = remember { mutableStateMapOf<String, Boolean>() }
     var updatedRecipeResult by remember { mutableStateOf<Pair<String, String>?>(null) }

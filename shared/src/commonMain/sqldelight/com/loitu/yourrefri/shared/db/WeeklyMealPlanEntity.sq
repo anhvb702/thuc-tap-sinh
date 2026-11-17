@@ -13,5 +13,8 @@ VALUES (:day, :mealSlot, :recipeId, :portions);
 selectAll:
 SELECT * FROM WeeklyMealPlanEntity ORDER BY day ASC, mealSlot DESC;
 
+deleteByWeek:
+DELETE FROM WeeklyMealPlanEntity WHERE day >= :weekStart AND day <= :weekEnd;
+
 deleteAll:
 DELETE FROM WeeklyMealPlanEntity;

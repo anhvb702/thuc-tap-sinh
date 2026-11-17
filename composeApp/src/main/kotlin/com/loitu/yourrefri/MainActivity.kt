@@ -138,7 +138,6 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         reminderEnabled = granted
         ReminderScheduler.setEnabled(context, granted)
     }
-    LaunchedEffect(Unit) { ReminderScheduler.schedule(context) }
     // Một bộ phụ thuộc cho cả tiến trình: xoay màn hình không mở thêm SqlDriver mới cho các ViewModel đang giữ lại.
     val dependencies = remember(context) { AppGraph.get(context) }
 
@@ -234,6 +233,36 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     val customRecipes by customRecipesFlow.collectAsState(initial = emptyList())
     val allRecipes = remember(dependencies.recipes, customRecipes) { dependencies.recipes + customRecipes }
     val weeklyMealPlanState by weeklyMealPlanViewModel.state.collectAsState()
+    LaunchedEffect(
+        weeklyMealPlanState.savedEntries,
+        state.pantry,
+        leftovers,
+        allRecipes,
+        state.today,
+        state.ingredients,
+        reminderEnabled,
+        sundayTime,
+        weekdayTime,
+    ) {
+        val entries = weeklyMealPlanState.savedEntries
+        val ingredientsForReminder = state.ingredients
+        val pantryForReminder = state.pantry.values.toList()
+        val leftoversForReminder = leftovers
+        val recipesForReminder = allRecipes
+        ReminderScheduler.schedule(
+            context = context,
+            hasFrozenDinnerForDay = { date ->
+                defrostNamesForDay(
+                    day = date,
+                    weeklyPlan = entries,
+                    recipes = recipesForReminder,
+                    ingredients = ingredientsForReminder,
+                    pantry = pantryForReminder,
+                    leftovers = leftoversForReminder,
+                ).isNotEmpty()
+            },
+        )
+    }
     val defrostItems = remember(
         state.today,
         weeklyMealPlanState.savedEntries,

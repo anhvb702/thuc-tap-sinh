@@ -49,12 +49,23 @@ fun nextReminderTrigger(
     val today = now.toLocalDateTime(tz).date
     // Cộng ngày lịch rồi mới ghép giờ địa phương để giữ đúng giờ treo tường khi chuyển DST.
     return (0..7).asSequence()
-        .map { offset -> today.plus(offset, DateTimeUnit.DAY) }
-        .map { date ->
-            val time = reminderTimeFor(date, effectiveSundayTime, weekdayTime, hasFrozenDinnerForDay(date))
-            LocalDateTime(date, time).toInstant(tz)
+        .map { offset -> today.plus(offset, DateTimeUnit.DAY) to offset }
+        .mapNotNull { (date, offset) ->
+            val hasFrozenDinner = hasFrozenDinnerForDay(date)
+            val primary = LocalDateTime(
+                date,
+                reminderTimeFor(date, effectiveSundayTime, weekdayTime, hasFrozenDinner),
+            ).toInstant(tz)
+            if (primary > now) {
+                primary
+            } else if (offset == 0 && hasFrozenDinner && date.dayOfWeek != DayOfWeek.SUNDAY) {
+                val fallback = LocalDateTime(date, weekdayTime).toInstant(tz)
+                fallback.takeIf { it > now }
+            } else {
+                null
+            }
         }
-        .first { it > now }
+        .firstOrNull()
 }
 
 /** Alias cho [nextReminderTrigger] nhấn mạnh cơ chế 1 thông báo/ngày hợp nhất (R6-01). */

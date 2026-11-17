@@ -363,6 +363,9 @@ internal fun WeeklyShoppingSection(
     val extraDisplayItems = remember(extraShoppingItems, ingredients) {
         extraShoppingDisplayItems(extraShoppingItems, ingredients)
     }
+    val extraCompartments = remember(extraShoppingItems, ingredients) {
+        extraShoppingCompartments(extraShoppingItems, ingredients)
+    }
     val combinedStockList = remember(stockListForAction, extraShoppingItems) {
         combinedWeeklyStockIds(stockListForAction, extraShoppingItems)
     }
@@ -374,7 +377,7 @@ internal fun WeeklyShoppingSection(
         WeeklyChecklistItem(it.ingredient.nameVi, compartments[it.ingredient.id] ?: suggestedWeeklyCompartment(it), it.ingredient.id !in uncheckedIds)
     } + extraDisplayItems
         .filter { (id, _) -> id !in buyItemIds }
-        .map { (_, name) -> WeeklyChecklistItem(name, PantryCompartment.CHILL, true) }
+        .map { (id, name) -> WeeklyChecklistItem(name, extraCompartments[id] ?: PantryCompartment.CHILL, true) }
     Column(modifier.fillMaxWidth()) {
         Text("Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.padding(top = 14.dp))
         if (extraDisplayItems.isNotEmpty()) {
@@ -464,7 +467,7 @@ internal fun WeeklyShoppingSection(
             }
             Button(onClick = {
                 if (onStockWithCompartments != null) {
-                    onStockWithCompartments(weeklyStockCompartments(combinedStockList, compartments))
+                    onStockWithCompartments(weeklyStockCompartments(combinedStockList, extraCompartments + compartments))
                 } else {
                     onStock?.invoke(combinedStockList)
                 }

@@ -1,6 +1,8 @@
 package com.loitu.yourrefri.feature.recipe.logic
 
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
@@ -61,6 +63,19 @@ class RandomRecipeTest {
         val twoMissing = recipe("two", "ca", "hanh", "toi")
         val pick = pickRandomRecipe(listOf(twoMissing, oneMissing), stateWith("ca"), null, Random(5))
         assertEquals("one", pick?.recipe?.id)
+        assertFalse(pick!!.canCookNow)
+    }
+
+    @Test
+    fun fallbackRankingCountsStockedSeasoningAsAvailable() {
+        val seasoning = Ingredient("nuoc-mam", "Nước mắm", "gia-vi", 180, kind = IngredientKind.SEASONING)
+        val state = PantryGridState(today = today, ingredients = listOf(seasoning), pantry = emptyMap())
+        val seasoningRecipe = recipe("seasoning", "nuoc-mam", "egg")
+        val otherRecipe = recipe("other", "rice", "egg")
+
+        val pick = pickRandomRecipe(listOf(otherRecipe, seasoningRecipe), state, null, Random(0))
+
+        assertEquals("seasoning", pick?.recipe?.id)
         assertFalse(pick!!.canCookNow)
     }
 

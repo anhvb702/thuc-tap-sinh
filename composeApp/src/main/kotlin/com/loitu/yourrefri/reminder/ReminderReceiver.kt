@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.app.PendingIntent
 import android.os.Build
+import androidx.core.app.NotificationManagerCompat
 import com.loitu.yourrefri.MainActivity
 import com.loitu.yourrefri.R
 import com.loitu.yourrefri.feature.notice.logic.DailyNotice
@@ -81,6 +82,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 val lastSentKey = "last_sent"
                 val notificationId = 1730
                 if (notice != null && (forceTest || prefs.getString(lastSentKey, null) != today.toString()) &&
+                    NotificationManagerCompat.from(context).areNotificationsEnabled() &&
                     (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     val manager = context.getSystemService(NotificationManager::class.java)
                     if (Build.VERSION.SDK_INT >= 26) {
@@ -107,6 +109,11 @@ class ReminderReceiver : BroadcastReceiver() {
             } catch (_: Exception) {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
             } finally {
+                if (hasFrozenDinnerForDay == null) {
+                    driver?.close()
+                    driver = null
+                    hasFrozenDinnerForDay = ReminderScheduler.loadFrozenDinnerPredicate(context.applicationContext)
+                }
                 completeReminderWork(
                     closeDriver = { driver?.close() },
                     scheduleNext = { ReminderScheduler.schedule(context, hasFrozenDinnerForDay) },
@@ -150,12 +157,13 @@ internal fun forceTestDishSuggestion(
     dietRestriction: DietRestriction,
     today: LocalDate,
 ): DailyNotice? {
-    val dish = filterRecipesByDiet(recipes, dietRestriction, ingredients).firstOrNull() ?: return null
+    val dish = filterRecipesByDiet(recipes, dietRestriction, ingredients).firstOrNull()
     return DailyNotice(
         day = today,
         ingredientIds = emptyList(),
         title = "Gợi ý món ngon hôm nay",
-        body = "Nay trời dịu nhẹ, tối nay làm món ${dish.title} là hết ý luôn nè!",
+        body = dish?.let { "Nay trời dịu nhẹ, tối nay làm món ${it.title} là hết ý luôn nè!" }
+            ?: "Nay mình thử một món ngon đơn giản nhé?",
         isContextualNudge = true,
     )
 }
@@ -166,5 +174,8 @@ private fun notificationBuilder(context: Context): android.app.Notification.Buil
     else android.app.Notification.Builder(context)
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent?) { ReminderScheduler.schedule(context) }
+    override fun onReceive(context: Context, intent: Intent?) {
+        val pending = goAsync()
+        ReminderScheduler.schedule(context, onDone = { pending.finish() })
+    }
 }

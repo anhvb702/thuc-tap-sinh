@@ -11,6 +11,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
 import kotlin.coroutines.CoroutineContext
 
 enum class MealSlot {
@@ -44,6 +46,9 @@ interface WeeklyMealPlanRepository {
     }
     fun observeAll(): Flow<List<WeeklyMealPlanEntry>>
     suspend fun save(entry: WeeklyMealPlanEntry)
+    suspend fun replaceWeek(weekStart: LocalDate, entries: List<WeeklyMealPlanEntry>) {
+        entries.forEach { save(it) }
+    }
     fun observeSettings(): Flow<WeeklyMealPlanSettings?>
     suspend fun saveSettings(settings: WeeklyMealPlanSettings)
 }
@@ -87,6 +92,18 @@ class WeeklyMealPlanRepositoryImpl(
                 recipeId = entry.recipeId,
                 portions = entry.portions.toLong(),
             )
+        }
+    }
+
+    override suspend fun replaceWeek(weekStart: LocalDate, entries: List<WeeklyMealPlanEntry>) {
+        require(entries.all { it.day >= weekStart && it.day <= weekStart.plus(DatePeriod(days = 6)) })
+        withContext(ioContext) {
+            db.transaction {
+                db.weeklyMealPlanEntityQueries.deleteByWeek(weekStart.toString(), weekStart.plus(DatePeriod(days = 6)).toString())
+                entries.forEach { entry ->
+                    db.weeklyMealPlanEntityQueries.upsert(entry.day.toString(), entry.meal.name, entry.recipeId, entry.portions.toLong())
+                }
+            }
         }
     }
 

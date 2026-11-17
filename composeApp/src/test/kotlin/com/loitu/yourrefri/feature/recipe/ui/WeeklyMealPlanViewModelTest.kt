@@ -153,6 +153,29 @@ class WeeklyMealPlanViewModelTest {
     }
 
     @Test
+    fun lunchPrepToggleReplacesPersistedWeekAndRemovesLunchEntries() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val viewModel = createViewModel(repository)
+        runCurrent()
+        val recipes = listOf(
+            Recipe("dinner", "Bữa tối", listOf("Nấu"), listOf(Slot(listOf("pork")))),
+            Recipe("lunch", "Bữa trưa", listOf("Nấu"), listOf(Slot(listOf("rice")))),
+        )
+        val pantry = PantryGridState(
+            today = monday,
+            ingredients = listOf(Ingredient("pork", "Thịt", "thit", 3), Ingredient("rice", "Gạo", "khac", 30)),
+            pantry = emptyMap(),
+        )
+        viewModel.syncSchedule(recipes, pantry)
+        runCurrent()
+        assertEquals(7, repository.entries.value.count { it.meal == MealSlot.LUNCH })
+        viewModel.dispatch(WeeklyMealPlanAction.ToggleLunchMealPrep(true))
+        runCurrent()
+        assertEquals(0, repository.entries.value.count { it.meal == MealSlot.LUNCH })
+        assertEquals(7, repository.entries.value.count { it.meal == MealSlot.DINNER })
+    }
+
+    @Test
     fun saveFailure_emitsEffect() = runTest {
         val repository = FakeWeeklyMealPlanRepository().apply { failSaves = true }
         val viewModel = createViewModel(repository)
@@ -391,6 +414,11 @@ class WeeklyMealPlanViewModelTest {
 
         override suspend fun save(entry: WeeklyMealPlanEntry) {
             entries.value = entries.value.filterNot { it.day == entry.day && it.meal == entry.meal } + entry
+        }
+
+        override suspend fun replaceWeek(weekStart: LocalDate, entries: List<WeeklyMealPlanEntry>) {
+            val weekEnd = weekStart.plus(DatePeriod(days = 6))
+            this.entries.value = this.entries.value.filterNot { it.day in weekStart..weekEnd } + entries
         }
 
         override fun observeSettings(): Flow<WeeklyMealPlanSettings?> = saved

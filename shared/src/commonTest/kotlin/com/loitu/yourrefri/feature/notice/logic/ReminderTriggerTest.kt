@@ -66,8 +66,9 @@ class ReminderTriggerTest {
                 hasFrozenDinnerForDay = { it == frozenDay },
             ),
         )
+        // Qodo PR #9 Finding 3: khi 08:00 ngày có món đông đã qua, rơi về weekdayTime (16:00) cùng ngày.
         assertEquals(
-            Instant.parse("2026-11-06T09:00:00Z"),
+            Instant.parse("2026-11-05T09:00:00Z"),
             nextDailyTrigger(
                 enabled = true,
                 now = Instant.parse("2026-11-05T01:00:00Z"),

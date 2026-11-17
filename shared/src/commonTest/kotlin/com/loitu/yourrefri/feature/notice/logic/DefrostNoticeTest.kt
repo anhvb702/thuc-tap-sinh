@@ -8,6 +8,7 @@ import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanEntry
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -42,6 +43,18 @@ class DefrostNoticeTest {
     fun lunchOnlyDoesNotTrigger() {
         assertNull(planDefrostNotice(today, listOf(entry(MealSlot.LUNCH)), listOf(recipe), ingredients,
             listOf(PantryItem("ca-hoi", true, today, PantryCompartment.FREEZE))))
+    }
+
+    @Test
+    fun disabledDinnerDoesNotTriggerEvenWhenPersistedPlanContainsDinner() {
+        assertNull(planDefrostNotice(
+            today = today,
+            weeklyPlan = listOf(entry()),
+            recipes = listOf(recipe),
+            ingredients = ingredients,
+            pantry = listOf(PantryItem("ca-hoi", true, today, PantryCompartment.FREEZE)),
+            disabledMeals = listOf(MealSlotKey(today, MealSlot.DINNER)),
+        ))
     }
 
     @Test

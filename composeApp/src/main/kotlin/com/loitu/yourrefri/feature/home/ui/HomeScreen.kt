@@ -65,6 +65,7 @@ import com.loitu.yourrefri.feature.pantry.logic.ExpiringItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
+import com.loitu.yourrefri.feature.pantry.ui.isLeftoverUrgent
 import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
@@ -171,12 +172,7 @@ internal fun buildUrgentStrip(
 ): List<UrgentStripEntry> {
     val urgentLeftovers = leftovers
         .map { item -> item to leftoverDaysLeftForHome(item, state.today) }
-        .filter { (item, daysLeft) ->
-            when (item.compartment) {
-                PantryCompartment.CHILL -> daysLeft <= 2
-                PantryCompartment.FREEZE -> daysLeft < 0
-            }
-        }
+        .filter { (item, _) -> isLeftoverUrgent(item, state.today) }
         .sortedWith(compareBy<Pair<LeftoverItem, Int>> { it.second }.thenBy { it.first.id })
         .map { (item, daysLeft) ->
             UrgentStripEntry.Leftover(

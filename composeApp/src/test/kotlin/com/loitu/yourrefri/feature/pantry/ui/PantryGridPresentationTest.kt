@@ -13,6 +13,8 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class PantryGridPresentationTest {
     private val today = LocalDate.parse("2026-11-07")
@@ -33,6 +35,13 @@ class PantryGridPresentationTest {
     @Test
     fun compartmentFeedbackShowsOldAndNewEstimatedDays() {
         assertEquals("Đã chuyển sang Ngăn đông (hạn ước tính: 2 ngày → 20 ngày)", compartmentChangeMessage("Ngăn đông", 2, 20))
+    }
+
+    @Test
+    fun compartmentPreviewResetsMarkedDateAndUserShelfOverrideLikeReducer() {
+        val item = PantryItem("egg", have = true, markedAt = LocalDate.parse("2026-10-01"), compartment = PantryCompartment.CHILL)
+        val ingredient = Ingredient("egg", "Trứng", "sua-trung", 5, userShelfDays = 1, freezerShelfDays = 20)
+        assertEquals(20, compartmentChangeDays(item, ingredient, PantryCompartment.FREEZE, today))
     }
 
     @Test
@@ -144,9 +153,17 @@ class PantryGridPresentationTest {
         assertEquals(LEFTOVER_REMINDER_BANNER, leftoverReminderBanner(chillLeftover, today))
 
         val urgentFrozen = listOf(
-            LeftoverItem("l3", "Cá kho", PantryCompartment.FREEZE, markedAt = LocalDate.parse("2026-10-25"), shelfDays = 14),
+            LeftoverItem("l3", "Cá kho", PantryCompartment.FREEZE, markedAt = LocalDate.parse("2026-10-23"), shelfDays = 14),
         )
         assertEquals(LEFTOVER_REMINDER_BANNER, leftoverReminderBanner(urgentFrozen, today))
+    }
+
+    @Test
+    fun leftoverUrgencyDependsOnCompartmentAndUsesExactBoundary() {
+        assertTrue(isLeftoverUrgent(LeftoverItem("chill-2", "Canh", PantryCompartment.CHILL, today, 2), today))
+        assertFalse(isLeftoverUrgent(LeftoverItem("chill-3", "Canh", PantryCompartment.CHILL, today, 3), today))
+        assertTrue(isLeftoverUrgent(LeftoverItem("freeze-expired", "Cá", PantryCompartment.FREEZE, LocalDate.parse("2026-11-06"), 0), today))
+        assertFalse(isLeftoverUrgent(LeftoverItem("freeze-today", "Cá", PantryCompartment.FREEZE, today, 0), today))
     }
 
     @Test

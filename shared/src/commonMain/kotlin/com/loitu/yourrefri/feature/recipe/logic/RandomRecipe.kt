@@ -1,5 +1,6 @@
 package com.loitu.yourrefri.feature.recipe.logic
 
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import kotlin.random.Random
@@ -25,7 +26,12 @@ fun pickRandomRecipe(
     return if (cookable.isNotEmpty()) {
         RandomPick(cookable.random(random), canCookNow = true)
     } else {
-        val available = pantry.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
+        val available = buildSet {
+            pantry.filter { it.have }.forEach { add(it.ingredientId) }
+            state.ingredients
+                .filter { it.kind == IngredientKind.SEASONING }
+                .forEach { add(it.id) }
+        }
         val fewestMissing = candidates.groupBy { recipe ->
             recipe.required.count { slot -> slot.anyOf.none { it in available } }
         }.minBy { it.key }.value

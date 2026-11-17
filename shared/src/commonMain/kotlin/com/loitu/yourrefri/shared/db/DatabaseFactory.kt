@@ -14,6 +14,8 @@ object IdListAdapter : ColumnAdapter<List<String>, String> {
 }
 
 fun createDatabase(driver: SqlDriver): YourRefriDatabase {
+    // Keep this repair path for databases created before these tables had migrations;
+    // IF NOT EXISTS makes it safe after the versioned migration has already created them.
     driver.execute(
         identifier = null,
         sql = """CREATE TABLE IF NOT EXISTS PantryCompartmentEntity (

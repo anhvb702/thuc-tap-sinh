@@ -95,7 +95,6 @@ import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
-import com.loitu.yourrefri.feature.pantry.logic.daysLeft
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -537,7 +536,7 @@ fun PantryGridScreen(
                             onAction(PantryGridAction.ToggleCompartment(cell.ingredientId))
                             val oldDays = cell.daysLeft
                             if (ingredient != null && item?.have == true && oldDays != null) {
-                                val newDays = daysLeft(item.copy(compartment = next), ingredient, state.today)
+                                val newDays = compartmentChangeDays(item, ingredient, next, state.today)
                                 val target = if (next == PantryCompartment.FREEZE) "Ngăn đông" else "Ngăn mát"
                                 val host = snackbarHostState
                                 if (host != null) scope.launch {
@@ -1184,7 +1183,7 @@ private fun LeftoversTabContent(
             ) {
                 items(visible, key = { it.id }) { item ->
                     val daysLeft = leftoverDaysLeft(item, today)
-                    val urgent = item.compartment == PantryCompartment.CHILL || daysLeft <= URGENT_DAYS
+                    val urgent = isLeftoverUrgent(item, today)
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(16.dp),

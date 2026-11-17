@@ -6,7 +6,6 @@ import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import java.io.File
 import kotlinx.datetime.LocalDate
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -23,7 +22,7 @@ class ReminderForceTest {
         assertTrue(notice?.body.orEmpty().contains("Canh rau"))
     }
 
-    @Test fun forceTestReturnsNoSuggestionWhenDietExcludesEveryDish() {
+    @Test fun forceTestReturnsFallbackWhenDietExcludesEveryDish() {
         val recipe = Recipe("meat", "Thịt kho", listOf("Nấu"), listOf(Slot(listOf("thit-heo"))))
         val notice = createReminderNotice(
             pantry = emptyList(), ingredients = emptyList(), today = LocalDate(2026, 11, 17),
@@ -31,7 +30,19 @@ class ReminderForceTest {
             leftovers = emptyList(), defrostNames = emptyList(), lastSent = null,
             lastNudgeSent = null, forceTest = true,
         )
-        assertNull(notice)
+        assertEquals("Gợi ý món ngon hôm nay", notice?.title)
+        assertTrue(notice?.body.orEmpty().isNotBlank())
+    }
+
+    @Test fun forceTestReturnsFallbackWhenRecipeListIsEmpty() {
+        val notice = createReminderNotice(
+            pantry = emptyList(), ingredients = emptyList(), today = LocalDate(2026, 11, 17),
+            recipes = emptyList(), dietRestriction = DietRestriction.NONE,
+            leftovers = emptyList(), defrostNames = emptyList(), lastSent = null,
+            lastNudgeSent = null, forceTest = true,
+        )
+        assertEquals("Gợi ý món ngon hôm nay", notice?.title)
+        assertTrue(notice?.body.orEmpty().isNotBlank())
     }
 
     @Test fun nullPlanFallsBackToFirstDishAllowedBySavedDiet() {
@@ -49,6 +60,7 @@ class ReminderForceTest {
             .first { File(it, "composeApp/src/main/kotlin/com/loitu/yourrefri/reminder/ReminderReceiver.kt").isFile }
         val receiver = File(root, "composeApp/src/main/kotlin/com/loitu/yourrefri/reminder/ReminderReceiver.kt").readText()
         val scheduler = File(root, "composeApp/src/main/kotlin/com/loitu/yourrefri/reminder/ReminderScheduler.kt").readText()
+        val settings = File(root, "composeApp/src/main/kotlin/com/loitu/yourrefri/feature/settings/ui/SettingsScreen.kt").readText()
         assertTrue(scheduler.contains("EXTRA_FORCE_TEST = \"force_test\""))
         assertTrue(scheduler.contains("Intent(context, ReminderReceiver::class.java).putExtra(EXTRA_FORCE_TEST, true)"))
         assertTrue(receiver.contains("if (!forceTest && !ReminderScheduler.enabled(context)) return"))
@@ -56,5 +68,13 @@ class ReminderForceTest {
         assertTrue(receiver.contains("lastNudgeSent = if (forceTest) null else lastNudgeSent"))
         assertTrue(receiver.contains("return notice ?: forceTestDishSuggestion"))
         assertTrue(receiver.contains("if (!forceTest && isContextualNudge)"))
+        assertTrue(settings.contains("NotificationManagerCompat.from(context).areNotificationsEnabled()"))
+        assertTrue(settings.contains("Thông báo đang bị tắt trong cài đặt máy"))
+        assertTrue(settings.contains("Đã yêu cầu gửi thông báo thử"))
+        assertTrue(receiver.contains("hasFrozenDinnerForDay = ReminderScheduler.loadFrozenDinnerPredicate"))
+        assertTrue(receiver.contains("val pending = goAsync()"))
+        assertTrue(receiver.contains("ReminderScheduler.schedule(context, onDone = { pending.finish() })"))
+        assertTrue(scheduler.contains("private val scheduleLock = Any()"))
+        assertTrue(scheduler.contains("generation"))
     }
 }

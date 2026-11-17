@@ -57,6 +57,23 @@ class WeeklyShopping4BTest {
     }
 
     @Test
+    fun extraShoppingCompartmentsUseTheSameDefaultForChecklistAndStock() {
+        val day = LocalDate(2026, 11, 17)
+        val extras = listOf(ExtraShoppingItem("pork", day), ExtraShoppingItem("garlic", day))
+        val compartments = extraShoppingCompartments(extras, listOf(
+            Ingredient("pork", "Thịt", "thit", 3),
+            Ingredient("garlic", "Tỏi", "khac", 14),
+        ))
+        val checklist = extras.map { item -> WeeklyChecklistItem(item.ingredientId, compartments[item.ingredientId] ?: PantryCompartment.CHILL, true) }
+        assertEquals(PantryCompartment.CHILL, checklist[0].compartment)
+        assertEquals(PantryCompartment.CHILL, checklist[1].compartment)
+        assertEquals(
+            listOf("pork" to PantryCompartment.CHILL, "garlic" to PantryCompartment.CHILL),
+            weeklyStockCompartments(listOf("pork", "garlic"), compartments),
+        )
+    }
+
+    @Test
     fun combinedWeeklyStockIdsAppendsExtraItemsWithoutDuplicates() {
         val day = LocalDate(2026, 11, 17)
         val extra = listOf(ExtraShoppingItem("pork", day), ExtraShoppingItem("garlic", day))

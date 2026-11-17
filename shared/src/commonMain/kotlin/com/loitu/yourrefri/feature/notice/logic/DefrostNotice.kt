@@ -7,6 +7,7 @@ import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanEntry
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.logic.DietIngredients
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import kotlinx.datetime.LocalDate
@@ -26,8 +27,9 @@ fun defrostNamesForDay(
     ingredients: List<Ingredient>,
     pantry: List<PantryItem>,
     leftovers: List<LeftoverItem> = emptyList(),
+    disabledMeals: List<MealSlotKey> = emptyList(),
 ): List<String> {
-    val dinnerId = weeklyPlan.firstOrNull { it.day == day && it.meal == MealSlot.DINNER }?.recipeId
+    val dinnerId = weeklyPlan.firstOrNull { it.day == day && it.meal == MealSlot.DINNER && MealSlotKey(day, MealSlot.DINNER) !in disabledMeals }?.recipeId
         ?: return emptyList()
     val recipe = recipes.firstOrNull { it.id == dinnerId }
     val ingredientNames = if (recipe != null) {
@@ -60,8 +62,9 @@ fun planDefrostNotice(
     ingredients: List<Ingredient>,
     pantry: List<PantryItem>,
     leftovers: List<LeftoverItem> = emptyList(),
+    disabledMeals: List<MealSlotKey> = emptyList(),
 ): DefrostNotice? {
-    val dinnerId = weeklyPlan.firstOrNull { it.day == today && it.meal == MealSlot.DINNER }?.recipeId ?: return null
+    val dinnerId = weeklyPlan.firstOrNull { it.day == today && it.meal == MealSlot.DINNER && MealSlotKey(today, MealSlot.DINNER) !in disabledMeals }?.recipeId ?: return null
     val recipe = recipes.firstOrNull { it.id == dinnerId }
     val frozenIds = if (recipe != null) {
         val groupById = ingredients.associate { it.id to it.group }
@@ -75,7 +78,7 @@ fun planDefrostNotice(
     } else {
         emptyList()
     }
-    val names = defrostNamesForDay(today, weeklyPlan, recipes, ingredients, pantry, leftovers)
+    val names = defrostNamesForDay(today, weeklyPlan, recipes, ingredients, pantry, leftovers, disabledMeals)
     if (names.isEmpty()) return null
     val summary = names.joinToString(", ")
     return DefrostNotice(

@@ -71,4 +71,20 @@ class NextTriggerTimeTest {
         assertEquals(LocalTime(16, 0), reminderTimeFor(thursday, LocalTime(9, 0), LocalTime(16, 0), hasFrozenDinner = false))
         assertEquals(LocalTime(9, 0), reminderTimeFor(sunday, LocalTime(9, 0), LocalTime(16, 0), hasFrozenDinner = true))
     }
+
+    @Test
+    fun frozenDinnerToday_afterDefrostTime_fallsBackToWeekdayTime() {
+        val now = instant("2026-11-05T10:00:00Z")
+
+        assertEquals(
+            instant("2026-11-05T16:00:00Z"),
+            nextReminderTrigger(
+                enabled = true,
+                now = now,
+                tz = TimeZone.UTC,
+                weekdayTime = LocalTime(16, 0),
+                hasFrozenDinnerForDay = { it == LocalDate(2026, 11, 5) },
+            ),
+        )
+    }
 }

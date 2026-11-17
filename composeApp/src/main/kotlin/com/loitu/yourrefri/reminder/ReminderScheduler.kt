@@ -28,6 +28,8 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 object ReminderScheduler {
+    private val scheduleLock = Any()
+    private var generation = 0L
     private const val REQUEST = 1730
     private const val LEGACY_DEFROST_REQUEST = 800
     internal const val EXTRA_KIND = "reminder_kind"
@@ -70,22 +72,40 @@ object ReminderScheduler {
     fun schedule(
         context: Context,
         hasFrozenDinnerForDay: ((LocalDate) -> Boolean)? = null,
+        onDone: () -> Unit = {},
     ) {
-        val alarm = context.getSystemService(AlarmManager::class.java)
-        // Hủy báo thức rã đông cũ (nếu còn từ bản trước) để luôn giữ đúng 1 thông báo/ngày (Q4).
-        alarm.cancel(pending(context, LEGACY_DEFROST_REQUEST, LEGACY_KIND_DEFROST))
-        if (!enabled(context)) {
-            alarm.cancel(pending(context, REQUEST, KIND_DAILY))
-            return
+        val requestGeneration = synchronized(scheduleLock) {
+            generation += 1
+            generation
         }
-        if (hasFrozenDinnerForDay != null) {
-            scheduleSingleAlarm(context, alarm, hasFrozenDinnerForDay)
+        val alarm = context.getSystemService(AlarmManager::class.java)
+        val shouldLoadPredicate = synchronized(scheduleLock) {
+            if (requestGeneration != generation) return@synchronized false
+            // Hủy báo thức rã đông cũ (nếu còn từ bản trước) để luôn giữ đúng 1 thông báo/ngày (Q4).
+            alarm.cancel(pending(context, LEGACY_DEFROST_REQUEST, LEGACY_KIND_DEFROST))
+            if (!enabled(context)) {
+                alarm.cancel(pending(context, REQUEST, KIND_DAILY))
+                false
+            } else if (hasFrozenDinnerForDay != null) {
+                scheduleSingleAlarm(context, alarm, hasFrozenDinnerForDay)
+                false
+            } else {
+                true
+            }
+        }
+        if (!shouldLoadPredicate) {
+            onDone()
             return
         }
         val appContext = context.applicationContext
         Thread {
             val predicate = loadFrozenDinnerPredicate(appContext)
-            scheduleSingleAlarm(appContext, alarm, predicate)
+            synchronized(scheduleLock) {
+                if (requestGeneration == generation && enabled(appContext)) {
+                    scheduleSingleAlarm(appContext, alarm, predicate)
+                }
+            }
+            onDone()
         }.start()
     }
 
@@ -113,7 +133,7 @@ object ReminderScheduler {
     }
 
     @OptIn(ExperimentalTime::class)
-    private fun loadFrozenDinnerPredicate(context: Context): (LocalDate) -> Boolean {
+    internal fun loadFrozenDinnerPredicate(context: Context): (LocalDate) -> Boolean {
         var driver: app.cash.sqldelight.db.SqlDriver? = null
         return try {
             val tz = TimeZone.currentSystemDefault()
@@ -145,9 +165,12 @@ object ReminderScheduler {
     }
 
     fun cancel(context: Context) {
-        val alarm = context.getSystemService(AlarmManager::class.java)
-        alarm.cancel(pending(context, REQUEST, KIND_DAILY))
-        alarm.cancel(pending(context, LEGACY_DEFROST_REQUEST, LEGACY_KIND_DEFROST))
+        synchronized(scheduleLock) {
+            generation += 1
+            val alarm = context.getSystemService(AlarmManager::class.java)
+            alarm.cancel(pending(context, REQUEST, KIND_DAILY))
+            alarm.cancel(pending(context, LEGACY_DEFROST_REQUEST, LEGACY_KIND_DEFROST))
+        }
     }
     private fun pending(context: Context, request: Int, kind: String) = PendingIntent.getBroadcast(
         context, request, Intent(context, ReminderReceiver::class.java).putExtra(EXTRA_KIND, kind),

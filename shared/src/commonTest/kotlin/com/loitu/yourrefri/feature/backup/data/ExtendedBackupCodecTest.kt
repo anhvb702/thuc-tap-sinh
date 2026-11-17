@@ -126,4 +126,67 @@ class ExtendedBackupCodecTest {
             )
         }
     }
+
+    private fun custom(id: String = "custom-1", steps: List<String> = emptyList()) =
+        CustomRecipeBackup(id, "Món", steps = steps, required = listOf(listOf("egg")))
+
+    @Test
+    fun rejectsCustomRecipeWithMoreThanEightSteps() {
+        val nine = List(9) { "Bước $it" }
+        assertFailsWith<IllegalArgumentException> { BackupCodec.encode(baseSnapshot(customRecipes = listOf(custom(steps = nine)))) }
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.decode(rawWithRecipe("custom-1", nine.joinToString(",") { "\"$it\"" }))
+        }
+        BackupCodec.encode(baseSnapshot(customRecipes = listOf(custom(steps = nine.take(8)))))
+    }
+
+    @Test
+    fun rejectsCustomRecipeWithBlankStep() {
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.encode(baseSnapshot(customRecipes = listOf(custom(steps = listOf("Nấu", "  ")))))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.decode(rawWithRecipe("custom-1", "\"\""))
+        }
+    }
+
+    @Test
+    fun rejectsCustomRecipeIdWithoutPrefix() {
+        assertFailsWith<IllegalArgumentException> { BackupCodec.encode(baseSnapshot(customRecipes = listOf(custom(id = "mon-1")))) }
+        assertFailsWith<IllegalArgumentException> { BackupCodec.decode(rawWithRecipe("mon-1", "")) }
+    }
+
+    @Test
+    fun rejectsEpochDaysOutsideIntRange() {
+        val tooBig = Int.MAX_VALUE.toLong() + 1
+        val tooSmall = Int.MIN_VALUE.toLong() - 1
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.encode(baseSnapshot(leftovers = listOf(LeftoverBackup("l-1", "Cơm", "CHILL", tooBig, 2))))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.encode(baseSnapshot(leftovers = listOf(LeftoverBackup("l-1", "Cơm", "CHILL", tooSmall, 2))))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.encode(baseSnapshot(extraShoppingItems = listOf(ExtraShoppingBackup("egg", tooBig))))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BackupCodec.encode(baseSnapshot(extraShoppingItems = listOf(ExtraShoppingBackup("egg", tooSmall))))
+        }
+        val raw = "$legacyV2Head,\"extraShoppingItems\":[{\"ingredientId\":\"egg\",\"addedAtEpochDays\":4294967296}]}"
+        assertFailsWith<IllegalArgumentException> { BackupCodec.decode(raw) }
+    }
+
+    @Test
+    fun oldBackupWithValidCustomRecipeAndDatesStillDecodes() {
+        val raw = "$legacyV2Head,\"customRecipes\":[{\"recipeId\":\"custom-9\",\"title\":\"Món\"," +
+            "\"steps\":[\"Nấu\"],\"required\":[[\"egg\"]]}]," +
+            "\"leftovers\":[{\"id\":\"l\",\"title\":\"Cơm\",\"compartment\":\"CHILL\",\"markedAtEpochDays\":20400,\"shelfDays\":2}]}"
+        val decoded = BackupCodec.decode(raw)
+        assertEquals("custom-9", decoded.customRecipes.single().recipeId)
+        assertEquals(20400L, decoded.leftovers.single().markedAtEpochDays)
+    }
+
+    private fun rawWithRecipe(id: String, stepsJson: String) =
+        "$legacyV2Head,\"customRecipes\":[{\"recipeId\":\"$id\",\"title\":\"Món\"," +
+            "\"steps\":[$stepsJson],\"required\":[[\"egg\"]]}]}"
 }
