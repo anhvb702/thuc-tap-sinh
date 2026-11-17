@@ -61,10 +61,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.home.logic.homeGreeting
+import com.loitu.yourrefri.feature.pantry.logic.ExpiringItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
+import com.loitu.yourrefri.feature.pantry.logic.expiringList
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.plus
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
@@ -124,6 +130,83 @@ internal fun urgentCaption(daysLeft: Int): String = when {
     else -> "Ước tính còn $daysLeft ngày"
 }
 
+// Q25: Đồ ngăn đông quá hạn ước tính hiển thị nhãn nhẹ nhàng hơn.
+internal fun urgentCaption(daysLeft: Int, isExpiredFrozen: Boolean): String =
+    if (isExpiredFrozen) "kiểm tra lại xem còn dùng được không" else urgentCaption(daysLeft)
+
+internal sealed interface UrgentStripEntry {
+    val key: String
+    val name: String
+    val caption: String
+    val isLeftover: Boolean
+
+    data class Leftover(
+        val item: LeftoverItem,
+        override val caption: String,
+    ) : UrgentStripEntry {
+        override val key: String get() = "leftover:${item.id}"
+        override val name: String get() = item.title
+        override val isLeftover: Boolean get() = true
+    }
+
+    data class Ingredient(
+        val item: ExpiringItem,
+        override val caption: String,
+    ) : UrgentStripEntry {
+        override val key: String get() = "ingredient:${item.item.ingredientId}"
+        override val name: String get() = item.ingredient.nameVi
+        override val isLeftover: Boolean get() = false
+    }
+}
+
+private fun leftoverDaysLeftForHome(item: LeftoverItem, today: LocalDate): Int {
+    val expiry = item.markedAt.plus(item.shelfDays, DateTimeUnit.DAY)
+    return (expiry.toEpochDays() - today.toEpochDays()).toInt()
+}
+
+// Q17 / Q27 (R4-02) & Q25 (R4-05): Đồ ăn thừa cần dùng sớm đứng đầu dải, tiếp theo là nguyên liệu từ expiringList().
+internal fun buildUrgentStrip(
+    state: PantryGridState,
+    leftovers: List<LeftoverItem>,
+): List<UrgentStripEntry> {
+    val urgentLeftovers = leftovers
+        .map { item -> item to leftoverDaysLeftForHome(item, state.today) }
+        .filter { (item, daysLeft) ->
+            when (item.compartment) {
+                PantryCompartment.CHILL -> daysLeft <= 2
+                PantryCompartment.FREEZE -> daysLeft < 0
+            }
+        }
+        .sortedWith(compareBy<Pair<LeftoverItem, Int>> { it.second }.thenBy { it.first.id })
+        .map { (item, daysLeft) ->
+            UrgentStripEntry.Leftover(
+                item = item,
+                caption = urgentCaption(
+                    daysLeft = daysLeft,
+                    isExpiredFrozen = item.compartment == PantryCompartment.FREEZE && daysLeft < 0,
+                ),
+            )
+        }
+
+    val expiringIngredients = expiringList(
+        pantry = state.pantry.values.toList(),
+        ingredients = state.ingredients,
+        today = state.today,
+    ).map { expiring ->
+        UrgentStripEntry.Ingredient(
+            item = expiring,
+            caption = urgentCaption(expiring.daysLeft, isExpiredFrozen = expiring.isExpiredFrozen),
+        )
+    }
+
+    return urgentLeftovers + expiringIngredients
+}
+
+internal fun shouldShowDefrostCard(defrostItems: List<String>): Boolean = defrostItems.isNotEmpty()
+
+internal fun defrostSummaryText(defrostItems: List<String>): String =
+    "Cho bữa tối hôm nay: ${defrostItems.joinToString(", ")}"
+
 // Chữ lớn từ 1.3 thì dải gợi ý món cuộn ngang để tên món không bị cắt.
 internal fun recipeStripScrolls(fontScale: Float): Boolean = fontScale >= 1.3f
 
@@ -162,14 +245,15 @@ fun HomeScreen(
     // Bữa đang chọn (do MainScaffold giữ để lịch sử "Đã nấu" ghi đúng bữa này).
     meal: MealSlot = defaultMealFor(state.hourOfDay),
     onMealChange: (MealSlot) -> Unit = {},
+    leftovers: List<LeftoverItem> = emptyList(),
+    defrostItems: List<String> = emptyList(),
+    onOpenLeftovers: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
     val haveItems = cellsOf(state).filter { it.have }
     val zones = pantryZoneCounts(haveItems)
-    val urgentItems = haveItems.filter {
-        it.compartment != PantryCompartment.FREEZE && it.daysLeft in 0..2
-    }.sortedBy { it.daysLeft }
+    val urgentEntries = buildUrgentStrip(state, leftovers)
     // Bữa trưa ưu tiên món nhanh; bữa tối giữ nguyên danh sách.
     val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state).take(homeRecipeLimit)
     var showGacha by remember { mutableStateOf(false) }
@@ -211,6 +295,10 @@ fun HomeScreen(
         }
 
         WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
+        if (shouldShowDefrostCard(defrostItems)) {
+            Spacer(modifier = Modifier.height(12.dp))
+            DefrostReminderCard(items = defrostItems, onClick = onNavigateToWeeklyRecipes)
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         PantrySummaryCard(count = haveItems.size, zones = zones, onOpenPantry = onNavigateToPantry)
@@ -229,7 +317,7 @@ fun HomeScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         SectionHeader(title = "Cần dùng sớm", action = "Xem tất cả", onAction = onNavigateToPantry)
-        if (urgentItems.isEmpty()) {
+        if (urgentEntries.isEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
@@ -251,12 +339,12 @@ fun HomeScreen(
             }
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(urgentItems, key = { it.ingredientId }) { item ->
+                items(urgentEntries, key = { it.key }) { entry ->
                     UrgentCard(
-                        ingredientId = item.ingredientId,
-                        name = item.nameVi,
-                        caption = urgentCaption(item.daysLeft ?: 0),
-                        onClick = onNavigateToPantry,
+                        ingredientId = (entry as? UrgentStripEntry.Ingredient)?.item?.item?.ingredientId,
+                        name = entry.name,
+                        caption = entry.caption,
+                        onClick = if (entry.isLeftover) onOpenLeftovers else onNavigateToPantry,
                     )
                 }
             }
@@ -553,7 +641,45 @@ private fun ZoneStat(icon: ImageVector, value: Int, label: String) {
 }
 
 @Composable
-private fun UrgentCard(ingredientId: String, name: String, caption: String, onClick: () -> Unit) {
+private fun DefrostReminderCard(items: List<String>, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(role = Role.Button, onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.beigeSoft,
+        border = BorderStroke(1.dp, colors.line),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            IconBadge(AppIcons.Snowflake, colors.surface, colors.beigeText)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Nhớ rã đông",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.text,
+                )
+                Text(
+                    text = defrostSummaryText(items),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.beigeText,
+                )
+            }
+            Icon(AppIcons.Chevron, contentDescription = null, tint = colors.beigeText, modifier = Modifier.size(20.dp))
+        }
+    }
+}
+
+@Composable
+private fun UrgentCard(ingredientId: String?, name: String, caption: String, onClick: () -> Unit) {
     val colors = AppTheme.colors
     Surface(
         modifier = Modifier
@@ -569,7 +695,19 @@ private fun UrgentCard(ingredientId: String, name: String, caption: String, onCl
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            FoodThumb(ingredientId = ingredientId, size = 64.dp, shape = RoundedCornerShape(14.dp), urgent = true)
+            if (ingredientId != null) {
+                FoodThumb(ingredientId = ingredientId, size = 64.dp, shape = RoundedCornerShape(14.dp), urgent = true)
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(colors.warnSoft),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(AppIcons.Pot, contentDescription = null, tint = colors.warnText, modifier = Modifier.size(28.dp))
+                }
+            }
             Text(
                 name,
                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),

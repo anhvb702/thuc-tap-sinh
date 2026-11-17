@@ -16,6 +16,10 @@ data class PantryBackupSnapshot(
     val mealToggles: List<MealToggleBackup> = emptyList(),
     val favorites: List<FavoriteRecipeBackup> = emptyList(),
     val cookMeals: List<CookMealBackup> = emptyList(),
+    val compartments: List<CompartmentBackup> = emptyList(),
+    val customRecipes: List<CustomRecipeBackup> = emptyList(),
+    val leftovers: List<LeftoverBackup> = emptyList(),
+    val extraShoppingItems: List<ExtraShoppingBackup> = emptyList(),
 )
 
 /** Bữa (LUNCH/DINNER) của một lần nấu trong [PantryBackupSnapshot.cookLogs]; lần nấu không có dòng này là chưa biết bữa. */
@@ -95,5 +99,36 @@ data class MealToggleBackup(
 data class FavoriteRecipeBackup(
     val recipeId: String,
     val createdAtEpochMs: Long,
+)
+
+@Serializable
+data class CompartmentBackup(
+    val ingredientId: String,
+    val compartment: String,
+)
+
+@Serializable
+data class CustomRecipeBackup(
+    val recipeId: String,
+    val title: String,
+    val steps: List<String> = emptyList(),
+    val required: List<List<String>>,
+    val optional: List<List<String>> = emptyList(),
+    val minutes: Int? = null,
+)
+
+@Serializable
+data class LeftoverBackup(
+    val id: String,
+    val title: String,
+    val compartment: String = "CHILL",
+    val markedAtEpochDays: Long,
+    val shelfDays: Int = 2,
+)
+
+@Serializable
+data class ExtraShoppingBackup(
+    val ingredientId: String,
+    val addedAtEpochDays: Long,
 )
 

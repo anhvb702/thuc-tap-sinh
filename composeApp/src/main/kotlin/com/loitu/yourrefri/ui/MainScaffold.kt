@@ -35,6 +35,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.home.ui.HomeScreen
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridScreen
@@ -52,6 +54,7 @@ import com.loitu.yourrefri.feature.recipe.ui.CookDoneScreen
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
 import com.loitu.yourrefri.feature.recipe.ui.cookUndoActions
+import com.loitu.yourrefri.feature.recipe.ui.leftoverShelfDaysFor
 import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
@@ -98,6 +101,15 @@ fun MainScaffold(
     state: PantryGridState,
     weeklyMealPlanState: WeeklyMealPlanState,
     onWeeklyMealPlanAction: (WeeklyMealPlanAction) -> Unit,
+    leftovers: List<LeftoverItem> = emptyList(),
+    defrostItems: List<String> = emptyList(),
+    onAddLeftover: (title: String, compartment: PantryCompartment, shelfDays: Int) -> Unit = { _, _, _ -> },
+    onToggleLeftoverCompartment: (LeftoverItem) -> Unit = {},
+    onUpdateLeftoverShelfDays: (LeftoverItem, Int) -> Unit = { _, _ -> },
+    onDeleteLeftover: (String) -> Unit = {},
+    onAddToExtraShopping: (String) -> Unit = {},
+    onRemoveExtraShoppingItem: (String) -> Unit = {},
+    onClearExtraShoppingItems: () -> Unit = {},
     snackbarHostState: SnackbarHostState,
     recipes: List<Recipe>,
     customRecipeIds: Set<String> = emptySet(),
@@ -212,7 +224,7 @@ fun MainScaffold(
                         logId?.let(onDeleteCookLog)
                     }
                 }
-                delay(30_000)
+                delay(5_000)
                 snackbarHostState.currentSnackbarData?.dismiss()
                 snackbarJob.join()
             }
@@ -330,7 +342,13 @@ fun MainScaffold(
         ) {
             val doneNow = cookDone
             if (doneNow != null) {
-                CookDoneScreen(done = doneNow, onHome = { goHomeAfterCook() })
+                CookDoneScreen(
+                    done = doneNow,
+                    onHome = { goHomeAfterCook() },
+                    onSaveLeftover = { title, compartment ->
+                        onAddLeftover(title, compartment, leftoverShelfDaysFor(compartment))
+                    },
+                )
             } else if (handsFreeRecipe != null) {
                 HandsFreeCookScreen(
                     recipe = handsFreeRecipe,
@@ -353,12 +371,6 @@ fun MainScaffold(
                     },
                     onBack = { showHistory = false },
                     onDelete = onDeleteCookLog,
-                    onRestoreAndDelete = { log ->
-                        log.savedIngredientIds.distinct().forEach { id ->
-                            if (state.pantry[id]?.have != true) onAction(PantryGridAction.Tap(id))
-                        }
-                        onDeleteCookLog(log.id)
-                    },
                 )
             } else when (currentTab) {
                 NavTab.HOME -> HomeScreen(
@@ -386,6 +398,9 @@ fun MainScaffold(
                     onAdjustDiet = { currentTab = dietAdjustmentTab() },
                     meal = currentMeal,
                     onMealChange = { chosenMeal = it },
+                    leftovers = leftovers,
+                    defrostItems = defrostItems,
+                    onOpenLeftovers = { currentTab = NavTab.PANTRY },
                 )
                 NavTab.PANTRY -> PantryGridScreen(
                     state = state,
@@ -396,6 +411,12 @@ fun MainScaffold(
                         requestedRecipeMode = RecipeScreenMode.DAILY
                         currentTab = NavTab.RECIPES
                     },
+                    leftovers = leftovers,
+                    onAddLeftover = onAddLeftover,
+                    onToggleLeftoverCompartment = onToggleLeftoverCompartment,
+                    onUpdateLeftoverShelfDays = onUpdateLeftoverShelfDays,
+                    onDeleteLeftover = onDeleteLeftover,
+                    onAddToExtraShopping = onAddToExtraShopping,
                 )
                 NavTab.RECIPES -> {
                     // Món mở từ danh sách hoặc kết quả ngẫu nhiên được tra cứu trong danh sách đã lọc trước.
@@ -428,6 +449,9 @@ fun MainScaffold(
                     initialRecipeId = requestedRecipeId,
                     initialMode = requestedRecipeMode,
                     onWeeklyAction = onWeeklyMealPlanAction,
+                    extraShoppingItems = weeklyMealPlanState.extraShoppingItems,
+                    onRemoveExtraShoppingItem = onRemoveExtraShoppingItem,
+                    onClearExtraShoppingItems = onClearExtraShoppingItems,
                     weeklyGoal = weeklyMealPlanState.goal,
                     weeklyPreferences = weeklyMealPlanState.preferences,
                     weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,

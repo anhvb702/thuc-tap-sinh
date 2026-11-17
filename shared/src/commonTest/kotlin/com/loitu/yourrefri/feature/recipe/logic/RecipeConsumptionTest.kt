@@ -1,5 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.logic
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import kotlin.test.Test
@@ -31,6 +33,26 @@ class RecipeConsumptionTest {
         assertEquals(
             listOf("chicken"),
             ingredientIdsToConsume(dish, setOf("pork", "chicken"), setOf("chicken")),
+        )
+    }
+
+    @Test
+    fun consumptionNeverDeductsSeasonings() {
+        val dish = recipe(listOf(Slot(listOf("pork")), Slot(listOf("nuoc-mam")), Slot(listOf("muoi", "egg"))))
+        val ingredients = listOf(
+            Ingredient("pork", "Thịt heo", "protein", 3, kind = IngredientKind.FRESH),
+            Ingredient("egg", "Trứng", "protein", 7, kind = IngredientKind.FRESH),
+            Ingredient("nuoc-mam", "Nước mắm", "gia-vi", 180, kind = IngredientKind.SEASONING),
+            Ingredient("muoi", "Muối", "gia-vi", 365, kind = IngredientKind.SEASONING),
+        )
+        assertEquals(
+            listOf("pork", "egg"),
+            ingredientIdsToConsume(
+                dish,
+                availableIngredientIds = setOf("pork", "nuoc-mam", "muoi", "egg"),
+                preferredIngredientIds = setOf("muoi", "nuoc-mam"),
+                ingredients = ingredients,
+            ),
         )
     }
 }

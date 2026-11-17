@@ -1,6 +1,9 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -40,5 +43,38 @@ class WeeklyShopping4BTest {
             weeklyStockCompartments(listOf("fish", "fish", "greens"), mapOf("fish" to PantryCompartment.FREEZE)),
         )
         assertTrue(weeklyStockCompartments(emptyList(), emptyMap()).isEmpty())
+    }
+
+    @Test
+    fun extraShoppingDisplayItemsResolvesCatalogNamesAndFallsBackToId() {
+        val day = LocalDate(2026, 11, 17)
+        val extra = listOf(ExtraShoppingItem("garlic", day), ExtraShoppingItem("unknown-id", day))
+        val catalog = listOf(Ingredient("garlic", "Tỏi", "khac", 14))
+        assertEquals(
+            listOf("garlic" to "Tỏi", "unknown-id" to "unknown-id"),
+            extraShoppingDisplayItems(extra, catalog),
+        )
+    }
+
+    @Test
+    fun combinedWeeklyStockIdsAppendsExtraItemsWithoutDuplicates() {
+        val day = LocalDate(2026, 11, 17)
+        val extra = listOf(ExtraShoppingItem("pork", day), ExtraShoppingItem("garlic", day))
+        assertEquals(
+            listOf("pork", "pork", "greens", "garlic"),
+            combinedWeeklyStockIds(listOf("pork", "pork", "greens"), extra),
+        )
+        assertEquals(
+            listOf("garlic"),
+            combinedWeeklyStockIds(emptyList(), listOf(ExtraShoppingItem("garlic", day))),
+        )
+    }
+
+    @Test
+    fun combinedWeeklySelectedCountCountsUniqueWeeklyAndExtraItems() {
+        val day = LocalDate(2026, 11, 17)
+        val extra = listOf(ExtraShoppingItem("pork", day), ExtraShoppingItem("garlic", day))
+        assertEquals(3, combinedWeeklySelectedCount(setOf("pork", "greens"), extra))
+        assertEquals(2, combinedWeeklySelectedCount(emptySet(), extra))
     }
 }

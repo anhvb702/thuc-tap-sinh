@@ -26,6 +26,15 @@ class LunchMealPrepHiddenTest {
         assertTrue(content.contains("Nấu gộp cùng bữa tối (x2 phần)"))
     }
 
+    @Test fun weeklyContentUsesTwoMealSlotsAndSkipWithoutBreakfast() {
+        val content = source("feature/recipe/ui/WeeklyMealPlanContent.kt")
+        assertTrue(content.contains("\"Trưa\""))
+        assertTrue(content.contains("\"Tối\""))
+        assertTrue(content.contains("\"Bỏ qua\""))
+        assertFalse(content.contains("\"Sáng\""))
+        assertFalse(content.contains("THREE_MEALS"))
+    }
+
     @Test fun pantryStockSubtitleWithoutLunch() {
         assertEquals(
             "Cần cho 2 bữa (trong tủ có 1, mua thêm 1)",

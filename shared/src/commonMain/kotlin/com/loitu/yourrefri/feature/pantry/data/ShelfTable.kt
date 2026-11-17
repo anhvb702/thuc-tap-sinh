@@ -18,6 +18,8 @@ object ShelfTable {
         val nameVi: String,
         val group: String,
         val defaultShelfDays: Int,
+        val kind: String? = null,
+        val freezerShelfDays: Int? = null,
     )
 
     // SerializationException là lớp con của IllegalArgumentException, nên JSON hỏng cũng ra đúng loại lỗi.
@@ -32,6 +34,11 @@ object ShelfTable {
             require(row.defaultShelfDays in MIN_SHELF_DAYS..MAX_SHELF_DAYS) {
                 "defaultShelfDays=${row.defaultShelfDays} ngoài $MIN_SHELF_DAYS..$MAX_SHELF_DAYS ở ${row.id}"
             }
+            row.freezerShelfDays?.let { days ->
+                require(days in MIN_SHELF_DAYS..MAX_SHELF_DAYS) {
+                    "freezerShelfDays=$days ngoài $MIN_SHELF_DAYS..$MAX_SHELF_DAYS ở ${row.id}"
+                }
+            }
             require(row.group in GROUPS) { "group '${row.group}' không hợp lệ ở ${row.id}" }
             Ingredient(
                 id = row.id,
@@ -39,6 +46,8 @@ object ShelfTable {
                 group = row.group,
                 defaultShelfDays = row.defaultShelfDays,
                 userShelfDays = null,
+                kind = IngredientKind.fromJson(row.kind),
+                freezerShelfDays = row.freezerShelfDays,
             )
         }
     }

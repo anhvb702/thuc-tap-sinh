@@ -16,3 +16,6 @@ SELECT * FROM CustomRecipeEntity ORDER BY title COLLATE NOCASE, recipeId;
 
 deleteById:
 DELETE FROM CustomRecipeEntity WHERE recipeId = :recipeId;
+
+deleteAll:
+DELETE FROM CustomRecipeEntity;

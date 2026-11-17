@@ -46,7 +46,7 @@ class CustomRecipeRepositoryImpl(
         val recipe = Recipe(
             id = "custom-${Random.nextLong().toULong().toString(16)}",
             title = title.trim(),
-            steps = listOf("Chuẩn bị nguyên liệu và chế biến món như thường ngày."),
+            steps = emptyList(),
             required = ids.map { Slot(listOf(it)) },
         )
         upsert(recipe)

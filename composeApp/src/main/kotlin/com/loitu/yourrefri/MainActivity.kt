@@ -27,12 +27,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
 import com.loitu.yourrefri.feature.backup.data.BackupCodec
 import com.loitu.yourrefri.feature.backup.data.PantryBackupRepositoryImpl
+import com.loitu.yourrefri.feature.notice.logic.defrostNamesForDay
+import com.loitu.yourrefri.feature.pantry.data.LeftoverRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.ShelfTable
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
 import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.FavoriteRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
@@ -86,6 +89,8 @@ private object AppGraph {
             weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
             favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
             cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
+            leftoverRepository = LeftoverRepositoryImpl(db, Dispatchers.IO),
+            extraShoppingRepository = ExtraShoppingRepositoryImpl(db, Dispatchers.IO),
         )
     }
 }
@@ -118,6 +123,8 @@ private data class AppDependencies(
     val weeklyMealPlanRepository: WeeklyMealPlanRepositoryImpl,
     val favoriteRepository: FavoriteRecipeRepositoryImpl,
     val cookLogRepository: com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl,
+    val leftoverRepository: LeftoverRepositoryImpl,
+    val extraShoppingRepository: ExtraShoppingRepositoryImpl,
 )
 
 @OptIn(ExperimentalTime::class)
@@ -138,16 +145,23 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     val pantryRepository = dependencies.pantryRepository
     val ingredients = dependencies.ingredients
     val backupRepository = dependencies.backupRepository
-    val viewModel = remember(pantryRepository, ingredients) {
+    val viewModel = remember(
+        pantryRepository,
+        ingredients,
+        dependencies.leftoverRepository,
+        dependencies.extraShoppingRepository,
+    ) {
         PantryGridViewModel(
             repository = pantryRepository,
             ingredients = ingredients,
             clock = Clock.System,
             timeZone = TimeZone.currentSystemDefault(),
+            leftoverRepository = dependencies.leftoverRepository,
+            extraShoppingRepository = dependencies.extraShoppingRepository,
         )
     }
     val weeklyMealPlanViewModel: WeeklyMealPlanViewModel = viewModel(
-        factory = remember(dependencies.weeklyMealPlanRepository) {
+        factory = remember(dependencies.weeklyMealPlanRepository, dependencies.extraShoppingRepository) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
@@ -155,6 +169,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
                         repository = dependencies.weeklyMealPlanRepository,
                         clock = Clock.System,
                         timeZone = TimeZone.currentSystemDefault(),
+                        extraShoppingRepository = dependencies.extraShoppingRepository,
                     ) as T
             }
         },
@@ -212,12 +227,33 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     }
 
     val state by viewModel.state.collectAsState()
+    val leftovers by viewModel.leftovers.collectAsState()
     val customRecipesFlow = remember(dependencies.customRecipeRepository) {
         dependencies.customRecipeRepository.observeAll()
     }
     val customRecipes by customRecipesFlow.collectAsState(initial = emptyList())
     val allRecipes = remember(dependencies.recipes, customRecipes) { dependencies.recipes + customRecipes }
     val weeklyMealPlanState by weeklyMealPlanViewModel.state.collectAsState()
+    val defrostItems = remember(
+        state.today,
+        weeklyMealPlanState.savedEntries,
+        allRecipes,
+        state.ingredients,
+        state.pantry,
+        leftovers,
+    ) {
+        defrostNamesForDay(
+            day = state.today,
+            weeklyPlan = weeklyMealPlanState.savedEntries,
+            recipes = allRecipes,
+            ingredients = state.ingredients,
+            pantry = state.pantry.values.toList(),
+            leftovers = leftovers,
+        )
+    }
+    LaunchedEffect(allRecipes, state.today, weeklyMealPlanState.weekStart, weeklyMealPlanState.savedEntries) {
+        weeklyMealPlanViewModel.syncSchedule(allRecipes, state)
+    }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(weeklyMealPlanViewModel) {
@@ -285,6 +321,15 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         state = state,
         weeklyMealPlanState = weeklyMealPlanState,
         onWeeklyMealPlanAction = weeklyMealPlanViewModel::dispatch,
+        leftovers = leftovers,
+        defrostItems = defrostItems,
+        onAddLeftover = viewModel::addLeftover,
+        onToggleLeftoverCompartment = viewModel::toggleLeftoverCompartment,
+        onUpdateLeftoverShelfDays = viewModel::updateLeftoverShelfDays,
+        onDeleteLeftover = viewModel::deleteLeftover,
+        onAddToExtraShopping = viewModel::addToExtraShopping,
+        onRemoveExtraShoppingItem = weeklyMealPlanViewModel::removeExtraShoppingItem,
+        onClearExtraShoppingItems = weeklyMealPlanViewModel::clearExtraShoppingItems,
         snackbarHostState = snackbarHostState,
         recipes = allRecipes,
         customRecipeIds = customRecipes.mapTo(linkedSetOf()) { it.id },

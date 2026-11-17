@@ -89,6 +89,48 @@ class ShelfTableTest {
         assertEquals(365, ShelfTable.parse(withValidFirst(entry("muoi", "Muối", "khac", "365")))[1].defaultShelfDays)
     }
 
+    // --- kind & freezerShelfDays ---
+
+    @Test
+    fun parse_parsesKindAndFreezerShelfDays() {
+        val json = array(
+            """{"id":"thit-heo","nameVi":"Thịt heo","group":"thit","defaultShelfDays":2,"kind":"fresh","freezerShelfDays":60}""",
+            """{"id":"nuoc-mam","nameVi":"Nước mắm","group":"khac","defaultShelfDays":30,"kind":"seasoning"}""",
+            """{"id":"sua-tuoi","nameVi":"Sữa tươi","group":"sua-trung","defaultShelfDays":3,"kind":"ready"}""",
+        )
+        val parsed = ShelfTable.parse(json)
+        assertEquals(IngredientKind.FRESH, parsed[0].kind)
+        assertEquals(60, parsed[0].freezerShelfDays)
+        assertEquals(IngredientKind.SEASONING, parsed[1].kind)
+        assertEquals(null, parsed[1].freezerShelfDays)
+        assertEquals(IngredientKind.READY, parsed[2].kind)
+        assertEquals(null, parsed[2].freezerShelfDays)
+    }
+
+    @Test
+    fun parse_unknownOrMissingKind_defaultsToFresh() {
+        val json = array(
+            entry("ca-rot", "Cà rốt", "rau-cu", "14"),
+            """{"id":"ca-chua","nameVi":"Cà chua","group":"rau-cu","defaultShelfDays":5,"kind":"other"}""",
+        )
+        val parsed = ShelfTable.parse(json)
+        assertEquals(IngredientKind.FRESH, parsed[0].kind)
+        assertEquals(null, parsed[0].freezerShelfDays)
+        assertEquals(IngredientKind.FRESH, parsed[1].kind)
+    }
+
+    @Test
+    fun parse_freezerShelfDaysOutOfRange_fails_andNamesTheId() {
+        assertRejected(
+            withValidFirst("""{"id":"thit-heo","nameVi":"Thịt heo","group":"thit","defaultShelfDays":2,"freezerShelfDays":0}"""),
+            mustMention = "thit-heo",
+        )
+        assertRejected(
+            withValidFirst("""{"id":"thit-heo","nameVi":"Thịt heo","group":"thit","defaultShelfDays":2,"freezerShelfDays":366}"""),
+            mustMention = "thit-heo",
+        )
+    }
+
     // --- id ---
 
     @Test
@@ -200,8 +242,8 @@ class ShelfTableTest {
     private val bundle: List<Ingredient> by lazy { ShelfTable.parse(readShelfTableJson()) }
 
     @Test
-    fun bundle_hasBetween50And60Items() {
-        assertTrue(bundle.size in 50..60, "Bảng hạn có ${bundle.size} món, cần 50..60")
+    fun bundle_hasBetween50And70Items() {
+        assertTrue(bundle.size in 50..70, "Bảng hạn có ${bundle.size} món, cần 50..70")
     }
 
     @Test
@@ -255,5 +297,31 @@ class ShelfTableTest {
     @Test
     fun bundle_noUserOverrides() {
         assertTrue(bundle.all { it.userShelfDays == null })
+    }
+
+    @Test
+    fun bundle_everyKindIsRepresented() {
+        assertEquals(IngredientKind.entries.toSet(), bundle.map { it.kind }.toSet())
+    }
+
+    @Test
+    fun bundle_meatAndSeafoodHaveFreezerShelfDaysGreaterThanChill() {
+        val meatAndFish = bundle.filter { it.group == "thit" || it.group == "ca" }
+        assertTrue(meatAndFish.isNotEmpty())
+        assertTrue(
+            meatAndFish.all { it.freezerShelfDays != null && it.freezerShelfDays > it.defaultShelfDays },
+            "Thịt/cá phải có freezerShelfDays lớn hơn defaultShelfDays",
+        )
+    }
+
+    @Test
+    fun bundle_nonFreezableCategoriesOmitFreezerShelfDays() {
+        val nonFreezable = bundle.filter {
+            it.kind != IngredientKind.FRESH || it.group in setOf("rau-la", "trai-cay")
+        }
+        assertTrue(
+            nonFreezable.all { it.freezerShelfDays == null },
+            "Gia vị, đồ ăn liền, rau lá, trái cây không có freezerShelfDays",
+        )
     }
 }

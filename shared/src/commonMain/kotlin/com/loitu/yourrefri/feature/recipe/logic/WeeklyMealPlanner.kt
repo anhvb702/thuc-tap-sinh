@@ -172,7 +172,7 @@ fun buildWeeklyMealPlan(
     return chosen
 }
 
-/** Builds a complete three-slot schedule while preserving the legacy dinner-only planner. */
+/** Builds a complete two-slot schedule (lunch + dinner) while preserving the legacy dinner-only planner. */
 fun buildWeeklyMealSchedule(
     recipes: List<Recipe>, state: PantryGridState, goal: DietGoal = DietGoal.BALANCED,
     preferences: Set<FamilyPreferenceTag> = emptySet(), swappedOffsets: Map<Int, Int> = emptyMap(),
@@ -180,17 +180,11 @@ fun buildWeeklyMealSchedule(
 ): List<PlannedDayMeal> {
     val dinners = buildWeeklyMealPlan(recipes, state, goal, preferences, swappedOffsets)
     if (dinners.isEmpty()) return emptyList()
-    val quickIds = setOf("mien", "bun-kho", "trung-ga", "sua-tuoi", "sua-chua", "chuoi", "tao", "cam")
-    val quick = recipes.distinctBy { it.id }.filter { recipe ->
-        recipe.minutes?.let { it <= 15 } == true || recipe.ids().any { it in quickIds }
-    }.ifEmpty { recipes.distinctBy { it.id } }
+    val unique = recipes.distinctBy { it.id }
     return buildList {
         dinners.forEach { dinner ->
-            val day = dinner.dayIndex
-            val breakfast = quick.firstOrNull { it.id != dinner.recipe.id }
-            if (breakfast != null) add(dinner.copy(recipe = breakfast, sideRecipe = null, mealSlot = MealSlot.BREAKFAST, mealTypeVi = "Bữa sáng"))
             if (!includeLunchMealPrep) {
-                val lunch = recipes.distinctBy { it.id }.firstOrNull { it.id != dinner.recipe.id && it.id != breakfast?.id }
+                val lunch = unique.firstOrNull { it.id != dinner.recipe.id }
                 if (lunch != null) add(dinner.copy(recipe = lunch, sideRecipe = null, mealSlot = MealSlot.LUNCH, mealTypeVi = "Bữa trưa"))
             }
             add(dinner.copy(mealSlot = MealSlot.DINNER, mealTypeVi = "Bữa tối"))

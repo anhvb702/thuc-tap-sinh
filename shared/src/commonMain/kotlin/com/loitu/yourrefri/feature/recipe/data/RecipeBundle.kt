@@ -25,6 +25,7 @@ object RecipeBundle {
         val seenIds = HashSet<String>()
         return rows.map { row ->
             require(seenIds.add(row.id)) { "id công thức trùng: ${row.id}" }
+            require(row.steps.isNotEmpty()) { "Công thức bundle phải có ít nhất 1 bước: ${row.id}" }
             Recipe(
                 id = row.id,
                 title = row.title,

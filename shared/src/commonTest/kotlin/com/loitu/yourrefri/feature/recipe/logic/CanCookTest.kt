@@ -1,5 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.logic
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
@@ -74,5 +76,17 @@ class CanCookTest {
         assertTrue(canCook(recipe.copy(required = required.reversed()), pantry.reversed()))
         assertEquals(requiredBefore, required)
         assertEquals(pantryBefore, pantry)
+    }
+
+    @Test
+    fun seasoningSlots_neverBlockCanCook_evenWhenMissingFromPantry() {
+        val recipe = recipe(listOf(Slot(listOf("egg")), Slot(listOf("nuoc-mam")), Slot(listOf("muoi"))))
+        val ingredients = listOf(
+            Ingredient("egg", "Trứng", "protein", 7, kind = IngredientKind.FRESH),
+            Ingredient("nuoc-mam", "Nước mắm", "gia-vi", 180, kind = IngredientKind.SEASONING),
+            Ingredient("muoi", "Muối", "gia-vi", 365, kind = IngredientKind.SEASONING),
+        )
+        assertTrue(canCook(recipe, listOf(item("egg")), ingredients))
+        assertFalse(canCook(recipe, listOf(item("nuoc-mam")), ingredients))
     }
 }

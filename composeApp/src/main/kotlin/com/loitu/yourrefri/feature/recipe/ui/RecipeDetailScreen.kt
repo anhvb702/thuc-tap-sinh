@@ -90,6 +90,8 @@ fun RecipeDetailScreen(
     var showLeftover by remember(recipe.id) { mutableStateOf(false) }
     val candidateIds = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds }
     val namesById = remember(state.ingredients) { state.ingredients.associate { it.id to it.nameVi } }
+    val showSteps = shouldShowRecipeSteps(recipe)
+    val showHandsFree = shouldShowHandsFreeAction(recipe, onStartHandsFree != null)
 
     // Chụp tủ TRƯỚC khi nấu để hoàn tác đúng trạng thái cũ; phần "còn lại" không bị trừ nên cũng không bị hoàn tác.
     fun finishCook(kept: Set<String>) {
@@ -100,7 +102,7 @@ fun RecipeDetailScreen(
         val undo = cookUndoActions(before, ids)
         scope.launch {
             val undoJob = scope.launch {
-                delay(30_000)
+                delay(5_000)
                 host.currentSnackbarData?.dismiss()
             }
             val result = host.showSnackbar(
@@ -194,25 +196,27 @@ fun RecipeDetailScreen(
                     }
                 }
 
-                Text(
-                    text = "Cách nấu",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.text,
-                    modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
-                )
-                recipe.steps.forEachIndexed { index, step ->
-                    StepRow(
-                        title = stepTitle(index),
-                        text = step,
-                        checked = index in ticked,
-                        onCheckedChange = { on -> ticked = if (on) ticked + index else ticked - index },
+                if (showSteps) {
+                    Text(
+                        text = "Cách nấu",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.text,
+                        modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                     )
+                    recipe.steps.forEachIndexed { index, step ->
+                        StepRow(
+                            title = stepTitle(index),
+                            text = step,
+                            checked = index in ticked,
+                            onCheckedChange = { on -> ticked = if (on) ticked + index else ticked - index },
+                        )
+                    }
                 }
             }
 
             Surface(color = colors.background, border = BorderStroke(1.dp, colors.line)) {
                 Column {
-                if (onStartHandsFree != null) {
+                if (showHandsFree && onStartHandsFree != null) {
                     Button(
                         onClick = onStartHandsFree,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceSoft, contentColor = colors.text),
@@ -247,7 +251,7 @@ fun RecipeDetailScreen(
                 }
                 if (candidateIds.isNotEmpty()) {
                     TextButton(onClick = { showLeftover = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Chọn nguyên liệu không trừ (còn dư)", color = colors.accentText)
+                        Text("Giữ lại đồ còn dư", color = colors.accentText)
                     }
                 }
                 }
@@ -257,7 +261,7 @@ fun RecipeDetailScreen(
         if (snackbarHostState == null) {
             SnackbarHost(
                 hostState = localHost,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (onStartHandsFree != null) 136.dp else 76.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (showHandsFree) 136.dp else 76.dp),
             )
         }
     }

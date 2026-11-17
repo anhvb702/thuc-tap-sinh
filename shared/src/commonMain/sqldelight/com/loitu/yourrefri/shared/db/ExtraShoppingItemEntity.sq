@@ -1,0 +1,17 @@
+CREATE TABLE ExtraShoppingItemEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    addedAtEpochDays INTEGER NOT NULL
+);
+
+selectAll:
+SELECT * FROM ExtraShoppingItemEntity ORDER BY addedAtEpochDays ASC, ingredientId ASC;
+
+upsert:
+INSERT OR REPLACE INTO ExtraShoppingItemEntity(ingredientId, addedAtEpochDays)
+VALUES (:ingredientId, :addedAtEpochDays);
+
+deleteById:
+DELETE FROM ExtraShoppingItemEntity WHERE ingredientId = :ingredientId;
+
+deleteAll:
+DELETE FROM ExtraShoppingItemEntity;

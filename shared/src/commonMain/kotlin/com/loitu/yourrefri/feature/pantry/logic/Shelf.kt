@@ -11,8 +11,10 @@ enum class Urgency { EXPIRED, SOON, OK }
 
 // Đếm theo epoch day để hiệu số ngày lịch đúng qua tháng, năm và năm nhuận.
 fun daysLeft(item: PantryItem, ingredient: Ingredient, today: LocalDate): Int {
-    val shelfDays = (ingredient.userShelfDays ?: ingredient.defaultShelfDays) *
-        if (item.compartment == PantryCompartment.FREEZE) 10 else 1
+    val shelfDays = ingredient.userShelfDays ?: when (item.compartment) {
+        PantryCompartment.FREEZE -> ingredient.freezerShelfDays ?: ingredient.defaultShelfDays
+        PantryCompartment.CHILL -> ingredient.defaultShelfDays
+    }
     val expiry = item.markedAt.plus(shelfDays, DateTimeUnit.DAY)
     return (expiry.toEpochDays() - today.toEpochDays()).toInt()
 }

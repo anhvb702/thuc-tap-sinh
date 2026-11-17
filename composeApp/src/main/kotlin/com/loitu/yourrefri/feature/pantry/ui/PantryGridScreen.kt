@@ -90,6 +90,8 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.SHELF_DAY_OPTIONS
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
@@ -108,6 +110,12 @@ fun PantryGridScreen(
     snackbarHostState: SnackbarHostState? = null,
     voiceInputEnabled: Boolean = true,
     onCookFromSoon: () -> Unit = {},
+    leftovers: List<LeftoverItem> = emptyList(),
+    onAddLeftover: (title: String, compartment: PantryCompartment, shelfDays: Int) -> Unit = { _, _, _ -> },
+    onToggleLeftoverCompartment: (LeftoverItem) -> Unit = {},
+    onUpdateLeftoverShelfDays: (LeftoverItem, Int) -> Unit = { _, _ -> },
+    onDeleteLeftover: (String) -> Unit = {},
+    onAddToExtraShopping: (String) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val scope = rememberCoroutineScope()
@@ -135,6 +143,8 @@ fun PantryGridScreen(
 
     val context = LocalContext.current
     var filters by remember { mutableStateOf(PantryGridFilters()) }
+    var showAddLeftoverDialog by remember { mutableStateOf(false) }
+    var editingLeftover by remember { mutableStateOf<LeftoverItem?>(null) }
     var searchOpen by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     val searchFocus = remember { FocusRequester() }
@@ -321,192 +331,263 @@ fun PantryGridScreen(
             modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
         )
 
-        val allCells = cellsOf(state)
-        val presentation = pantryGridPresentation(allCells, filters.storageTab, filters.presentOnly)
+        val reminderText = if (filters.groupTab != PantryGroupTab.LEFTOVERS) {
+            leftoverReminderBanner(leftovers, state.today)
+        } else {
+            null
+        }
+        if (reminderText != null) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable { filters = filters.copy(groupTab = PantryGroupTab.LEFTOVERS) },
+                shape = RoundedCornerShape(16.dp),
+                color = colors.ctaSoft,
+                border = BorderStroke(1.dp, colors.cta),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(AppIcons.Clock, contentDescription = null, tint = colors.ctaText, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = reminderText,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.ctaText,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
 
-        // Chip lọc ngăn tủ có icon.
-        StorageSegmentedControl(
-            selected = filters.storageTab,
-            allCount = state.ingredients.size,
-            soonCount = soonCount(allCells),
-            onSelect = { filters = filters.copy(storageTab = it) },
+        PantryGroupSegmentedControl(
+            selected = filters.groupTab,
+            leftoverCount = leftovers.size,
+            onSelect = { filters = filters.copy(groupTab = it) },
         )
 
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = colors.surface,
-            border = BorderStroke(1.dp, colors.line),
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .toggleable(
-                        value = filters.presentOnly,
-                        role = Role.Switch,
-                        onValueChange = { filters = filters.copy(presentOnly = it) },
-                    )
-                    .semantics {
-                        contentDescription = "Chỉ xem món đang có, ${presentation.presentCount} món"
-                    }
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Chỉ xem món đang có (${presentation.presentCount})",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.text,
-                    modifier = Modifier.weight(1f).padding(end = 8.dp),
-                )
-                Switch(
-                    checked = filters.presentOnly,
-                    onCheckedChange = null,
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = colors.onPrimary,
-                        checkedTrackColor = colors.primary,
-                        checkedBorderColor = colors.primary,
-                        uncheckedThumbColor = colors.muted,
-                        uncheckedTrackColor = colors.surfaceSoft,
-                        uncheckedBorderColor = colors.line,
-                    ),
-                )
-            }
-        }
-
-        val filteredByLocation = presentation.visibleCells
-        val cells = if (searchOpen) filterCellsBySearch(filteredByLocation, searchQuery) else filteredByLocation
-        val searching = searchOpen && searchQuery.isNotBlank()
-
-        voiceNote?.let { note ->
-            Text(
-                text = note,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.warnText,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        if (filters.groupTab == PantryGroupTab.LEFTOVERS) {
+            LeftoversTabContent(
+                leftovers = leftovers,
+                today = state.today,
+                searchQuery = if (searchOpen) searchQuery else "",
+                onAddClick = { showAddLeftoverDialog = true },
+                onToggleCompartment = onToggleLeftoverCompartment,
+                onEditShelf = { editingLeftover = it },
+                onConsume = { onDeleteLeftover(it.id) },
+                modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-        }
-
-        if (cells.isEmpty() && searching) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = PantrySearchCopy.notFound,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.muted,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-                Button(
-                    onClick = { openAddSheet(prefill = searchQuery.trim()) },
-                    modifier = Modifier.padding(top = 12.dp).heightIn(min = 52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
-                ) {
-                    Text(PantrySearchCopy.addAction, fontWeight = FontWeight.Bold)
-                }
-            }
-        } else if (cells.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                val emptyState = pantryGridEmptyState(state.ingredients.size, cells.size, filters)
-                val emptyMessage = when (emptyState) {
-                    PantryGridEmptyState.CATALOG_EMPTY -> "Danh mục thực phẩm chưa có món nào."
-                    PantryGridEmptyState.NO_PRESENT_ITEMS -> "Chưa có món nào được ghi nhận trong tủ."
-                    PantryGridEmptyState.NO_PRESENT_IN_LOCATION -> "Chưa có món nào đang có trong ngăn này."
-                    PantryGridEmptyState.NO_ITEMS_IN_LOCATION -> "Danh mục này chưa có món nào."
-                    PantryGridEmptyState.NO_SOON_ITEMS -> PantryScreenCopy.soonEmpty
-                    PantryGridEmptyState.NONE -> "Chưa có món phù hợp với lựa chọn này."
-                }
-                Text(
-                    text = emptyMessage,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.muted,
-                )
-                if (filters != PantryGridFilters()) {
-                    TextButton(
-                        onClick = { filters = filters.showAllItems() },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) {
-                        Text("Xem tất cả món", color = colors.accentText)
-                    }
-                }
-            }
         } else {
-            // Tab "Nên dùng sớm" giữ thứ tự theo độ gấp, không gom theo nhóm thực phẩm.
-            val isSoonTab = filters.storageTab == StorageTab.SOON
-            val groups = if (isSoonTab) emptyList() else groupCellsByCategory(cells, state.ingredients)
-            @Composable
-            fun FoodCard(cell: PantryCell) = WarmFoodCard(
-                cell = cell,
-                quantity = cell.quantity,
-                onTap = {
-                    if (tapMarksOut(cell.have)) offerUndo(cell)
-                    onAction(PantryGridAction.Tap(cell.ingredientId))
-                },
-                onEditShelf = { onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId)) },
-                onEditUnit = { onAction(PantryGridAction.OpenUnitEditor(cell.ingredientId)) },
-                onToggleCompartment = {
-                    val ingredient = state.ingredients.firstOrNull { it.id == cell.ingredientId }
-                    val item = state.pantry[cell.ingredientId]
-                    val next = if (cell.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
-                    onAction(PantryGridAction.ToggleCompartment(cell.ingredientId))
-                    val oldDays = cell.daysLeft
-                    if (ingredient != null && item?.have == true && oldDays != null) {
-                        val newDays = daysLeft(item.copy(compartment = next), ingredient, state.today)
-                        val target = if (next == PantryCompartment.FREEZE) "Ngăn đông" else "Ngăn mát"
-                        val host = snackbarHostState
-                        if (host != null) scope.launch {
-                            val result = host.showSnackbar(
-                                message = compartmentChangeMessage(target, oldDays, newDays),
-                                actionLabel = "Sửa hạn",
-                                withDismissAction = true,
-                            )
-                            if (result == SnackbarResult.ActionPerformed) onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId))
-                        }
-                    }
-                },
-                onIncreaseQty = { onAction(PantryGridAction.IncreaseQuantity(cell.ingredientId)) },
-                onDecreaseQty = {
-                    if (decreaseMarksOut(cell.quantity)) offerUndo(cell)
-                    onAction(PantryGridAction.DecreaseQuantity(cell.ingredientId))
-                },
+            val allCells = cellsOf(state)
+            val presentation = pantryGridPresentation(
+                catalogCells = allCells,
+                storageTab = filters.storageTab,
+                presentOnly = filters.presentOnly,
+                groupTab = filters.groupTab,
+                ingredients = state.ingredients,
             )
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentPadding = pantryGridContentPadding(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            val ingredientById = remember(state.ingredients) { state.ingredients.associateBy { it.id } }
+
+            // Chip lọc ngăn tủ có icon.
+            StorageSegmentedControl(
+                selected = filters.storageTab,
+                allCount = state.ingredients.size,
+                soonCount = soonCount(allCells, state.ingredients),
+                onSelect = { filters = filters.copy(storageTab = it) },
+            )
+
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = colors.surface,
+                border = BorderStroke(1.dp, colors.line),
             ) {
-                if (isSoonTab) {
-                    items(cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
-                    item(key = "cook-from-soon") {
-                        Button(
-                            onClick = onCookFromSoon,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .toggleable(
+                            value = filters.presentOnly,
+                            role = Role.Switch,
+                            onValueChange = { filters = filters.copy(presentOnly = it) },
+                        )
+                        .semantics {
+                            contentDescription = "Chỉ xem món đang có, ${presentation.presentCount} món"
+                        }
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Chỉ xem món đang có (${presentation.presentCount})",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.text,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    )
+                    Switch(
+                        checked = filters.presentOnly,
+                        onCheckedChange = null,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = colors.onPrimary,
+                            checkedTrackColor = colors.primary,
+                            checkedBorderColor = colors.primary,
+                            uncheckedThumbColor = colors.muted,
+                            uncheckedTrackColor = colors.surfaceSoft,
+                            uncheckedBorderColor = colors.line,
+                        ),
+                    )
+                }
+            }
+
+            val filteredByLocation = presentation.visibleCells
+            val cells = if (searchOpen) filterCellsBySearch(filteredByLocation, searchQuery) else filteredByLocation
+            val searching = searchOpen && searchQuery.isNotBlank()
+
+            voiceNote?.let { note ->
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.warnText,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                )
+            }
+
+            if (cells.isEmpty() && searching) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = PantrySearchCopy.notFound,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.muted,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    Button(
+                        onClick = { openAddSheet(prefill = searchQuery.trim()) },
+                        modifier = Modifier.padding(top = 12.dp).heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                    ) {
+                        Text(PantrySearchCopy.addAction, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else if (cells.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    val emptyState = pantryGridEmptyState(state.ingredients.size, cells.size, filters)
+                    val emptyMessage = when (emptyState) {
+                        PantryGridEmptyState.CATALOG_EMPTY -> "Danh mục thực phẩm chưa có món nào."
+                        PantryGridEmptyState.NO_PRESENT_ITEMS -> "Chưa có món nào được ghi nhận trong tủ."
+                        PantryGridEmptyState.NO_PRESENT_IN_LOCATION -> "Chưa có món nào đang có trong ngăn này."
+                        PantryGridEmptyState.NO_ITEMS_IN_LOCATION -> "Danh mục này chưa có món nào."
+                        PantryGridEmptyState.NO_SOON_ITEMS -> PantryScreenCopy.soonEmpty
+                        PantryGridEmptyState.NONE -> "Chưa có món phù hợp với lựa chọn này."
+                    }
+                    Text(
+                        text = emptyMessage,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.muted,
+                    )
+                    if (filters != PantryGridFilters()) {
+                        TextButton(
+                            onClick = { filters = filters.showAllItems() },
+                            modifier = Modifier.heightIn(min = 48.dp),
                         ) {
-                            Text(PantryScreenCopy.cookFromSoonAction, fontWeight = FontWeight.Bold)
+                            Text("Xem tất cả món", color = colors.accentText)
                         }
                     }
                 }
-                groups.forEach { group ->
-                    item(key = "header-${group.key}") { CategoryHeader(group) }
-                    items(group.cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
+            } else {
+                // Tab "Nên dùng sớm" giữ thứ tự theo độ gấp, không gom theo nhóm thực phẩm.
+                val isSoonTab = filters.storageTab == StorageTab.SOON
+                val groups = if (isSoonTab) emptyList() else groupCellsByCategory(cells, state.ingredients)
+                @Composable
+                fun FoodCard(cell: PantryCell) {
+                    val ingredient = ingredientById[cell.ingredientId]
+                    WarmFoodCard(
+                        cell = cell,
+                        quantity = cell.quantity,
+                        kind = ingredient?.kind ?: IngredientKind.FRESH,
+                        freezerShelfDays = ingredient?.freezerShelfDays,
+                        onTap = {
+                            if (tapMarksOut(cell.have)) offerUndo(cell)
+                            onAction(PantryGridAction.Tap(cell.ingredientId))
+                        },
+                        onEditShelf = { onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId)) },
+                        onEditUnit = { onAction(PantryGridAction.OpenUnitEditor(cell.ingredientId)) },
+                        onToggleCompartment = {
+                            val item = state.pantry[cell.ingredientId]
+                            val next = if (cell.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
+                            onAction(PantryGridAction.ToggleCompartment(cell.ingredientId))
+                            val oldDays = cell.daysLeft
+                            if (ingredient != null && item?.have == true && oldDays != null) {
+                                val newDays = daysLeft(item.copy(compartment = next), ingredient, state.today)
+                                val target = if (next == PantryCompartment.FREEZE) "Ngăn đông" else "Ngăn mát"
+                                val host = snackbarHostState
+                                if (host != null) scope.launch {
+                                    val result = host.showSnackbar(
+                                        message = compartmentChangeMessage(target, oldDays, newDays),
+                                        actionLabel = "Sửa hạn",
+                                        withDismissAction = true,
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId))
+                                }
+                            }
+                        },
+                        onIncreaseQty = { onAction(PantryGridAction.IncreaseQuantity(cell.ingredientId)) },
+                        onDecreaseQty = {
+                            if (decreaseMarksOut(cell.quantity)) offerUndo(cell)
+                            onAction(PantryGridAction.DecreaseQuantity(cell.ingredientId))
+                        },
+                        onMarkSeasoningOutAndShop = {
+                            if (cell.have) {
+                                offerUndo(cell)
+                                onAction(PantryGridAction.Tap(cell.ingredientId))
+                            }
+                            onAddToExtraShopping(cell.ingredientId)
+                        },
+                    )
+                }
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = pantryGridContentPadding(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (isSoonTab) {
+                        items(cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
+                        item(key = "cook-from-soon") {
+                            Button(
+                                onClick = onCookFromSoon,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                            ) {
+                                Text(PantryScreenCopy.cookFromSoonAction, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    groups.forEach { group ->
+                        item(key = "header-${group.key}") { CategoryHeader(group) }
+                        items(group.cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
+                    }
                 }
             }
         }
@@ -602,6 +683,160 @@ fun PantryGridScreen(
             },
             dismissButton = {
                 TextButton(onClick = { onAction(PantryGridAction.CancelShelfEditor) }) {
+                    Text("Hủy", color = colors.muted)
+                }
+            },
+        )
+    }
+
+    if (showAddLeftoverDialog) {
+        var title by remember { mutableStateOf("") }
+        var compartment by remember { mutableStateOf(PantryCompartment.CHILL) }
+        var shelfDays by remember { mutableStateOf(2) }
+        val dayOptions = remember(compartment) {
+            (listOf(1, 2, 3, 5, 7, 14, 21, 30) + shelfDays).distinct().sorted()
+        }
+        AlertDialog(
+            onDismissRequest = { showAddLeftoverDialog = false },
+            containerColor = colors.surface,
+            titleContentColor = colors.text,
+            textContentColor = colors.muted,
+            title = {
+                Text(
+                    "Thêm đồ ăn thừa",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.text,
+                )
+            },
+            text = {
+                Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        placeholder = { Text("Ví dụ: Canh chua, Thịt kho") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.primary,
+                            unfocusedBorderColor = colors.line,
+                            focusedTextColor = colors.text,
+                            unfocusedTextColor = colors.text,
+                            focusedPlaceholderColor = colors.muted,
+                            unfocusedPlaceholderColor = colors.muted,
+                            cursorColor = colors.primary,
+                            focusedContainerColor = colors.background,
+                            unfocusedContainerColor = colors.background,
+                        ),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    )
+                    Text("Ngăn bảo quản", style = MaterialTheme.typography.labelLarge, color = colors.text)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(PantryCompartment.CHILL to "Ngăn mát (2 ngày)", PantryCompartment.FREEZE to "Ngăn đông (14 ngày)").forEach { (option, label) ->
+                            val selected = compartment == option
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(if (selected) colors.primary else colors.background)
+                                    .border(1.dp, if (selected) colors.primary else colors.line, RoundedCornerShape(12.dp))
+                                    .selectable(
+                                        selected = selected,
+                                        role = Role.RadioButton,
+                                        onClick = {
+                                            compartment = option
+                                            shelfDays = if (option == PantryCompartment.FREEZE) 14 else 2
+                                        },
+                                    )
+                                    .padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = if (selected) colors.onPrimary else colors.text,
+                                )
+                            }
+                        }
+                    }
+                    Text("Hạn ước tính", style = MaterialTheme.typography.labelLarge, color = colors.text, modifier = Modifier.padding(top = 4.dp))
+                    dayOptions.forEach { days ->
+                        ShelfDayOption(
+                            label = "$days ngày",
+                            selected = shelfDays == days,
+                            onClick = { shelfDays = days },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmed = title.trim()
+                        if (trimmed.isNotEmpty()) {
+                            onAddLeftover(trimmed, compartment, shelfDays)
+                            showAddLeftoverDialog = false
+                        }
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text("Lưu", color = colors.accentText, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddLeftoverDialog = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Hủy", color = colors.muted)
+                }
+            },
+        )
+    }
+
+    val leftoverToEdit = editingLeftover
+    if (leftoverToEdit != null) {
+        var selectedDays by remember(leftoverToEdit.id) { mutableStateOf(leftoverToEdit.shelfDays) }
+        val dayOptions = remember(leftoverToEdit.id) {
+            (SHELF_DAY_OPTIONS + leftoverToEdit.shelfDays).distinct().sorted()
+        }
+        AlertDialog(
+            onDismissRequest = { editingLeftover = null },
+            containerColor = colors.surface,
+            titleContentColor = colors.text,
+            textContentColor = colors.muted,
+            title = {
+                Text(
+                    "Hạn ước tính · ${leftoverToEdit.title}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = colors.text,
+                )
+            },
+            text = {
+                Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) {
+                    dayOptions.forEach { days ->
+                        ShelfDayOption(
+                            label = "$days ngày",
+                            selected = selectedDays == days,
+                            onClick = { selectedDays = days },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUpdateLeftoverShelfDays(leftoverToEdit, selectedDays)
+                        editingLeftover = null
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text("Lưu", color = colors.accentText, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingLeftover = null }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Hủy", color = colors.muted)
                 }
             },
@@ -860,6 +1095,161 @@ fun PantryGridScreen(
     }
 }
 
+/** Q21/Q28: Nhóm lớn trên màn Tủ lạnh: Đồ tươi (mặc định), Đồ ăn thừa, Ăn liền & Uống, Gia vị. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PantryGroupSegmentedControl(
+    selected: PantryGroupTab,
+    leftoverCount: Int,
+    onSelect: (PantryGroupTab) -> Unit,
+) {
+    val colors = AppTheme.colors
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        PantryGroupTab.entries.forEach { tab ->
+            val isSelected = tab == selected
+            val label = if (tab == PantryGroupTab.LEFTOVERS && leftoverCount > 0) {
+                "${tab.label} ($leftoverCount)"
+            } else {
+                tab.label
+            }
+            val contentColor = if (isSelected) colors.onPrimary else colors.text
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSelected) colors.primary else colors.surface)
+                    .border(1.dp, if (isSelected) colors.primary else colors.line, RoundedCornerShape(16.dp))
+                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(tab) })
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = contentColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeftoversTabContent(
+    leftovers: List<LeftoverItem>,
+    today: kotlinx.datetime.LocalDate,
+    searchQuery: String,
+    onAddClick: () -> Unit,
+    onToggleCompartment: (LeftoverItem) -> Unit,
+    onEditShelf: (LeftoverItem) -> Unit,
+    onConsume: (LeftoverItem) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AppTheme.colors
+    val normalized = normalizeFoodQuery(searchQuery)
+    val visible = if (normalized.isEmpty()) leftovers else leftovers.filter { matchesFoodQuery(it.title, normalized) }
+
+    Column(modifier = modifier) {
+        Button(
+            onClick = onAddClick,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp).heightIn(min = 48.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+        ) {
+            Icon(AppIcons.Plus, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Thêm đồ ăn thừa", fontWeight = FontWeight.Bold)
+        }
+
+        if (visible.isEmpty()) {
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = if (normalized.isNotEmpty()) PantrySearchCopy.notFound else "Chưa có đồ ăn thừa nào.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.muted,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = pantryGridContentPadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(visible, key = { it.id }) { item ->
+                    val daysLeft = leftoverDaysLeft(item, today)
+                    val urgent = item.compartment == PantryCompartment.CHILL || daysLeft <= URGENT_DAYS
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.surface,
+                        border = BorderStroke(1.dp, colors.line),
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = item.title,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = colors.text,
+                                    )
+                                    Text(
+                                        text = pantryRowStatus(daysLeft, item.compartment),
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
+                                        ),
+                                        color = if (urgent) colors.ctaText else colors.accentText,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { onConsume(item) },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
+                                    Text("Đã ăn hết", color = colors.ctaText, fontWeight = FontWeight.SemiBold)
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                TextButton(
+                                    onClick = { onToggleCompartment(item) },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
+                                    Text(
+                                        if (item.compartment == PantryCompartment.FREEZE) {
+                                            "Ngăn đông · Chuyển ngăn mát"
+                                        } else {
+                                            "Ngăn mát · Chuyển ngăn đông"
+                                        },
+                                        color = colors.accentText,
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { onEditShelf(item) },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                ) {
+                                    Text("Sửa hạn · ${item.shelfDays} ngày", color = colors.accentText)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** Chip lọc Tất cả | Ngăn mát | Ngăn đông có icon; chữ xuống dòng khi cỡ chữ lớn thay vì bị cắt. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1099,16 +1489,22 @@ private fun VoiceSheet(
 private fun WarmFoodCard(
     cell: PantryCell,
     quantity: Int,
+    kind: IngredientKind = IngredientKind.FRESH,
+    freezerShelfDays: Int? = null,
     onTap: () -> Unit,
     onEditShelf: () -> Unit,
     onEditUnit: () -> Unit,
     onToggleCompartment: () -> Unit,
     onIncreaseQty: () -> Unit,
     onDecreaseQty: () -> Unit,
+    onMarkSeasoningOutAndShop: () -> Unit = {},
 ) {
     val colors = AppTheme.colors
+    val isSeasoning = kind == IngredientKind.SEASONING
     val cardCopy = pantryCardCopy(cell.have, quantity)
-    val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
+    val seasoningCopy = seasoningCardCopy(cell.have)
+    val urgent = !isSeasoning && pantryRowUrgent(cell.have, cell.daysLeft)
+    val showCompartmentToggle = !isSeasoning && canToggleCompartment(cell.compartment, freezerShelfDays)
     // Chữ lớn: bộ đếm xuống dòng riêng để tên món không bị bóp hẹp.
     val stacked = LocalDensity.current.fontScale >= 1.15f
 
@@ -1149,10 +1545,16 @@ private fun WarmFoodCard(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = if (cell.have) colors.text else colors.muted,
                     )
-                    if (cardCopy.showEstimatedStatus) {
+                    if (isSeasoning) {
+                        Text(
+                            text = seasoningCopy.statusLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (cell.have) colors.accentText else colors.muted,
+                        )
+                    } else if (cardCopy.showEstimatedStatus) {
                         cell.daysLeft?.let { days ->
                             Text(
-                                text = pantryRowStatus(days),
+                                text = pantryRowStatus(days, cell.compartment),
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
                                 ),
@@ -1168,28 +1570,38 @@ private fun WarmFoodCard(
                         )
                     }
                 }
-                if (cell.have && !stacked) {
+                if (cell.have && !stacked && !isSeasoning) {
                     QuantityStepper(cell.nameVi, quantity, cell.unit, onDecreaseQty, onIncreaseQty)
+                }
+                if (isSeasoning && cell.have) {
+                    TextButton(
+                        onClick = onMarkSeasoningOutAndShop,
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text(seasoningCopy.markOutAndShopLabel, color = colors.ctaText, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(
-                    onClick = onToggleCompartment,
-                    modifier = Modifier.heightIn(min = 48.dp).semantics {
-                        contentDescription = "Chuyển ${cell.nameVi} sang ${if (cell.compartment == PantryCompartment.CHILL) "ngăn đông" else "ngăn mát"}"
-                    },
+            if (showCompartmentToggle) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Text(
-                        if (cell.compartment == PantryCompartment.FREEZE) "Ngăn đông · Chuyển ngăn mát" else "Ngăn mát · Chuyển ngăn đông",
-                        color = colors.accentText,
-                    )
+                    TextButton(
+                        onClick = onToggleCompartment,
+                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                            contentDescription = "Chuyển ${cell.nameVi} sang ${if (cell.compartment == PantryCompartment.CHILL) "ngăn đông" else "ngăn mát"}"
+                        },
+                    ) {
+                        Text(
+                            if (cell.compartment == PantryCompartment.FREEZE) "Ngăn đông · Chuyển ngăn mát" else "Ngăn mát · Chuyển ngăn đông",
+                            color = colors.accentText,
+                        )
+                    }
                 }
             }
-            if (cell.have) {
+            if (cell.have && !isSeasoning) {
                 if (stacked) {
                     QuantityStepper(
                         name = cell.nameVi,

@@ -44,12 +44,22 @@ class LiteCustomRecipeUiTest {
         assertTrue(receiver.contains("CustomRecipeRepositoryImpl(db, Dispatchers.IO).observeAll()"))
     }
 
+    // Căn cứ quyết định Q4 & Q23 (2026-11-16): Chỉ có 1 thông báo/ngày; ngày có đồ ngăn đông dời sang 08:00.
     @Test fun defrostAlarmUsesEightAmTriggerAndExistingChannel() {
         val scheduler = source("reminder/ReminderScheduler.kt")
         val receiver = source("reminder/ReminderReceiver.kt")
-        assertTrue(scheduler.contains("nextDefrostTrigger(enabled(context), now, tz)"))
-        assertTrue(scheduler.contains("DEFROST_REQUEST"))
-        assertTrue(receiver.contains("planDefrostNotice("))
+        assertTrue(scheduler.contains("nextReminderTrigger("))
+        assertTrue(scheduler.contains("LEGACY_DEFROST_REQUEST"))
+        assertTrue(receiver.contains("defrostNamesForDay("))
+        assertTrue(receiver.contains("planDailyNotice("))
         assertTrue(receiver.contains("NotificationChannel(\"daily_reminder\""))
+    }
+
+    @Test fun recipeDetailHidesStepsAndHandsFreeWhenStepsAreEmpty() {
+        val detail = source("feature/recipe/ui/RecipeDetailScreen.kt")
+        assertTrue(detail.contains("if (showSteps)"))
+        assertTrue(detail.contains("if (showHandsFree && onStartHandsFree != null)"))
+        assertTrue(detail.contains("Nấu xong, cập nhật tủ"))
+        assertTrue(detail.contains("Giữ lại đồ còn dư"))
     }
 }

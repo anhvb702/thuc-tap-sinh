@@ -25,6 +25,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,7 +56,9 @@ import kotlinx.datetime.plus
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
 import com.loitu.yourrefri.ui.theme.AppTheme
 
 internal const val WEEKLY_EMPTY_DIET_MESSAGE = "Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé."
@@ -101,13 +104,12 @@ internal fun WeeklyMealPlanSection(
             listOf(
                 WeeklyMealPreset.ONE_MEAL to "1 bữa/ngày (Bữa Tối)",
                 WeeklyMealPreset.TWO_MEALS to "2 bữa/ngày (Trưa + Tối)",
-                WeeklyMealPreset.THREE_MEALS to "3 bữa/ngày (Sáng + Trưa + Tối)",
-                WeeklyMealPreset.WORKWEEK to "Lịch đi làm (T2–T6: 1 bữa · T7–CN: 2–3 bữa)",
+                WeeklyMealPreset.WORKWEEK to "Lịch đi làm (T2–T6: 1 bữa · T7–CN: 2 bữa)",
             ).forEach { (preset, label) ->
                 PillChip(
                     label,
                     selected = (0..6).all { dayIndex ->
-                        MealSlot.entries.all { slot ->
+                        WEEKLY_MEAL_SLOTS.all { slot ->
                             (MealSlotKey(weekStart + DatePeriod(days = dayIndex), slot) !in disabledMeals) ==
                                 (slot in enabledMealSlots(preset, dayIndex))
                         }
@@ -206,18 +208,31 @@ internal fun WeeklyMealPlanSection(
                 val dayMeals = planByDay[dayIndex].orEmpty()
                 val dayLabel = dayMeals.firstOrNull()?.dayLabelVi ?: listOf("Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật")[dayIndex]
                 Text(dayLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = colors.text, modifier = Modifier.padding(top = 8.dp))
+                val dayDate = weekStart + DatePeriod(days = dayIndex)
+                val skipDaySelected = WEEKLY_MEAL_SLOTS.all { slot -> MealSlotKey(dayDate, slot) in disabledMeals }
                 Row(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    MealSlot.entries.forEach { slot ->
-                        val isEnabled = MealSlotKey(weekStart + DatePeriod(days = dayIndex), slot) !in disabledMeals
+                    WEEKLY_MEAL_SLOTS.forEach { slot ->
+                        val isEnabled = MealSlotKey(dayDate, slot) !in disabledMeals
                         PillChip(
-                            label = when (slot) { MealSlot.BREAKFAST -> "Sáng"; MealSlot.LUNCH -> "Trưa"; MealSlot.DINNER -> "Tối" },
+                            label = if (slot == MealSlot.LUNCH) "Trưa" else "Tối",
                             selected = isEnabled,
                             onClick = { onToggleMealSlot(dayIndex, slot) },
                         )
                     }
+                    PillChip(
+                        label = "Bỏ qua",
+                        selected = skipDaySelected,
+                        onClick = {
+                            WEEKLY_MEAL_SLOTS.forEach { slot ->
+                                if (MealSlotKey(dayDate, slot) !in disabledMeals) {
+                                    onToggleMealSlot(dayIndex, slot)
+                                }
+                            }
+                        },
+                    )
                 }
                 val enabledMeals = enabledMealsForDay(weeklyPlanSchedule, dayIndex, weekStart, disabledMeals)
                 if (enabledMeals.isEmpty()) {
@@ -325,6 +340,10 @@ internal fun WeeklyShoppingSection(
     onToggleChecked: (String, Boolean) -> Unit,
     onStock: ((List<String>) -> Unit)?,
     onStockWithCompartments: ((List<Pair<String, PantryCompartment>>) -> Unit)? = null,
+    extraShoppingItems: List<ExtraShoppingItem> = emptyList(),
+    ingredients: List<Ingredient> = emptyList(),
+    onRemoveExtraShoppingItem: (String) -> Unit = {},
+    onClearExtraShoppingItems: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -339,12 +358,63 @@ internal fun WeeklyShoppingSection(
         shopping.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
             .flatMap { item -> List(item.missingQuantity.coerceAtLeast(1)) { item.ingredient.id } }
     }
+    val extraDisplayItems = remember(extraShoppingItems, ingredients) {
+        extraShoppingDisplayItems(extraShoppingItems, ingredients)
+    }
+    val combinedStockList = remember(stockListForAction, extraShoppingItems) {
+        combinedWeeklyStockIds(stockListForAction, extraShoppingItems)
+    }
+    val totalSelectedCount = remember(selectedIds, extraShoppingItems) {
+        combinedWeeklySelectedCount(selectedIds, extraShoppingItems)
+    }
+    val buyItemIds = remember(buyItems) { buyItems.map { it.ingredient.id }.toSet() }
     val checklist = buyItems.map {
         WeeklyChecklistItem(it.ingredient.nameVi, compartments[it.ingredient.id] ?: suggestedWeeklyCompartment(it), it.ingredient.id !in uncheckedIds)
-    }
+    } + extraDisplayItems
+        .filter { (id, _) -> id !in buyItemIds }
+        .map { (_, name) -> WeeklyChecklistItem(name, PantryCompartment.CHILL, true) }
     Column(modifier.fillMaxWidth()) {
         Text("Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.padding(top = 14.dp))
-        Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = colors.accentText)
+        if (extraDisplayItems.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = colors.surfaceSoft,
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.line),
+            ) {
+                Column(Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Cần mua thêm",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = colors.accentText,
+                    )
+                    extraDisplayItems.forEach { (ingredientId, name) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = name,
+                                color = colors.text,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(
+                                onClick = { onRemoveExtraShoppingItem(ingredientId) },
+                                modifier = Modifier.size(48.dp),
+                            ) {
+                                Icon(
+                                    imageVector = AppIcons.Close,
+                                    contentDescription = "Bỏ $name khỏi Cần mua thêm",
+                                    tint = colors.muted,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = colors.accentText, modifier = Modifier.padding(top = 8.dp))
         weeklyShoppingAisles(buyItems).forEach { (aisle, aisleItems) ->
             Text(aisle, style = MaterialTheme.typography.titleMedium, color = colors.accentText, modifier = Modifier.padding(top = 12.dp))
             aisleItems.forEach { item ->
@@ -380,7 +450,7 @@ internal fun WeeklyShoppingSection(
         if (haveItems.isNotEmpty()) {
             Text("Đã đủ cho cả tuần: ${haveItems.joinToString(", ") { it.ingredient.nameVi }}", color = colors.muted, modifier = Modifier.padding(top = 4.dp))
         }
-        if (buyItems.isEmpty()) {
+        if (buyItems.isEmpty() && extraDisplayItems.isEmpty()) {
             Text("Tuần này nhà mình đã đủ nguyên liệu", Modifier.padding(top = 8.dp), color = colors.accentText)
         } else {
             TextButton(onClick = { clipboard.setText(AnnotatedString(weeklyChecklistText(checklist))) }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -388,14 +458,17 @@ internal fun WeeklyShoppingSection(
             }
             Button(onClick = {
                 if (onStockWithCompartments != null) {
-                    onStockWithCompartments(weeklyStockCompartments(stockListForAction, compartments))
+                    onStockWithCompartments(weeklyStockCompartments(combinedStockList, compartments))
                 } else {
-                    onStock?.invoke(stockListForAction)
+                    onStock?.invoke(combinedStockList)
                 }
-                if (onStockWithCompartments != null || onStock != null) result = stockResultMessage(selectedIds.size)
-            }, enabled = (onStockWithCompartments != null || onStock != null) && selectedIds.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (extraShoppingItems.isNotEmpty()) {
+                    onClearExtraShoppingItems()
+                }
+                if (onStockWithCompartments != null || onStock != null) result = stockResultMessage(totalSelectedCount)
+            }, enabled = (onStockWithCompartments != null || onStock != null) && totalSelectedCount > 0, colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 // stockActionButtonLabel còn emoji vì test SW-02 khóa chuỗi gốc; giao diện chỉ hiện phần chữ.
-                Text(stockActionButtonLabel(selectedIds.size).removeSuffix(" 🧊")) // guard:allow
+                Text(stockActionButtonLabel(totalSelectedCount).removeSuffix(" 🧊")) // guard:allow
             }
         }
         result?.let { Text(it, Modifier.padding(top = 8.dp), color = colors.accentText) }

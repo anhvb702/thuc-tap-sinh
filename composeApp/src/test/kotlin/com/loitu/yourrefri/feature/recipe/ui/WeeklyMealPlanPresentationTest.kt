@@ -19,11 +19,10 @@ class WeeklyMealPlanPresentationTest {
 
     @Test fun mealPresetsAndEmptyDayCopyAreAvailable() {
         assertEquals("Nghỉ bếp / Ăn ngoài", EMPTY_MEAL_DAY_LABEL)
-        assertEquals(setOf(com.loitu.yourrefri.feature.recipe.data.MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.ONE_MEAL, 1))
-        assertEquals(setOf(com.loitu.yourrefri.feature.recipe.data.MealSlot.LUNCH, com.loitu.yourrefri.feature.recipe.data.MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.TWO_MEALS, 1))
-        assertEquals(com.loitu.yourrefri.feature.recipe.data.MealSlot.entries.toSet(), enabledMealSlots(WeeklyMealPreset.THREE_MEALS, 1))
-        assertEquals(setOf(com.loitu.yourrefri.feature.recipe.data.MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.WORKWEEK, 4))
-        assertEquals(setOf(com.loitu.yourrefri.feature.recipe.data.MealSlot.LUNCH, com.loitu.yourrefri.feature.recipe.data.MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.WORKWEEK, 5))
+        assertEquals(setOf(MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.ONE_MEAL, 1))
+        assertEquals(setOf(MealSlot.LUNCH, MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.TWO_MEALS, 1))
+        assertEquals(setOf(MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.WORKWEEK, 4))
+        assertEquals(setOf(MealSlot.LUNCH, MealSlot.DINNER), enabledMealSlots(WeeklyMealPreset.WORKWEEK, 5))
     }
 
     @Test fun disabledMealHidesAndRestoresWithoutChangingPlannedDishes() {
@@ -32,12 +31,11 @@ class WeeklyMealPlanPresentationTest {
             val recipe = Recipe(slot.name, slot.name, listOf("Cook"), listOf(Slot(listOf("rice"))))
             PlannedDayMeal(0, "Thứ 2", recipe, "", mealSlot = slot)
         }
-        val disabled = listOf(MealSlotKey(monday, MealSlot.BREAKFAST))
+        val disabled = listOf(MealSlotKey(monday, MealSlot.LUNCH))
 
-        assertEquals(listOf(MealSlot.LUNCH, MealSlot.DINNER), enabledMealsForDay(schedule, 0, monday, disabled).map { it.mealSlot })
-        assertEquals(schedule.map { it.recipe.id }, enabledMealsForDay(schedule, 0, monday, emptyList()).map { it.recipe.id })
-        assertEquals(listOf(MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER), schedule.map { it.mealSlot })
-        assertEquals(emptyList(), enabledMealsForDay(schedule, 0, monday, MealSlot.entries.map { MealSlotKey(monday, it) }))
+        assertEquals(listOf(MealSlot.DINNER), enabledMealsForDay(schedule, 0, monday, disabled).map { it.mealSlot })
+        assertEquals(listOf("LUNCH", "DINNER"), enabledMealsForDay(schedule, 0, monday, emptyList()).map { it.recipe.id })
+        assertEquals(emptyList(), enabledMealsForDay(schedule, 0, monday, WEEKLY_MEAL_SLOTS.map { MealSlotKey(monday, it) }))
     }
 
     @Test

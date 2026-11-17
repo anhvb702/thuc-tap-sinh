@@ -1,8 +1,11 @@
 package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -33,8 +36,24 @@ class DailyNoticeCopyTest {
         assertTrue(notice(1).body.contains("nên dùng trước (hạn ước tính)"))
     }
     @Test fun body_hasNoBannedWords() {
-        for (count in 1..4) for (word in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")) {
+        val banned = listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")
+        for (count in 1..4) for (word in banned) {
             assertFalse(notice(count).body.contains(word, ignoreCase = true))
+        }
+        val wednesdayNotice = assertNotNull(planDailyNotice(emptyList(), emptyList(), LocalDate(2026, 11, 4), null))
+        val defrostNotice = assertNotNull(planDailyNotice(emptyList(), emptyList(), today, null, defrostNames = listOf("Cá hồi")))
+        val expiredFrozenNotice = assertNotNull(
+            planDailyNotice(
+                listOf(PantryItem("ca", true, today.minus(20, DateTimeUnit.DAY), PantryCompartment.FREEZE)),
+                listOf(Ingredient("ca", "Cá hồi", "ca", 2, freezerShelfDays = 14)),
+                today,
+                null,
+            ),
+        )
+        for (extra in listOf(wednesdayNotice, defrostNotice, expiredFrozenNotice)) {
+            for (word in banned) {
+                assertFalse(extra.body.contains(word, ignoreCase = true))
+            }
         }
     }
     @Test fun ingredientIdsStillListEveryItem() = assertEquals(listOf("a", "b", "c", "d"), notice(4).ingredientIds)

@@ -91,9 +91,10 @@ class RecipeModelsTest {
         assertEquals(8, recipe(steps = nSteps(8)).steps.size)
     }
 
+    // Căn cứ quyết định Q26 (2026-11-16): Món ăn nhanh (món gia đình tự thêm) không bắt buộc có bước nấu.
     @Test
-    fun recipe_emptySteps_throwsIllegalArgument() {
-        assertFailsWith<IllegalArgumentException> { recipe(steps = emptyList()) }
+    fun recipe_emptySteps_isValidForQuickCustomRecipe() {
+        assertEquals(0, recipe(steps = emptyList()).steps.size)
     }
 
     @Test

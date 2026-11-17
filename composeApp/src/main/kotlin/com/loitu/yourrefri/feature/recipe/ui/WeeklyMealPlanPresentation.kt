@@ -1,27 +1,32 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal
-import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
 
 internal const val EMPTY_MEAL_DAY_LABEL = "Nghỉ bếp / Ăn ngoài"
 
+internal val WEEKLY_MEAL_SLOTS = listOf(MealSlot.LUNCH, MealSlot.DINNER)
+
 internal fun enabledMealSlots(preset: WeeklyMealPreset, dayIndex: Int): Set<MealSlot> = when (preset) {
     WeeklyMealPreset.ONE_MEAL -> setOf(MealSlot.DINNER)
     WeeklyMealPreset.TWO_MEALS -> setOf(MealSlot.LUNCH, MealSlot.DINNER)
-    WeeklyMealPreset.THREE_MEALS -> MealSlot.entries.toSet()
     WeeklyMealPreset.WORKWEEK -> if (dayIndex < 5) setOf(MealSlot.DINNER) else setOf(MealSlot.LUNCH, MealSlot.DINNER)
 }
 
 internal fun enabledMealsForDay(
     schedule: List<PlannedDayMeal>, dayIndex: Int, weekStart: LocalDate, disabledMeals: List<MealSlotKey>,
 ): List<PlannedDayMeal> = schedule.filter { meal ->
-    meal.dayIndex == dayIndex && MealSlotKey(weekStart + DatePeriod(days = dayIndex), meal.mealSlot) !in disabledMeals
+    meal.dayIndex == dayIndex &&
+        meal.mealSlot != MealSlot.BREAKFAST &&
+        MealSlotKey(weekStart + DatePeriod(days = dayIndex), meal.mealSlot) !in disabledMeals
 }
 
 internal data class WeeklyChecklistItem(val name: String, val compartment: PantryCompartment, val selected: Boolean)
@@ -44,6 +49,28 @@ internal fun wasCookedOnDay(cooked: Map<Int, Set<String>>, dayIndex: Int, recipe
 internal fun weeklyStockCompartments(
     ids: List<String>, compartments: Map<String, PantryCompartment>,
 ): List<Pair<String, PantryCompartment>> = ids.map { it to (compartments[it] ?: PantryCompartment.CHILL) }
+
+internal fun extraShoppingDisplayItems(
+    extraShoppingItems: List<ExtraShoppingItem>,
+    ingredients: List<Ingredient>,
+): List<Pair<String, String>> {
+    val namesById = ingredients.associate { it.id to it.nameVi }
+    return extraShoppingItems.map { it.ingredientId to (namesById[it.ingredientId] ?: it.ingredientId) }
+}
+
+internal fun combinedWeeklyStockIds(
+    weeklyStockIds: List<String>,
+    extraShoppingItems: List<ExtraShoppingItem>,
+): List<String> {
+    val existing = weeklyStockIds.toSet()
+    val extraIds = extraShoppingItems.map { it.ingredientId }.distinct().filter { it !in existing }
+    return weeklyStockIds + extraIds
+}
+
+internal fun combinedWeeklySelectedCount(
+    selectedIds: Collection<String>,
+    extraShoppingItems: List<ExtraShoppingItem>,
+): Int = (selectedIds.toSet() + extraShoppingItems.map { it.ingredientId }).size
 
 internal fun weeklyChecklistText(items: List<WeeklyChecklistItem>): String =
     listOf(PantryCompartment.CHILL to "Ngăn mát", PantryCompartment.FREEZE to "Ngăn đông")

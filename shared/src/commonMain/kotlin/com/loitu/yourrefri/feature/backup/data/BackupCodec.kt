@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.backup.data
 
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import kotlinx.datetime.LocalDate
 import kotlinx.serialization.SerializationException
@@ -46,6 +47,10 @@ object BackupCodec {
             require(snapshot.weeklySettings == null) { "Version 1 cannot contain weekly settings" }
             require(snapshot.favorites.isEmpty()) { "Version 1 cannot contain favorites" }
             require(snapshot.cookMeals.isEmpty()) { "Version 1 cannot contain cook meals" }
+            require(snapshot.compartments.isEmpty()) { "Version 1 cannot contain compartments" }
+            require(snapshot.customRecipes.isEmpty()) { "Version 1 cannot contain custom recipes" }
+            require(snapshot.leftovers.isEmpty()) { "Version 1 cannot contain leftovers" }
+            require(snapshot.extraShoppingItems.isEmpty()) { "Version 1 cannot contain extra shopping items" }
         }
 
         validateUniqueIds("pantry", snapshot.pantry.map { it.ingredientId })
@@ -111,6 +116,42 @@ object BackupCodec {
                 require(swap.offset >= 0) { "Weekly swap offset must be non-negative" }
                 require(swapDays.add(swap.dayIndex)) { "Weekly swap day must be unique" }
             }
+        }
+
+        val compartmentNames = PantryCompartment.entries.map { it.name }
+        validateUniqueIds("compartments", snapshot.compartments.map { it.ingredientId })
+        snapshot.compartments.forEach {
+            require(it.ingredientId.isNotBlank()) { "Compartment ingredientId must not be blank" }
+            require(it.compartment in compartmentNames) { "Unsupported pantry compartment" }
+        }
+
+        validateUniqueIds("customRecipes", snapshot.customRecipes.map { it.recipeId })
+        snapshot.customRecipes.forEach { recipe ->
+            require(recipe.recipeId.isNotBlank()) { "Custom recipe id must not be blank" }
+            require(recipe.title.isNotBlank()) { "Custom recipe title must not be blank" }
+            require(recipe.required.isNotEmpty()) { "Custom recipe must have at least one required slot" }
+            require(recipe.required.all { slot -> slot.isNotEmpty() && slot.all(String::isNotBlank) }) {
+                "Custom recipe required slots must be non-empty"
+            }
+            require(recipe.optional.all { slot -> slot.isNotEmpty() && slot.all(String::isNotBlank) }) {
+                "Custom recipe optional slots must be non-empty"
+            }
+            require(recipe.minutes == null || recipe.minutes in 1..1440) {
+                "Custom recipe minutes must be between 1 and 1440"
+            }
+        }
+
+        validateUniqueIds("leftovers", snapshot.leftovers.map { it.id })
+        snapshot.leftovers.forEach { leftover ->
+            require(leftover.id.isNotBlank()) { "Leftover id must not be blank" }
+            require(leftover.title.isNotBlank()) { "Leftover title must not be blank" }
+            require(leftover.compartment in compartmentNames) { "Unsupported pantry compartment" }
+            require(leftover.shelfDays >= 0) { "Leftover shelfDays must be non-negative" }
+        }
+
+        validateUniqueIds("extraShoppingItems", snapshot.extraShoppingItems.map { it.ingredientId })
+        snapshot.extraShoppingItems.forEach {
+            require(it.ingredientId.isNotBlank()) { "Extra shopping ingredientId must not be blank" }
         }
     }
 

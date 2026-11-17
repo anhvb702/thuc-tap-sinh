@@ -16,24 +16,56 @@ import kotlin.time.Instant
 // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
 val WEEKDAY_REMINDER_TIME = LocalTime(16, 0)
 
-/** Chủ Nhật dùng giờ riêng (nhắc đi chợ), các ngày khác dùng [weekdayTime]. */
-fun reminderTimeFor(date: LocalDate, sundayTime: LocalTime, weekdayTime: LocalTime = WEEKDAY_REMINDER_TIME): LocalTime =
-    if (date.dayOfWeek == DayOfWeek.SUNDAY) sundayTime else weekdayTime
+/**
+ * Chủ Nhật dùng giờ riêng (nhắc đi chợ); ngày thường có đồ ngăn đông cho bữa tối dời sang 08:00,
+ * các ngày khác dùng [weekdayTime].
+ */
+fun reminderTimeFor(
+    date: LocalDate,
+    sundayTime: LocalTime,
+    weekdayTime: LocalTime = WEEKDAY_REMINDER_TIME,
+    hasFrozenDinner: Boolean = false,
+): LocalTime = when {
+    date.dayOfWeek == DayOfWeek.SUNDAY -> sundayTime
+    hasFrozenDinner -> DEFROST_REMINDER_TIME
+    else -> weekdayTime
+}
 
 /**
- * Mốc nhắc kế tiếp. Chủ Nhật dùng `sundayTime` nếu có; các ngày thường dùng `weekdayTime`.
- * Mỗi ngày đúng một mốc nên tối đa một thông báo mỗi ngày.
+ * Mốc nhắc kế tiếp. Chủ Nhật dùng `sundayTime` nếu có; ngày thường có đồ ngăn đông cho bữa tối
+ * dời sang 08:00 (`DEFROST_REMINDER_TIME`); các ngày khác dùng `weekdayTime`.
+ * Mỗi ngày đúng một mốc nên tối đa một thông báo mỗi ngày (Q4, Q23).
  */
-fun nextReminderTrigger(enabled: Boolean, now: Instant, tz: TimeZone, sundayTime: LocalTime? = null, weekdayTime: LocalTime = WEEKDAY_REMINDER_TIME): Instant? {
+fun nextReminderTrigger(
+    enabled: Boolean,
+    now: Instant,
+    tz: TimeZone,
+    sundayTime: LocalTime? = null,
+    weekdayTime: LocalTime = WEEKDAY_REMINDER_TIME,
+    hasFrozenDinnerForDay: (LocalDate) -> Boolean = { false },
+): Instant? {
     if (!enabled) return null
-    if (sundayTime == null) return nextTriggerTime(now, tz, weekdayTime)
+    val effectiveSundayTime = sundayTime ?: weekdayTime
     val today = now.toLocalDateTime(tz).date
     // Cộng ngày lịch rồi mới ghép giờ địa phương để giữ đúng giờ treo tường khi chuyển DST.
     return (0..7).asSequence()
         .map { offset -> today.plus(offset, DateTimeUnit.DAY) }
-        .map { date -> LocalDateTime(date, reminderTimeFor(date, sundayTime, weekdayTime)).toInstant(tz) }
+        .map { date ->
+            val time = reminderTimeFor(date, effectiveSundayTime, weekdayTime, hasFrozenDinnerForDay(date))
+            LocalDateTime(date, time).toInstant(tz)
+        }
         .first { it > now }
 }
+
+/** Alias cho [nextReminderTrigger] nhấn mạnh cơ chế 1 thông báo/ngày hợp nhất (R6-01). */
+fun nextDailyTrigger(
+    enabled: Boolean,
+    now: Instant,
+    tz: TimeZone,
+    sundayTime: LocalTime? = null,
+    weekdayTime: LocalTime = WEEKDAY_REMINDER_TIME,
+    hasFrozenDinnerForDay: (LocalDate) -> Boolean = { false },
+): Instant? = nextReminderTrigger(enabled, now, tz, sundayTime, weekdayTime, hasFrozenDinnerForDay)
 
 fun nextTriggerTime(now: Instant, tz: TimeZone, hour: LocalTime): Instant {
     val date = now.toLocalDateTime(tz).date

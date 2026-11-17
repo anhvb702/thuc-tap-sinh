@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
@@ -93,6 +94,21 @@ class PantryGridSoonTabTest {
 
         assertEquals(expiringList(pantry, ingredients, today).size, soonCount(cellsOf(state)))
         assertEquals(2, soonCount(cellsOf(state)))
+    }
+
+    @Test
+    fun soonCount_excludesSeasoningsWhenIngredientsProvided() {
+        val ingredients = listOf(
+            Ingredient("rau-muong", "Rau muống", "rau-la", 2, kind = IngredientKind.FRESH),
+            Ingredient("muoi", "Muối", "khac", 1, kind = IngredientKind.SEASONING),
+        )
+        val pantry = listOf(
+            PantryItem("rau-muong", have = true, markedAt = LocalDate.parse("2026-11-12")),
+            PantryItem("muoi", have = true, markedAt = LocalDate.parse("2026-11-01")),
+        )
+        val state = PantryGridState(today = today, ingredients = ingredients, pantry = pantry.associateBy { it.ingredientId })
+
+        assertEquals(1, soonCount(cellsOf(state), ingredients))
     }
 
     private fun cell(

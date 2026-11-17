@@ -2,6 +2,7 @@
 
 package com.loitu.yourrefri.feature.notice.logic
 
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
@@ -60,5 +61,14 @@ class NextTriggerTimeTest {
         check("2026-03-08T05:00:00Z", "America/New_York", LocalTime(2, 30), "2026-03-08T07:30:00Z")
         check("2026-11-01T04:00:00Z", "America/New_York", LocalTime(1, 30), "2026-11-01T05:30:00Z")
         check("2026-11-01T05:45:00Z", "America/New_York", LocalTime(1, 30), "2026-11-02T06:30:00Z")
+    }
+
+    @Test
+    fun reminderTimeFor_shiftsWeekdayTo0800WhenFrozenDinnerPresent() {
+        val thursday = LocalDate(2026, 11, 5)
+        val sunday = LocalDate(2026, 11, 8)
+        assertEquals(DEFROST_REMINDER_TIME, reminderTimeFor(thursday, LocalTime(9, 0), LocalTime(16, 0), hasFrozenDinner = true))
+        assertEquals(LocalTime(16, 0), reminderTimeFor(thursday, LocalTime(9, 0), LocalTime(16, 0), hasFrozenDinner = false))
+        assertEquals(LocalTime(9, 0), reminderTimeFor(sunday, LocalTime(9, 0), LocalTime(16, 0), hasFrozenDinner = true))
     }
 }

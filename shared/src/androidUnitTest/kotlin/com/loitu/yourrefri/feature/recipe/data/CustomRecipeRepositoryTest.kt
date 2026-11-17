@@ -30,7 +30,7 @@ class CustomRecipeRepositoryTest {
 
     @Test fun addLiteEmitsValidRecipeAndUpsertDeleteRoundTrips() = runTest {
         val added = repository.addLite("Canh rau", listOf("carrot", "rice"))
-        assertEquals(listOf("Chuẩn bị nguyên liệu và chế biến món như thường ngày."), added.steps)
+        assertEquals(emptyList(), added.steps)
         assertEquals(listOf(Slot(listOf("carrot")), Slot(listOf("rice"))), added.required)
         assertEquals(listOf(added), repository.observeAll().first())
 

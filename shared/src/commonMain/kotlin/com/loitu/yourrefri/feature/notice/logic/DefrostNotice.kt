@@ -1,6 +1,7 @@
 ﻿package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
@@ -17,26 +18,64 @@ data class DefrostNotice(
     val body: String,
 )
 
+/** Trả về danh sách tên nguyên liệu hoặc đồ ăn thừa ngăn đông cần rã đông cho bữa tối ngày [day]. */
+fun defrostNamesForDay(
+    day: LocalDate,
+    weeklyPlan: List<WeeklyMealPlanEntry>,
+    recipes: List<Recipe>,
+    ingredients: List<Ingredient>,
+    pantry: List<PantryItem>,
+    leftovers: List<LeftoverItem> = emptyList(),
+): List<String> {
+    val dinnerId = weeklyPlan.firstOrNull { it.day == day && it.meal == MealSlot.DINNER }?.recipeId
+        ?: return emptyList()
+    val recipe = recipes.firstOrNull { it.id == dinnerId }
+    val ingredientNames = if (recipe != null) {
+        val groupById = ingredients.associate { it.id to it.group }
+        val requiredIds = recipe.required.flatMap { it.anyOf }.toSet()
+        val namesById = ingredients.associate { it.id to it.nameVi }
+        pantry.asSequence()
+            .filter { it.have && it.compartment == PantryCompartment.FREEZE && it.ingredientId in requiredIds }
+            .map { it.ingredientId }
+            .filter { DietIngredients.isBanned(it, DietRestriction.VEGETARIAN, groupById) }
+            .distinct()
+            .mapNotNull { namesById[it] }
+            .toList()
+    } else {
+        emptyList()
+    }
+    val leftoverNames = leftovers.asSequence()
+        .filter { it.compartment == PantryCompartment.FREEZE }
+        .filter { it.id == dinnerId || (recipe != null && it.title.trim().equals(recipe.title.trim(), ignoreCase = true)) }
+        .map { it.title.trim() }
+        .distinct()
+        .toList()
+    return (ingredientNames + leftoverNames).distinct()
+}
+
 fun planDefrostNotice(
     today: LocalDate,
     weeklyPlan: List<WeeklyMealPlanEntry>,
     recipes: List<Recipe>,
     ingredients: List<Ingredient>,
     pantry: List<PantryItem>,
+    leftovers: List<LeftoverItem> = emptyList(),
 ): DefrostNotice? {
     val dinnerId = weeklyPlan.firstOrNull { it.day == today && it.meal == MealSlot.DINNER }?.recipeId ?: return null
-    val recipe = recipes.firstOrNull { it.id == dinnerId } ?: return null
-    val groupById = ingredients.associate { it.id to it.group }
-    val requiredIds = recipe.required.flatMap { it.anyOf }.toSet()
-    val frozenIds = pantry.asSequence()
-        .filter { it.have && it.compartment == PantryCompartment.FREEZE && it.ingredientId in requiredIds }
-        .map { it.ingredientId }
-        .filter { DietIngredients.isBanned(it, DietRestriction.VEGETARIAN, groupById) }
-        .distinct()
-        .toList()
-    if (frozenIds.isEmpty()) return null
-    val namesById = ingredients.associate { it.id to it.nameVi }
-    val names = frozenIds.mapNotNull { namesById[it] }
+    val recipe = recipes.firstOrNull { it.id == dinnerId }
+    val frozenIds = if (recipe != null) {
+        val groupById = ingredients.associate { it.id to it.group }
+        val requiredIds = recipe.required.flatMap { it.anyOf }.toSet()
+        pantry.asSequence()
+            .filter { it.have && it.compartment == PantryCompartment.FREEZE && it.ingredientId in requiredIds }
+            .map { it.ingredientId }
+            .filter { DietIngredients.isBanned(it, DietRestriction.VEGETARIAN, groupById) }
+            .distinct()
+            .toList()
+    } else {
+        emptyList()
+    }
+    val names = defrostNamesForDay(today, weeklyPlan, recipes, ingredients, pantry, leftovers)
     if (names.isEmpty()) return null
     val summary = names.joinToString(", ")
     return DefrostNotice(

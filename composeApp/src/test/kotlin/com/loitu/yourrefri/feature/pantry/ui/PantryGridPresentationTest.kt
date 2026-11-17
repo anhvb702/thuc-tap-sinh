@@ -1,6 +1,8 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
@@ -10,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class PantryGridPresentationTest {
     private val today = LocalDate.parse("2026-11-07")
@@ -97,6 +100,59 @@ class PantryGridPresentationTest {
 
         assertEquals(listOf("rau-muong"), cells.ids())
         assertEquals(0, pantryGridPresentation(cells, StorageTab.ALL, presentOnly = false).presentCount)
+    }
+
+    @Test
+    fun groupTab_filtersByFreshReadySeasoningAndLeftovers() {
+        val ingredients = listOf(
+            Ingredient("rau-muong", "Rau muống", "rau-la", 2, kind = IngredientKind.FRESH),
+            Ingredient("sua-tuoi", "Sữa tươi", "sua-trung", 7, kind = IngredientKind.READY),
+            Ingredient("nuoc-mam", "Nước mắm", "khac", 180, kind = IngredientKind.SEASONING),
+        )
+        val cells = ingredients.map { cell(it.id, have = true) }
+
+        assertEquals(
+            listOf("rau-muong"),
+            pantryGridPresentation(cells, StorageTab.ALL, false, PantryGroupTab.FRESH, ingredients).visibleCells.ids(),
+        )
+        assertEquals(
+            listOf("sua-tuoi"),
+            pantryGridPresentation(cells, StorageTab.ALL, false, PantryGroupTab.READY, ingredients).visibleCells.ids(),
+        )
+        assertEquals(
+            listOf("nuoc-mam"),
+            pantryGridPresentation(cells, StorageTab.ALL, false, PantryGroupTab.SEASONING, ingredients).visibleCells.ids(),
+        )
+        assertEquals(
+            emptyList(),
+            pantryGridPresentation(cells, StorageTab.ALL, false, PantryGroupTab.LEFTOVERS, ingredients).visibleCells.ids(),
+        )
+    }
+
+    @Test
+    fun q28_leftoverReminderBanner_showsForChillOrUrgentLeftovers() {
+        assertNull(leftoverReminderBanner(emptyList(), today))
+
+        val calmFrozen = listOf(
+            LeftoverItem("l1", "Thịt kho", PantryCompartment.FREEZE, markedAt = today, shelfDays = 14),
+        )
+        assertNull(leftoverReminderBanner(calmFrozen, today))
+
+        val chillLeftover = listOf(
+            LeftoverItem("l2", "Canh chua", PantryCompartment.CHILL, markedAt = today, shelfDays = 2),
+        )
+        assertEquals(LEFTOVER_REMINDER_BANNER, leftoverReminderBanner(chillLeftover, today))
+
+        val urgentFrozen = listOf(
+            LeftoverItem("l3", "Cá kho", PantryCompartment.FREEZE, markedAt = LocalDate.parse("2026-10-25"), shelfDays = 14),
+        )
+        assertEquals(LEFTOVER_REMINDER_BANNER, leftoverReminderBanner(urgentFrozen, today))
+    }
+
+    @Test
+    fun q25_frozenExpiredStatus_returnsGentleRecheckLabel() {
+        assertEquals("kiểm tra lại xem còn dùng được không", pantryRowStatus(-1, PantryCompartment.FREEZE))
+        assertEquals("Kiểm tra lại xem còn dùng được không", pantryRowStatus(-1, PantryCompartment.CHILL))
     }
 
     private fun cell(id: String, have: Boolean) = PantryCell(

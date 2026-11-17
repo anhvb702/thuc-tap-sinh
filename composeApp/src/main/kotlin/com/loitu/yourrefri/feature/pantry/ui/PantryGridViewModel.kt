@@ -3,11 +3,15 @@ package com.loitu.yourrefri.feature.pantry.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
+import com.loitu.yourrefri.feature.pantry.data.LeftoverRepository
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.PantryRepository
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.reduce
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingRepository
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -26,6 +30,8 @@ class PantryGridViewModel(
     private val clock: Clock,
     timeZone: TimeZone,
     scope: CoroutineScope? = null,
+    private val leftoverRepository: LeftoverRepository? = null,
+    private val extraShoppingRepository: ExtraShoppingRepository? = null,
 ) : ViewModel() {
     private sealed interface Event {
         data object RepositoryChanged : Event
@@ -41,6 +47,8 @@ class PantryGridViewModel(
         PantryGridState(today = initialLocalTime.date, hourOfDay = initialLocalTime.hour),
     )
     val state = mutableState.asStateFlow()
+    private val mutableLeftovers = MutableStateFlow<List<LeftoverItem>>(emptyList())
+    val leftovers = mutableLeftovers.asStateFlow()
 
     init {
         workerScope.launch {
@@ -92,6 +100,11 @@ class PantryGridViewModel(
             ) { _, _, _, _ -> Event.RepositoryChanged }
                 .collect { events.send(it) }
         }
+        leftoverRepository?.let { repo ->
+            workerScope.launch {
+                repo.observeAll().collect { mutableLeftovers.value = it }
+            }
+        }
     }
 
     fun dispatch(action: PantryGridAction) {
@@ -100,6 +113,53 @@ class PantryGridViewModel(
 
     fun refresh(timeZone: TimeZone? = null) {
         events.trySend(Event.ResumeRefresh(timeZone)).getOrThrow()
+    }
+
+    fun addLeftover(
+        title: String,
+        compartment: PantryCompartment = PantryCompartment.CHILL,
+        shelfDays: Int = if (compartment == PantryCompartment.FREEZE) 14 else 2,
+    ) {
+        val repo = leftoverRepository ?: return
+        val trimmed = title.trim()
+        if (trimmed.isEmpty() || shelfDays < 0) return
+        val today = clock.now().toLocalDateTime(currentTimeZone).date
+        workerScope.launch {
+            repo.add(title = trimmed, compartment = compartment, markedAt = today, shelfDays = shelfDays)
+        }
+    }
+
+    fun toggleLeftoverCompartment(item: LeftoverItem) {
+        val repo = leftoverRepository ?: return
+        val next = if (item.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
+        val today = clock.now().toLocalDateTime(currentTimeZone).date
+        val defaultShelfDays = if (next == PantryCompartment.FREEZE) 14 else 2
+        workerScope.launch {
+            repo.upsert(item.copy(compartment = next, markedAt = today, shelfDays = defaultShelfDays))
+        }
+    }
+
+    fun updateLeftoverShelfDays(item: LeftoverItem, shelfDays: Int) {
+        val repo = leftoverRepository ?: return
+        if (shelfDays < 0) return
+        workerScope.launch {
+            repo.upsert(item.copy(shelfDays = shelfDays))
+        }
+    }
+
+    fun deleteLeftover(id: String) {
+        val repo = leftoverRepository ?: return
+        workerScope.launch {
+            repo.delete(id)
+        }
+    }
+
+    fun addToExtraShopping(ingredientId: String) {
+        val repo = extraShoppingRepository ?: return
+        val today = clock.now().toLocalDateTime(currentTimeZone).date
+        workerScope.launch {
+            repo.add(ingredientId, today)
+        }
     }
 
     private suspend fun refreshSnapshot(clearSessionBase: Boolean) {

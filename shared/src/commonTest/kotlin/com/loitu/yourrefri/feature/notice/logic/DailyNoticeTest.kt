@@ -1,15 +1,19 @@
 package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -136,5 +140,76 @@ class DailyNoticeTest {
         assertEquals((0 until 30).map { today.plus(it, DateTimeUnit.DAY) }, sentDays)
         assertEquals(30, sentDays.groupingBy { it }.eachCount().size)
         assertEquals(setOf(1), sentDays.groupingBy { it }.eachCount().values.toSet())
+    }
+
+    @Test
+    fun wednesdayWithNoExpiringOrDefrost_returnsMidweekCheckInEvenIfNudgeRecent() {
+        val wednesday = LocalDate(2026, 11, 4)
+        val notice = assertNotNull(
+            planDailyNotice(
+                pantry = emptyList(),
+                ingredients = emptyList(),
+                today = wednesday,
+                lastSent = null,
+                lastNudgeSent = wednesday.minus(1, DateTimeUnit.DAY),
+            ),
+        )
+        assertFalse(notice.isContextualNudge)
+        assertEquals("Giữa tuần rồi nè", notice.title)
+        assertTrue(notice.body.contains("Giữa tuần rồi"))
+    }
+
+    @Test
+    fun leftoversAppearAtTopAndExpiredFrozenIncludesRecheckPrompt() {
+        val chillLeftover = LeftoverItem("lo-1", "Canh chua thừa", PantryCompartment.CHILL, today, 2)
+        val expiredFrozenLeftover = LeftoverItem("lo-2", "Thịt kho đông", PantryCompartment.FREEZE, today.minus(15, DateTimeUnit.DAY), 14)
+        val notice = assertNotNull(
+            planDailyNotice(
+                pantry = listOf(item("egg"), item("milk")),
+                ingredients = listOf(ingredient("egg"), ingredient("milk")),
+                today = today,
+                lastSent = null,
+                leftovers = listOf(chillLeftover, expiredFrozenLeftover),
+            ),
+        )
+        assertEquals(
+            "Thịt kho đông, Canh chua thừa, Tên egg và vài món khác nên dùng trước hoặc kiểm tra lại xem còn dùng được không (hạn ước tính). Mở xem gợi ý món nhé.",
+            notice.body,
+        )
+    }
+
+    @Test
+    fun weekdayWithDefrostNames_leadsWithDefrostAndCapsExpiringItems() {
+        val notice = assertNotNull(
+            planDailyNotice(
+                pantry = listOf(item("a"), item("b"), item("c"), item("d")),
+                ingredients = listOf(ingredient("a"), ingredient("b"), ingredient("c"), ingredient("d")),
+                today = today,
+                lastSent = null,
+                defrostNames = listOf("Cá hồi"),
+            ),
+        )
+        assertEquals("Chuẩn bị rã đông", notice.title)
+        assertTrue(notice.body.startsWith("Sáng nay nhớ rã đông Cá hồi cho bữa tối nhé!"))
+        assertTrue(notice.body.contains("và vài món khác"))
+    }
+
+    @Test
+    fun sundayWithDefrostNames_appendsDefrostSentenceToShoppingNotice() {
+        val sunday = LocalDate(2026, 11, 15)
+        val notice = assertNotNull(
+            planDailyNotice(
+                pantry = emptyList(),
+                ingredients = emptyList(),
+                today = sunday,
+                lastSent = null,
+                sundayShopping = true,
+                defrostNames = listOf("Thịt ba chỉ"),
+            ),
+        )
+        assertEquals(
+            "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào! Sáng nay nhớ rã đông Thịt ba chỉ cho bữa tối nhé!",
+            notice.body,
+        )
     }
 }

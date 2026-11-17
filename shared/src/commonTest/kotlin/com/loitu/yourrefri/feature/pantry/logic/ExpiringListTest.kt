@@ -1,16 +1,24 @@
 package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.IngredientKind
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class ExpiringListTest {
     private val today = LocalDate(2026, 11, 5)
-    private fun ingredient(id: String, shelf: Int = 2, override: Int? = null) =
-        Ingredient(id, "Tên $id", "khac", shelf, override)
+    private fun ingredient(
+        id: String,
+        shelf: Int = 2,
+        override: Int? = null,
+        kind: IngredientKind = IngredientKind.FRESH,
+        freezerShelfDays: Int? = null,
+    ) = Ingredient(id, "Tên $id", "khac", shelf, override, kind, freezerShelfDays)
     private fun item(id: String, have: Boolean = true, date: LocalDate = today) =
         PantryItem(id, have, date)
 
@@ -31,12 +39,35 @@ class ExpiringListTest {
     }
 
     @Test
-    fun frozenItems_areExcludedFromExpiringList() {
+    fun frozenItems_hiddenUntilOverdue_thenIncludedWithIsExpiredFrozen() {
         val chilled = item("egg")
-        val frozen = item("meat").copy(compartment = PantryCompartment.FREEZE)
-        assertEquals(listOf("egg"), expiringList(
-            listOf(frozen, chilled), listOf(ingredient("egg"), ingredient("meat")), today,
-        ).map { it.item.ingredientId })
+        val frozenSoon = item("fish", date = LocalDate(2026, 11, 5)).copy(compartment = PantryCompartment.FREEZE)
+        val frozenDueToday = item("chicken", date = LocalDate(2026, 11, 3)).copy(compartment = PantryCompartment.FREEZE)
+        val frozenOverdue = item("meat", date = LocalDate(2026, 11, 1)).copy(compartment = PantryCompartment.FREEZE)
+        val ingredients = listOf(
+            ingredient("egg", shelf = 2),
+            ingredient("fish", shelf = 2, freezerShelfDays = 2),
+            ingredient("chicken", shelf = 2, freezerShelfDays = 2),
+            ingredient("meat", shelf = 2, freezerShelfDays = 3),
+        )
+
+        val result = expiringList(listOf(frozenSoon, frozenDueToday, frozenOverdue, chilled), ingredients, today)
+        assertEquals(listOf("meat", "egg"), result.map { it.item.ingredientId })
+        assertTrue(result[0].isExpiredFrozen)
+        assertFalse(result[1].isExpiredFrozen)
+    }
+
+    @Test
+    fun seasoningItems_areExcludedFromExpiringList() {
+        val salt = ingredient("muoi", shelf = 0, kind = IngredientKind.SEASONING)
+        val sauce = ingredient("nuoc-mam", shelf = 1, kind = IngredientKind.SEASONING)
+        val egg = ingredient("egg", shelf = 2)
+        val result = expiringList(
+            listOf(item("muoi", date = LocalDate(2026, 11, 1)), item("nuoc-mam"), item("egg")),
+            listOf(salt, sauce, egg),
+            today,
+        )
+        assertEquals(listOf("egg"), result.map { it.item.ingredientId })
     }
 
     @Test

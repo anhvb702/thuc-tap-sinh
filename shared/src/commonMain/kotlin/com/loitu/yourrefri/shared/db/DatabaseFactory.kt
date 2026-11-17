@@ -47,6 +47,25 @@ fun createDatabase(driver: SqlDriver): YourRefriDatabase {
         )""",
         parameters = 0,
     )
+    driver.execute(
+        identifier = null,
+        sql = """CREATE TABLE IF NOT EXISTS ExtraShoppingItemEntity (
+            ingredientId TEXT NOT NULL PRIMARY KEY,
+            addedAtEpochDays INTEGER NOT NULL
+        )""",
+        parameters = 0,
+    )
+    driver.execute(
+        identifier = null,
+        sql = """CREATE TABLE IF NOT EXISTS LeftoverEntity (
+            id TEXT NOT NULL PRIMARY KEY,
+            title TEXT NOT NULL,
+            compartment TEXT NOT NULL DEFAULT 'CHILL',
+            markedAtEpochDays INTEGER NOT NULL,
+            shelfDays INTEGER NOT NULL DEFAULT 2
+        )""",
+        parameters = 0,
+    )
     return YourRefriDatabase(
         driver,
         CookLogEntityAdapter = CookLogEntity.Adapter(savedIngredientIdsAdapter = IdListAdapter),

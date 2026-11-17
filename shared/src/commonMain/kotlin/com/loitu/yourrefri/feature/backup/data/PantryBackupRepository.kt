@@ -51,6 +51,31 @@ class PantryBackupRepositoryImpl(
         val favorites = db.favoriteRecipeEntityQueries.selectAll().executeAsList().map {
             FavoriteRecipeBackup(it.recipeId, it.createdAtEpochMs)
         }
+        val compartments = db.pantryCompartmentEntityQueries.selectAll().executeAsList().map {
+            CompartmentBackup(it.ingredientId, it.compartment)
+        }
+        val customRecipes = db.customRecipeEntityQueries.selectAll().executeAsList().map {
+            CustomRecipeBackup(
+                recipeId = it.recipeId,
+                title = it.title,
+                steps = settingsJson.decodeFromString<List<String>>(it.stepsJson),
+                required = settingsJson.decodeFromString<List<List<String>>>(it.requiredJson),
+                optional = settingsJson.decodeFromString<List<List<String>>>(it.optionalJson),
+                minutes = it.minutes?.toInt(),
+            )
+        }
+        val leftovers = db.leftoverEntityQueries.selectAll().executeAsList().map {
+            LeftoverBackup(
+                id = it.id,
+                title = it.title,
+                compartment = it.compartment,
+                markedAtEpochDays = it.markedAtEpochDays,
+                shelfDays = it.shelfDays.toInt(),
+            )
+        }
+        val extraShoppingItems = db.extraShoppingItemEntityQueries.selectAll().executeAsList().map {
+            ExtraShoppingBackup(it.ingredientId, it.addedAtEpochDays)
+        }
         BackupCodec.encode(
             PantryBackupSnapshot(
                 format = BackupCodec.FORMAT,
@@ -65,6 +90,10 @@ class PantryBackupRepositoryImpl(
                 weeklySettings = weeklySettings,
                 favorites = favorites,
                 cookMeals = cookMeals,
+                compartments = compartments,
+                customRecipes = customRecipes,
+                leftovers = leftovers,
+                extraShoppingItems = extraShoppingItems,
             ),
         )
     }
@@ -83,6 +112,10 @@ class PantryBackupRepositoryImpl(
                 db.weeklyMealPlanEntityQueries.deleteAll()
                 db.weeklyMealPlanSettingsEntityQueries.deleteAll()
                 db.favoriteRecipeEntityQueries.deleteAll()
+                db.pantryCompartmentEntityQueries.deleteAll()
+                db.customRecipeEntityQueries.deleteAll()
+                db.leftoverEntityQueries.deleteAll()
+                db.extraShoppingItemEntityQueries.deleteAll()
 
                 snapshot.pantry.forEach {
                     db.pantryEntityQueries.upsert(it.ingredientId, it.have, it.markedAt)
@@ -116,6 +149,31 @@ class PantryBackupRepositoryImpl(
                 }
                 snapshot.favorites.forEach {
                     db.favoriteRecipeEntityQueries.upsert(it.recipeId, it.createdAtEpochMs)
+                }
+                snapshot.compartments.forEach {
+                    db.pantryCompartmentEntityQueries.upsert(it.ingredientId, it.compartment)
+                }
+                snapshot.customRecipes.forEach {
+                    db.customRecipeEntityQueries.upsert(
+                        recipeId = it.recipeId,
+                        title = it.title,
+                        stepsJson = settingsJson.encodeToString(it.steps),
+                        requiredJson = settingsJson.encodeToString(it.required),
+                        optionalJson = settingsJson.encodeToString(it.optional),
+                        minutes = it.minutes?.toLong(),
+                    )
+                }
+                snapshot.leftovers.forEach {
+                    db.leftoverEntityQueries.upsert(
+                        id = it.id,
+                        title = it.title,
+                        compartment = it.compartment,
+                        markedAtEpochDays = it.markedAtEpochDays,
+                        shelfDays = it.shelfDays.toLong(),
+                    )
+                }
+                snapshot.extraShoppingItems.forEach {
+                    db.extraShoppingItemEntityQueries.upsert(it.ingredientId, it.addedAtEpochDays)
                 }
                 snapshot.weeklySettings?.let { settings ->
                     db.weeklyMealPlanSettingsEntityQueries.upsert(

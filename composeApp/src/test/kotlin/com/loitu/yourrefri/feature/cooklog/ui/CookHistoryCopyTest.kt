@@ -15,7 +15,10 @@ class CookHistoryCopyTest {
         assertEquals("Xem lại các món đã nấu", CookHistoryCopy.homeSubtitle)
         assertEquals("Nấu lại", CookHistoryCopy.cookAgain)
         assertEquals("Xóa", CookHistoryCopy.delete)
-        assertEquals("Xóa & trả lại tủ", CookHistoryCopy.restoreAndDelete)
+        // Q10 (R1-03): xóa dòng ghi nhầm chỉ xóa log, không trả nguyên liệu về tủ.
+        assertEquals("Xóa dòng ghi nhầm", CookHistoryCopy.deleteMislogged)
+        assertEquals("Xóa dòng này khỏi lịch sử? Nguyên liệu trong tủ sẽ giữ nguyên.", CookHistoryCopy.deletePrompt)
+        assertEquals("Hủy", CookHistoryCopy.cancel)
         assertEquals("Món đã lưu", CookHistoryCopy.unknownRecipe)
         assertEquals("Chưa có món nào ở đây. Nấu xong, món sẽ nằm gọn trong này nhé", CookHistoryCopy.empty)
     }
@@ -43,7 +46,13 @@ class CookHistoryCopyTest {
     @Test
     fun copyAvoidsBannedWords() {
         val all = listOf(
-            CookHistoryCopy.title, CookHistoryCopy.cookAgain, CookHistoryCopy.unknownRecipe, CookHistoryCopy.empty,
+            CookHistoryCopy.title,
+            CookHistoryCopy.cookAgain,
+            CookHistoryCopy.deleteMislogged,
+            CookHistoryCopy.deletePrompt,
+            CookHistoryCopy.cancel,
+            CookHistoryCopy.unknownRecipe,
+            CookHistoryCopy.empty,
         ) + CookHistoryWeekLabel.entries.map { CookHistoryCopy.weekLabel(it) }
         all.forEach { text -> banned.forEach { w -> assertFalse(text.contains(w, ignoreCase = true), "$text chứa $w") } }
     }

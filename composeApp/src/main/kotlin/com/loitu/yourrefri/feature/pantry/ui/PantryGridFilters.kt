@@ -1,11 +1,20 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
+
+internal enum class PantryGroupTab(val label: String) {
+    FRESH("Đồ tươi"),
+    LEFTOVERS("Đồ ăn thừa"),
+    READY("Ăn liền & Uống"),
+    SEASONING("Gia vị"),
+}
 
 internal data class PantryGridFilters(
     val storageTab: StorageTab = StorageTab.ALL,
     val presentOnly: Boolean = false,
+    val groupTab: PantryGroupTab = PantryGroupTab.FRESH,
 ) {
     fun showAllItems() = PantryGridFilters()
 }
@@ -93,4 +102,10 @@ internal fun pantryRowStatus(daysLeft: Int): String = when {
     daysLeft == 0 -> "Nên dùng hôm nay"
     daysLeft <= URGENT_DAYS -> "Ước tính còn $daysLeft ngày"
     else -> "Còn khoảng $daysLeft ngày"
+}
+
+/** Q25: Đồ ngăn đông quá hạn ước tính hiển thị nhãn nhẹ nhàng hơn. */
+internal fun pantryRowStatus(daysLeft: Int, compartment: PantryCompartment): String = when {
+    daysLeft < 0 && compartment == PantryCompartment.FREEZE -> "kiểm tra lại xem còn dùng được không"
+    else -> pantryRowStatus(daysLeft)
 }

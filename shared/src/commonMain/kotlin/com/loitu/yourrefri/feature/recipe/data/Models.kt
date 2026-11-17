@@ -25,8 +25,8 @@ data class Recipe(
     init {
         require(id.isNotBlank()) { "Recipe id không được rỗng" }
         require(title.isNotBlank()) { "Recipe title không được rỗng" }
-        // Giới hạn 8 bước để công thức vừa một màn hình; món không cần nguyên liệu nào sẽ luôn "nấu được" nên bắt buộc có ít nhất một Slot.
-        require(steps.isNotEmpty() && steps.size <= 8) { "Recipe phải có từ 1 đến 8 bước" }
+        // Giới hạn 8 bước để công thức vừa một màn hình (món tự thêm có thể 0 bước theo Q26); món không cần nguyên liệu nào sẽ luôn "nấu được" nên bắt buộc có ít nhất một Slot.
+        require(steps.size <= 8) { "Recipe phải có tối đa 8 bước" }
         require(steps.all { it.isNotBlank() }) { "Bước nấu không được rỗng" }
         require(required.isNotEmpty()) { "Recipe phải có ít nhất một Slot bắt buộc" }
         require(minutes == null || minutes in 1..1440) { "Recipe minutes phải nằm trong 1..1440" }

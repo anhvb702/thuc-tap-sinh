@@ -1,6 +1,7 @@
 ﻿package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
@@ -57,5 +58,20 @@ class DefrostNoticeTest {
         assertNotNull(planDefrostNotice(today, listOf(entry(id = "meat")), listOf(meatRecipe),
             listOf(Ingredient("custom-pork", "Thịt", "thit", 3)),
             listOf(PantryItem("custom-pork", true, today, PantryCompartment.FREEZE))))
+    }
+
+    @Test
+    fun frozenLeftoverInPlannedDinnerIsRecognized() {
+        val frozenLeftover = LeftoverItem("lo-freeze", "Cá kho", PantryCompartment.FREEZE, today, 14)
+        val chillLeftover = LeftoverItem("lo-chill", "Canh chua", PantryCompartment.CHILL, today, 2)
+        val names = defrostNamesForDay(
+            day = today,
+            weeklyPlan = listOf(entry()),
+            recipes = listOf(recipe),
+            ingredients = ingredients,
+            pantry = emptyList(),
+            leftovers = listOf(frozenLeftover, chillLeftover),
+        )
+        assertEquals(listOf("Cá kho"), names)
     }
 }

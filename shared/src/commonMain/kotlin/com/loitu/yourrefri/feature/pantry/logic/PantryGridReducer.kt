@@ -117,12 +117,30 @@ fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate =
 }
 
 private fun toggleCompartment(state: PantryGridState, id: String): PantryGridUpdate {
-    if (state.ingredients.none { it.id == id }) return PantryGridUpdate(state)
+    val ingredient = state.ingredients.firstOrNull { it.id == id } ?: return PantryGridUpdate(state)
     val item = state.pantry[id] ?: PantryItem(id, false, state.today)
     val next = if (item.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
+    if (next == PantryCompartment.FREEZE && ingredient.freezerShelfDays == null) {
+        return PantryGridUpdate(state)
+    }
+    val updatedItem = item.copy(compartment = next, markedAt = state.today)
+    val updatedIngredients = if (ingredient.userShelfDays != null) {
+        state.ingredients.map { if (it.id == id) it.copy(userShelfDays = null) else it }
+    } else {
+        state.ingredients
+    }
+    val effects = buildList {
+        add(PantryGridEffect.SaveCompartment(id, next))
+        if (item.markedAt != state.today) {
+            add(PantryGridEffect.SaveHave(id, item.have, state.today))
+        }
+        if (ingredient.userShelfDays != null) {
+            add(PantryGridEffect.SaveShelfDays(id, null))
+        }
+    }
     return PantryGridUpdate(
-        state.copy(pantry = state.pantry + (id to item.copy(compartment = next))),
-        listOf(PantryGridEffect.SaveCompartment(id, next)),
+        state.copy(ingredients = updatedIngredients, pantry = state.pantry + (id to updatedItem)),
+        effects,
     )
 }
 

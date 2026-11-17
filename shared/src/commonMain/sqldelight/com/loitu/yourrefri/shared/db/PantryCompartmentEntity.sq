@@ -14,3 +14,6 @@ SELECT compartment FROM PantryCompartmentEntity WHERE ingredientId = :ingredient
 
 deleteById:
 DELETE FROM PantryCompartmentEntity WHERE ingredientId = :ingredientId;
+
+deleteAll:
+DELETE FROM PantryCompartmentEntity;

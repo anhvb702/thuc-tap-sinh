@@ -34,11 +34,13 @@ class WeeklyMealPlannerTest {
         assertEquals(true, plan.zipWithNext().all { (a, b) -> a.recipe.id != b.recipe.id })
     }
 
-    @Test fun buildsDistinctBreakfastLunchAndDinnerSlots() {
+    @Test fun buildsDistinctLunchAndDinnerSlotsWithoutBreakfast() {
         val schedule = buildWeeklyMealSchedule(recipes, state)
         val mondayMeals = schedule.filter { it.dayIndex == 0 }
-        assertEquals(listOf(MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER), mondayMeals.map { it.mealSlot })
-        assertEquals(3, mondayMeals.map { it.recipe.id }.distinct().size)
+        assertEquals(listOf(MealSlot.LUNCH, MealSlot.DINNER), mondayMeals.map { it.mealSlot })
+        assertEquals(2, mondayMeals.map { it.recipe.id }.distinct().size)
+        assertEquals(14, schedule.size)
+        assertTrue(schedule.none { it.mealSlot == MealSlot.BREAKFAST })
     }
 
     @Test fun swapOffsetSelectsNextEligibleRecipe() {
@@ -103,20 +105,20 @@ class WeeklyMealPlannerTest {
     }
 
     @Test fun disabledMealIsExcludedFromShoppingAndCanBeRestored() {
-        val entry = PlannedDayMeal(0, "Thứ 2", recipe("dish", "rice"), "", mealSlot = MealSlot.BREAKFAST)
-        val key = MealSlotKey(LocalDate(2026, 11, 9), MealSlot.BREAKFAST)
+        val entry = PlannedDayMeal(0, "Thứ 2", recipe("dish", "rice"), "", mealSlot = MealSlot.LUNCH)
+        val key = MealSlotKey(LocalDate(2026, 11, 9), MealSlot.LUNCH)
         assertEquals(emptyList(), buildWeeklyShoppingList(listOf(entry), state, disabledMeals = listOf(key)))
         assertEquals(1, buildWeeklyShoppingList(listOf(entry), state).single().mealCount)
     }
 
     @Test fun disabledSlotsAreExcludedFromMultimealShoppingAndRestored() {
         val monday = LocalDate(2026, 11, 9)
-        val meals = listOf(MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER).map { slot ->
+        val meals = listOf(MealSlot.LUNCH, MealSlot.DINNER).map { slot ->
             PlannedDayMeal(0, "Thứ 2", recipe(slot.name, "rice"), "", mealSlot = slot)
         }
-        val disabled = listOf(MealSlot.BREAKFAST, MealSlot.LUNCH).map { MealSlotKey(monday, it) }
+        val disabled = listOf(MealSlotKey(monday, MealSlot.LUNCH))
         assertEquals(1, buildWeeklyShoppingList(meals, state, disabledMeals = disabled).single().mealCount)
-        assertEquals(3, buildWeeklyShoppingList(meals, state).single().mealCount)
+        assertEquals(2, buildWeeklyShoppingList(meals, state).single().mealCount)
     }
 
     @Test fun pairsSavoryMainWithSoupOrVeggieCoursePerDay() {

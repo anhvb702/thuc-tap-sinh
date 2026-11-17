@@ -2,12 +2,18 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingRepository
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanEntry
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyMealSchedule
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -16,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
@@ -31,9 +38,11 @@ data class WeeklyMealPlanState(
     val uncheckedIds: Set<String> = emptySet(),
     val includeLunchMealPrep: Boolean = false,
     val disabledMeals: List<MealSlotKey> = emptyList(),
+    val savedEntries: List<WeeklyMealPlanEntry> = emptyList(),
+    val extraShoppingItems: List<ExtraShoppingItem> = emptyList(),
 )
 
-enum class WeeklyMealPreset { ONE_MEAL, TWO_MEALS, THREE_MEALS, WORKWEEK }
+enum class WeeklyMealPreset { ONE_MEAL, TWO_MEALS, WORKWEEK }
 
 sealed interface WeeklyMealPlanAction {
     data class SetGoal(val value: DietGoal) : WeeklyMealPlanAction
@@ -57,12 +66,16 @@ class WeeklyMealPlanViewModel(
     private val clock: Clock,
     timeZone: TimeZone,
     scope: CoroutineScope? = null,
+    private val extraShoppingRepository: ExtraShoppingRepository? = null,
 ) : ViewModel() {
     private sealed interface Event {
         data class Action(val value: WeeklyMealPlanAction) : Event
         data class Refresh(val timeZone: TimeZone) : Event
         data class Settings(val value: WeeklyMealPlanSettings?, val replace: Boolean) : Event
         data class Disabled(val value: List<MealSlotKey>) : Event
+        data class SavedPlan(val value: List<WeeklyMealPlanEntry>) : Event
+        data class ExtraShopping(val value: List<ExtraShoppingItem>) : Event
+        data class SyncSchedule(val recipes: List<Recipe>, val pantryState: PantryGridState) : Event
         data object SettingsLoadFailed : Event
     }
 
@@ -70,6 +83,10 @@ class WeeklyMealPlanViewModel(
     private val events = Channel<Event>(Channel.UNLIMITED)
     private val mutableEffects = Channel<WeeklyMealPlanEffect>(Channel.BUFFERED)
     private val pendingActions = mutableListOf<WeeklyMealPlanAction>()
+    private var allSavedEntries: List<WeeklyMealPlanEntry> = emptyList()
+    private var lastRecipes: List<Recipe>? = null
+    private var lastPantryState: PantryGridState? = null
+    private var pendingSync: Pair<List<Recipe>, PantryGridState>? = null
     private var currentTimeZone = timeZone
     private val mutableState = MutableStateFlow(
         WeeklyMealPlanState(isLoaded = false, weekStart = currentWeekStart()),
@@ -83,6 +100,14 @@ class WeeklyMealPlanViewModel(
             repository.observeDisabledMeals().collect { events.send(Event.Disabled(it)) }
         }
         workerScope.launch {
+            repository.observeAll().collect { events.send(Event.SavedPlan(it)) }
+        }
+        extraShoppingRepository?.let { extraRepo ->
+            workerScope.launch {
+                extraRepo.observeAll().collect { events.send(Event.ExtraShopping(it)) }
+            }
+        }
+        workerScope.launch {
             for (event in events) {
                 when (event) {
                     is Event.Action -> {
@@ -94,6 +119,22 @@ class WeeklyMealPlanViewModel(
                     }
                     is Event.Settings -> acceptSettings(event.value, event.replace)
                     is Event.Disabled -> mutableState.value = mutableState.value.copy(disabledMeals = event.value)
+                    is Event.SavedPlan -> {
+                        allSavedEntries = event.value
+                        mutableState.value = mutableState.value.copy(
+                            savedEntries = entriesForWeek(event.value, mutableState.value.weekStart),
+                        )
+                    }
+                    is Event.ExtraShopping -> mutableState.value = mutableState.value.copy(extraShoppingItems = event.value)
+                    is Event.SyncSchedule -> {
+                        lastRecipes = event.recipes
+                        lastPantryState = event.pantryState
+                        if (!mutableState.value.isLoaded) {
+                            pendingSync = event.recipes to event.pantryState
+                        } else {
+                            ensureScheduleForCurrentWeek(event.recipes, event.pantryState)
+                        }
+                    }
                     Event.SettingsLoadFailed -> {
                         if (!mutableState.value.isLoaded) {
                             mutableState.value = mutableState.value.copy(isLoaded = true)
@@ -101,6 +142,10 @@ class WeeklyMealPlanViewModel(
                             val queued = pendingActions.toList()
                             pendingActions.clear()
                             queued.forEach { apply(it) }
+                            pendingSync?.let { (recipes, pantryState) ->
+                                pendingSync = null
+                                ensureScheduleForCurrentWeek(recipes, pantryState)
+                            }
                         }
                         mutableEffects.send(WeeklyMealPlanEffect.SettingsLoadFailed)
                     }
@@ -113,12 +158,31 @@ class WeeklyMealPlanViewModel(
         events.trySend(Event.Action(action)).getOrThrow()
     }
 
+    fun syncSchedule(recipes: List<Recipe>, pantryState: PantryGridState) {
+        events.trySend(Event.SyncSchedule(recipes, pantryState)).getOrThrow()
+    }
+
     fun refresh(timeZone: TimeZone) {
         events.trySend(Event.Refresh(timeZone)).getOrThrow()
     }
 
     fun reloadSettings() {
         requestSettings(replace = true)
+    }
+
+    fun removeExtraShoppingItem(ingredientId: String) {
+        val repo = extraShoppingRepository ?: return
+        if (ingredientId.isBlank()) return
+        workerScope.launch {
+            repo.remove(ingredientId)
+        }
+    }
+
+    fun clearExtraShoppingItems() {
+        val repo = extraShoppingRepository ?: return
+        workerScope.launch {
+            repo.clear()
+        }
     }
 
     private fun requestSettings(replace: Boolean) {
@@ -142,7 +206,15 @@ class WeeklyMealPlanViewModel(
             )
             is WeeklyMealPlanAction.SwapDay -> {
                 if (action.dayIndex !in 0..6) return
-                current.copy(swappedOffsets = bumpDaySwapOffset(current.swappedOffsets, action.dayIndex))
+                val swapped = current.copy(swappedOffsets = bumpDaySwapOffset(current.swappedOffsets, action.dayIndex))
+                mutableState.value = swapped
+                save(swapped)
+                val recipes = lastRecipes
+                val pantryState = lastPantryState
+                if (recipes != null && pantryState != null) {
+                    persistSchedule(recipes, pantryState, swapped)
+                }
+                return
             }
             is WeeklyMealPlanAction.ToggleIngredient -> {
                 if (action.id.isBlank()) return
@@ -154,25 +226,18 @@ class WeeklyMealPlanViewModel(
             is WeeklyMealPlanAction.ToggleLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
             is WeeklyMealPlanAction.ToggleMealSlot -> {
                 if (action.dayIndex !in 0..6) return
-                val date = current.weekStart + kotlinx.datetime.DatePeriod(days = action.dayIndex)
+                val date = current.weekStart + DatePeriod(days = action.dayIndex)
                 val key = MealSlotKey(date, action.slot)
                 repository.setMealEnabled(date, action.slot, key in current.disabledMeals)
                 return
             }
             is WeeklyMealPlanAction.ApplyMealPreset -> {
-                val enabledSlots = when (action.preset) {
-                    WeeklyMealPreset.ONE_MEAL -> setOf(MealSlot.DINNER)
-                    WeeklyMealPreset.TWO_MEALS -> setOf(MealSlot.LUNCH, MealSlot.DINNER)
-                    WeeklyMealPreset.THREE_MEALS -> MealSlot.entries.toSet()
-                    WeeklyMealPreset.WORKWEEK -> emptySet()
-                }
-                for (day in 0..6) for (slot in MealSlot.entries) {
-                    val enabled = when (action.preset) {
-                        WeeklyMealPreset.WORKWEEK -> if (day < 5) slot == MealSlot.DINNER else slot != MealSlot.BREAKFAST
-                        else -> slot in enabledSlots
+                for (day in 0..6) {
+                    val date = current.weekStart + DatePeriod(days = day)
+                    val enabledSlots = enabledMealSlots(action.preset, day)
+                    for (slot in WEEKLY_MEAL_SLOTS) {
+                        repository.setMealEnabled(date, slot, slot in enabledSlots)
                     }
-                    val date = current.weekStart + kotlinx.datetime.DatePeriod(days = day)
-                    repository.setMealEnabled(date, slot, enabled)
                 }
                 return
             }
@@ -199,6 +264,10 @@ class WeeklyMealPlanViewModel(
         val queued = pendingActions.toList()
         pendingActions.clear()
         queued.forEach { apply(it) }
+        pendingSync?.let { (recipes, pantryState) ->
+            pendingSync = null
+            ensureScheduleForCurrentWeek(recipes, pantryState)
+        }
     }
 
     private suspend fun refreshWeek(timeZone: TimeZone) {
@@ -211,14 +280,72 @@ class WeeklyMealPlanViewModel(
             weekStart = rolled.weekStart,
             swappedOffsets = rolled.swappedOffsets,
             uncheckedIds = rolled.uncheckedIds,
+            savedEntries = entriesForWeek(allSavedEntries, rolled.weekStart),
         )
         mutableState.value = next
         save(next)
+        val recipes = lastRecipes
+        val pantryState = lastPantryState
+        if (recipes != null && pantryState != null) {
+            ensureScheduleForCurrentWeek(recipes, pantryState)
+        }
+    }
+
+    private suspend fun ensureScheduleForCurrentWeek(recipes: List<Recipe>, pantryState: PantryGridState) {
+        val current = mutableState.value
+        if (entriesForWeek(allSavedEntries, current.weekStart).isNotEmpty()) return
+        persistSchedule(recipes, pantryState, current)
+    }
+
+    private suspend fun persistSchedule(
+        recipes: List<Recipe>,
+        pantryState: PantryGridState,
+        state: WeeklyMealPlanState,
+    ) {
+        val schedule = buildWeeklyMealSchedule(
+            recipes = recipes,
+            state = pantryState,
+            goal = state.goal,
+            preferences = state.preferences,
+            swappedOffsets = state.swappedOffsets,
+            includeLunchMealPrep = state.includeLunchMealPrep,
+        )
+        val portions = if (state.includeLunchMealPrep) 2 else 1
+        val newEntries = schedule.map { meal ->
+            WeeklyMealPlanEntry(
+                day = state.weekStart + DatePeriod(days = meal.dayIndex),
+                meal = meal.mealSlot,
+                recipeId = meal.recipe.id,
+                portions = portions,
+            )
+        }
+        newEntries.forEach { repository.save(it) }
+        val weekEnd = state.weekStart + DatePeriod(days = 6)
+        allSavedEntries = allSavedEntries.filterNot { it.day in state.weekStart..weekEnd } + newEntries
+        mutableState.value = mutableState.value.copy(
+            savedEntries = entriesForWeek(allSavedEntries, state.weekStart),
+        )
+    }
+
+    private fun entriesForWeek(entries: List<WeeklyMealPlanEntry>, weekStart: LocalDate): List<WeeklyMealPlanEntry> {
+        val weekEnd = weekStart + DatePeriod(days = 6)
+        return entries.filter { it.day in weekStart..weekEnd && it.meal != MealSlot.BREAKFAST }
     }
 
     private fun normalize(settings: WeeklyMealPlanSettings?): WeeklyMealPlanState {
         val weekStart = currentWeekStart()
-        if (settings == null) return WeeklyMealPlanState(isLoaded = true, weekStart = weekStart)
+        val weekEntries = entriesForWeek(allSavedEntries, weekStart)
+        val disabled = mutableState.value.disabledMeals
+        val extraShoppingItems = mutableState.value.extraShoppingItems
+        if (settings == null) {
+            return WeeklyMealPlanState(
+                isLoaded = true,
+                weekStart = weekStart,
+                disabledMeals = disabled,
+                savedEntries = weekEntries,
+                extraShoppingItems = extraShoppingItems,
+            )
+        }
         val normalized = rollWeeklyPlanSettings(settings, weekStart)
         val state = WeeklyMealPlanState(
             isLoaded = true,
@@ -230,6 +357,9 @@ class WeeklyMealPlanViewModel(
             swappedOffsets = normalized.swappedOffsets,
             uncheckedIds = normalized.uncheckedIds,
             includeLunchMealPrep = settings.includeLunchMealPrep,
+            disabledMeals = disabled,
+            savedEntries = weekEntries,
+            extraShoppingItems = extraShoppingItems,
         )
         return state
     }

@@ -12,12 +12,17 @@ class ShelfTest {
     // Ngày luôn cố định trong test: không gọi giờ hệ thống để kết quả lặp lại được.
     private fun d(iso: String): LocalDate = LocalDate.parse(iso)
 
-    private fun ingredient(defaultShelfDays: Int, userShelfDays: Int? = null) = Ingredient(
+    private fun ingredient(
+        defaultShelfDays: Int,
+        userShelfDays: Int? = null,
+        freezerShelfDays: Int? = null,
+    ) = Ingredient(
         id = "egg",
         nameVi = "Trứng gà",
         group = "protein",
         defaultShelfDays = defaultShelfDays,
         userShelfDays = userShelfDays,
+        freezerShelfDays = freezerShelfDays,
     )
 
     private fun item(markedAt: String, have: Boolean = true) =
@@ -33,9 +38,21 @@ class ShelfTest {
     }
 
     @Test
-    fun daysLeft_frozenItem_multipliesSelectedShelfDaysByTen() {
+    fun daysLeft_frozenItem_usesFreezerShelfDaysWhenSet() {
         val frozen = item("2026-11-01").copy(compartment = PantryCompartment.FREEZE)
-        assertEquals(38, daysLeft(frozen, ingredient(5, userShelfDays = 4), d("2026-11-03")))
+        assertEquals(28, daysLeft(frozen, ingredient(5, freezerShelfDays = 30), d("2026-11-03")))
+    }
+
+    @Test
+    fun daysLeft_frozenItem_fallsBackToDefaultShelfDaysWhenFreezerShelfDaysNull() {
+        val frozen = item("2026-11-01").copy(compartment = PantryCompartment.FREEZE)
+        assertEquals(3, daysLeft(frozen, ingredient(5, freezerShelfDays = null), d("2026-11-03")))
+    }
+
+    @Test
+    fun daysLeft_frozenItem_prefersUserShelfDaysOverFreezerShelfDays() {
+        val frozen = item("2026-11-01").copy(compartment = PantryCompartment.FREEZE)
+        assertEquals(12, daysLeft(frozen, ingredient(5, userShelfDays = 14, freezerShelfDays = 30), d("2026-11-03")))
     }
 
     @Test

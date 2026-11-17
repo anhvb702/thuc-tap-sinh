@@ -97,3 +97,8 @@ internal fun cookDoneMessage(hasUpdates: Boolean): String =
     if (hasUpdates) "Đã cập nhật tủ. Chúc cả nhà ngon miệng" else "Chúc cả nhà ngon miệng"
 
 internal fun recipeSegmentLabels(): List<String> = listOf("Hôm nay", "Cả tuần")
+
+internal fun shouldShowRecipeSteps(recipe: Recipe): Boolean = recipe.steps.isNotEmpty()
+
+internal fun shouldShowHandsFreeAction(recipe: Recipe, hasCallback: Boolean): Boolean =
+    hasCallback && recipe.steps.isNotEmpty()

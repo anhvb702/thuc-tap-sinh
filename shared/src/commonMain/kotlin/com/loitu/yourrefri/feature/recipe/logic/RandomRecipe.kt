@@ -21,7 +21,7 @@ fun pickRandomRecipe(
     val candidates = recipes.filter { it.id != excludeId }
     if (candidates.isEmpty()) return null
     val pantry = state.pantry.values.toList()
-    val cookable = candidates.filter { canCook(it, pantry) }
+    val cookable = candidates.filter { canCook(it, pantry, state.ingredients) }
     return if (cookable.isNotEmpty()) {
         RandomPick(cookable.random(random), canCookNow = true)
     } else {

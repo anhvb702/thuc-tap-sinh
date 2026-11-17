@@ -192,7 +192,7 @@ fun HandsFreeCookScreen(
             }
         }
         if (state.isLast) TextButton(onClick = onKeepLeftovers, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Chọn nguyên liệu không trừ (còn dư)", color = colors.accentText)
+            Text("Giữ lại đồ còn dư", color = colors.accentText)
         }
     }
 }

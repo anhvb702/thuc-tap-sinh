@@ -1,7 +1,14 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingRepository
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanEntry
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
@@ -18,12 +25,15 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
 
@@ -119,32 +129,27 @@ class WeeklyMealPlanViewModelTest {
         viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.ONE_MEAL))
         runCurrent()
         assertEquals(
-            (0..6).flatMap { day -> listOf(MealSlot.BREAKFAST, MealSlot.LUNCH).map { MealSlotKey(monday.plus(kotlinx.datetime.DatePeriod(days = day)), it) } }.toSet(),
+            (0..6).map { day -> MealSlotKey(monday.plus(DatePeriod(days = day)), MealSlot.LUNCH) }.toSet(),
             repository.disabledMeals.value.toSet(),
         )
 
-        val breakfast = MealSlotKey(monday, MealSlot.BREAKFAST)
-        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.BREAKFAST))
+        val lunch = MealSlotKey(monday, MealSlot.LUNCH)
+        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.LUNCH))
         runCurrent()
-        assertEquals(false, breakfast in repository.disabledMeals.value)
-        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.BREAKFAST))
+        assertEquals(false, lunch in repository.disabledMeals.value)
+        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.LUNCH))
         runCurrent()
-        assertEquals(true, breakfast in repository.disabledMeals.value)
+        assertEquals(true, lunch in repository.disabledMeals.value)
 
         viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.TWO_MEALS))
-        runCurrent()
-        assertEquals(true, breakfast in repository.disabledMeals.value)
-        assertEquals(false, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
-        viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.THREE_MEALS))
-        runCurrent()
         runCurrent()
         assertEquals(emptyList(), repository.disabledMeals.value)
 
         viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.WORKWEEK))
         runCurrent()
-        assertEquals(true, MealSlot.BREAKFAST in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
+        assertEquals(true, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
         assertEquals(false, MealSlot.DINNER in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
-        assertEquals(false, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday.plus(kotlinx.datetime.DatePeriod(days = 5)) }.map { it.slot })
+        assertEquals(false, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday.plus(DatePeriod(days = 5)) }.map { it.slot })
     }
 
     @Test
@@ -228,6 +233,134 @@ class WeeklyMealPlanViewModelTest {
         assertEquals(true, viewModel.state.value.includeLunchMealPrep)
     }
 
+    @Test
+    fun syncSchedule_persistsPlanAndReloadWithSameWeekKeepsSavedPlanEvenIfPantryChanges() = runTest {
+        val catalog = listOf(
+            Ingredient("pork", "Thịt heo", "thit", 7),
+            Ingredient("rau-muong", "Rau muống", "rau", 3),
+            Ingredient("rice", "Gạo", "khac", 30),
+        )
+        val recipes = listOf(
+            Recipe("pork", "Thịt kho", listOf("Nấu"), listOf(Slot(listOf("pork")))),
+            Recipe("green", "Xào rau muống", listOf("Xào"), listOf(Slot(listOf("rau-muong")))),
+            Recipe("rice", "Cơm chiên", listOf("Chiên"), listOf(Slot(listOf("rice")))),
+        )
+        val initialPantry = PantryGridState(
+            today = monday,
+            ingredients = catalog,
+            pantry = mapOf("rau-muong" to PantryItem("rau-muong", true, monday)),
+        )
+        val changedPantry = PantryGridState(
+            today = monday,
+            ingredients = catalog,
+            pantry = mapOf("pork" to PantryItem("pork", true, LocalDate(2026, 11, 3))),
+        )
+        val repository = FakeWeeklyMealPlanRepository()
+        val clock = MutableClock(Instant.parse("2026-11-11T12:00:00Z"))
+        val firstVm = WeeklyMealPlanViewModel(repository, clock, TimeZone.UTC, backgroundScope)
+        runCurrent()
+
+        firstVm.syncSchedule(recipes, initialPantry)
+        runCurrent()
+
+        val initialSaved = repository.entries.value
+        assertEquals(14, initialSaved.size)
+        assertEquals("green", initialSaved.first { it.day == monday && it.meal == MealSlot.DINNER }.recipeId)
+
+        // Tải lại cùng tuần với tủ lạnh thay đổi: phải giữ nguyên thực đơn đã lưu.
+        val reloadedVm = WeeklyMealPlanViewModel(repository, clock, TimeZone.UTC, backgroundScope)
+        runCurrent()
+        reloadedVm.syncSchedule(recipes, changedPantry)
+        runCurrent()
+
+        assertEquals(initialSaved, repository.entries.value)
+        assertEquals(initialSaved, reloadedVm.state.value.savedEntries)
+    }
+
+    @Test
+    fun swapDayAndNewWeek_recomputeAndPersistUpdatedPlan() = runTest {
+        val catalog = listOf(
+            Ingredient("pork", "Thịt heo", "thit", 7),
+            Ingredient("rau-muong", "Rau muống", "rau", 3),
+            Ingredient("rice", "Gạo", "khac", 30),
+        )
+        val recipes = listOf(
+            Recipe("pork", "Thịt kho", listOf("Nấu"), listOf(Slot(listOf("pork")))),
+            Recipe("green", "Xào rau muống", listOf("Xào"), listOf(Slot(listOf("rau-muong")))),
+            Recipe("rice", "Cơm chiên", listOf("Chiên"), listOf(Slot(listOf("rice")))),
+        )
+        val initialPantry = PantryGridState(
+            today = monday,
+            ingredients = catalog,
+            pantry = mapOf("rau-muong" to PantryItem("rau-muong", true, monday)),
+        )
+        val changedPantry = PantryGridState(
+            today = monday,
+            ingredients = catalog,
+            pantry = mapOf("pork" to PantryItem("pork", true, LocalDate(2026, 11, 3))),
+        )
+        val repository = FakeWeeklyMealPlanRepository()
+        val clock = MutableClock(Instant.parse("2026-11-11T12:00:00Z"))
+        val viewModel = WeeklyMealPlanViewModel(repository, clock, TimeZone.UTC, backgroundScope)
+        runCurrent()
+
+        viewModel.syncSchedule(recipes, initialPantry)
+        runCurrent()
+        val beforeSwapDinner = repository.entries.value.first { it.day == monday && it.meal == MealSlot.DINNER }.recipeId
+
+        // Bấm "Đổi món" -> tính lại và lưu món mới cho ngày đó.
+        viewModel.dispatch(WeeklyMealPlanAction.SwapDay(0))
+        runCurrent()
+        val afterSwapDinner = repository.entries.value.first { it.day == monday && it.meal == MealSlot.DINNER }.recipeId
+        assertNotEquals(beforeSwapDinner, afterSwapDinner)
+
+        // Sang tuần mới -> tính lại thực đơn cho tuần mới với tủ lạnh hiện tại.
+        viewModel.syncSchedule(recipes, changedPantry)
+        runCurrent()
+        val nextMonday = monday.plus(DatePeriod(days = 7))
+        clock.instant = Instant.parse("2026-11-11T12:00:00Z") + 7.days
+        viewModel.refresh(TimeZone.UTC)
+        runCurrent()
+
+        assertEquals(nextMonday, viewModel.state.value.weekStart)
+        val nextWeekDinner = viewModel.state.value.savedEntries.first { it.day == nextMonday && it.meal == MealSlot.DINNER }
+        assertEquals("pork", nextWeekDinner.recipeId)
+    }
+
+    @Test
+    fun extraShoppingRepository_observesRemovesAndClearsExtraShoppingItems() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val extraRepository = FakeExtraShoppingRepository(
+            listOf(
+                ExtraShoppingItem("garlic", monday),
+                ExtraShoppingItem("onion", monday),
+            ),
+        )
+        val viewModel = WeeklyMealPlanViewModel(
+            repository = repository,
+            clock = MutableClock(Instant.parse("2026-11-11T12:00:00Z")),
+            timeZone = TimeZone.UTC,
+            scope = backgroundScope,
+            extraShoppingRepository = extraRepository,
+        )
+        runCurrent()
+
+        assertEquals(2, viewModel.state.value.extraShoppingItems.size)
+        assertEquals(listOf("garlic", "onion"), viewModel.state.value.extraShoppingItems.map { it.ingredientId })
+
+        viewModel.removeExtraShoppingItem("   ")
+        runCurrent()
+        assertEquals(2, viewModel.state.value.extraShoppingItems.size)
+
+        viewModel.removeExtraShoppingItem("garlic")
+        runCurrent()
+        assertEquals(listOf("onion"), viewModel.state.value.extraShoppingItems.map { it.ingredientId })
+
+        viewModel.clearExtraShoppingItems()
+        runCurrent()
+        assertEquals(emptyList(), viewModel.state.value.extraShoppingItems)
+    }
+
     private fun TestScope.createViewModel(repository: WeeklyMealPlanRepository) = WeeklyMealPlanViewModel(
         repository = repository,
         clock = MutableClock(Instant.parse("2026-11-11T12:00:00Z")),
@@ -244,6 +377,7 @@ class WeeklyMealPlanViewModelTest {
     ) : WeeklyMealPlanRepository {
         val saved = MutableStateFlow(initial)
         val disabledMeals = MutableStateFlow<List<MealSlotKey>>(emptyList())
+        val entries = MutableStateFlow<List<WeeklyMealPlanEntry>>(emptyList())
         var failSaves = false
 
         override fun observeDisabledMeals(): Flow<List<MealSlotKey>> = disabledMeals
@@ -253,9 +387,11 @@ class WeeklyMealPlanViewModelTest {
             disabledMeals.value = if (enabled) disabledMeals.value.filterNot { it == key } else (disabledMeals.value + key).distinct()
         }
 
-        override fun observeAll(): Flow<List<WeeklyMealPlanEntry>> = emptyFlow()
+        override fun observeAll(): Flow<List<WeeklyMealPlanEntry>> = entries
 
-        override suspend fun save(entry: WeeklyMealPlanEntry) = Unit
+        override suspend fun save(entry: WeeklyMealPlanEntry) {
+            entries.value = entries.value.filterNot { it.day == entry.day && it.meal == entry.meal } + entry
+        }
 
         override fun observeSettings(): Flow<WeeklyMealPlanSettings?> = saved
 
@@ -280,6 +416,26 @@ class WeeklyMealPlanViewModelTest {
         override suspend fun saveSettings(settings: WeeklyMealPlanSettings) {
             saved.value = settings
             this.settings.emit(settings)
+        }
+    }
+
+    private class FakeExtraShoppingRepository(
+        initial: List<ExtraShoppingItem> = emptyList(),
+    ) : ExtraShoppingRepository {
+        private val items = MutableStateFlow(initial)
+
+        override fun observeAll(): Flow<List<ExtraShoppingItem>> = items
+
+        override suspend fun add(ingredientId: String, addedAt: LocalDate) {
+            items.value = items.value.filterNot { it.ingredientId == ingredientId } + ExtraShoppingItem(ingredientId, addedAt)
+        }
+
+        override suspend fun remove(ingredientId: String) {
+            items.value = items.value.filterNot { it.ingredientId == ingredientId }
+        }
+
+        override suspend fun clear() {
+            items.value = emptyList()
         }
     }
 }

@@ -2,6 +2,8 @@
 
 package com.loitu.yourrefri.feature.notice.logic
 
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -46,6 +48,34 @@ class ReminderTriggerTest {
         assertEquals(
             Instant.parse("2026-03-08T20:00:00Z"),
             nextReminderTrigger(true, Instant.parse("2026-03-07T23:00:00Z"), TimeZone.of("America/New_York")),
+        )
+    }
+
+    @Test
+    fun frozenDinnerDay_shiftsSingleTriggerTo0800() {
+        val frozenDay = LocalDate(2026, 11, 5)
+        val tz = TimeZone.of("UTC+07:00")
+        assertEquals(
+            Instant.parse("2026-11-05T01:00:00Z"),
+            nextDailyTrigger(
+                enabled = true,
+                now = Instant.parse("2026-11-05T00:30:00Z"),
+                tz = tz,
+                sundayTime = LocalTime(8, 0),
+                weekdayTime = LocalTime(16, 0),
+                hasFrozenDinnerForDay = { it == frozenDay },
+            ),
+        )
+        assertEquals(
+            Instant.parse("2026-11-06T09:00:00Z"),
+            nextDailyTrigger(
+                enabled = true,
+                now = Instant.parse("2026-11-05T01:00:00Z"),
+                tz = tz,
+                sundayTime = LocalTime(8, 0),
+                weekdayTime = LocalTime(16, 0),
+                hasFrozenDinnerForDay = { it == frozenDay },
+            ),
         )
     }
 }

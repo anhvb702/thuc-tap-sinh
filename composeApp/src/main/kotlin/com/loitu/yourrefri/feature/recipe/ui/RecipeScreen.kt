@@ -87,6 +87,7 @@ import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyMealSchedule
 import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyShoppingList
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
+import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 
@@ -120,6 +121,9 @@ fun RecipeScreen(
     weeklyIncludeLunchMealPrep: Boolean? = null,
     onWeeklyIncludeLunchMealPrepChange: ((Boolean) -> Unit)? = null,
     onWeeklyAction: ((WeeklyMealPlanAction) -> Unit)? = null,
+    extraShoppingItems: List<ExtraShoppingItem> = emptyList(),
+    onRemoveExtraShoppingItem: (String) -> Unit = {},
+    onClearExtraShoppingItems: () -> Unit = {},
     onModeChange: ((RecipeScreenMode) -> Unit)? = null,
     onOpenRecipe: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier,
@@ -341,6 +345,10 @@ fun RecipeScreen(
                     },
                     onStock = onStockIngredients,
                     onStockWithCompartments = onStockWeekend,
+                    extraShoppingItems = extraShoppingItems,
+                    ingredients = state.ingredients,
+                    onRemoveExtraShoppingItem = onRemoveExtraShoppingItem,
+                    onClearExtraShoppingItems = onClearExtraShoppingItems,
                 )
             } else WeeklyMealPlanSection(
                 weeklyPlanSchedule = weeklyPlan,
@@ -687,7 +695,7 @@ private fun InlineRecipeSteps(
             Text("Đã nấu xong món này", fontWeight = FontWeight.SemiBold)
         }
         TextButton(onClick = onKeepLeftovers, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Chọn nguyên liệu không trừ (còn dư)", color = colors.accentText)
+            Text("Giữ lại đồ còn dư", color = colors.accentText)
         }
         if (resultMessage != null) {
             Text(

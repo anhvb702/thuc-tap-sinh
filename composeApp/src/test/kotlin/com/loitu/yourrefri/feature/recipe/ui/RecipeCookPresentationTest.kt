@@ -127,4 +127,16 @@ class RecipeCookPresentationTest {
             confirmedCookIngredientIds(presentation.copy(ingredientIds = emptyList()), confirmed = true, callbackAvailable = true),
         )
     }
+
+    @Test
+    fun emptyStepsHidesStepsAndHandsFreeAction() {
+        val liteRecipe = recipe.copy(steps = emptyList())
+        assertEquals(false, shouldShowRecipeSteps(liteRecipe))
+        assertEquals(false, shouldShowHandsFreeAction(liteRecipe, hasCallback = true))
+        assertEquals(false, shouldShowHandsFreeAction(liteRecipe, hasCallback = false))
+
+        assertEquals(true, shouldShowRecipeSteps(recipe))
+        assertEquals(true, shouldShowHandsFreeAction(recipe, hasCallback = true))
+        assertEquals(false, shouldShowHandsFreeAction(recipe, hasCallback = false))
+    }
 }

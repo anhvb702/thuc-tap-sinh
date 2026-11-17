@@ -1,5 +1,7 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+
 internal data class PantryCardCopy(
     val statusLabel: String,
     val absentHint: String?,
@@ -54,3 +56,18 @@ internal fun quickAddGridColumns(fontScale: Float): Int = if (fontScale >= 1.3f)
 
 internal fun quickAddTileDescription(name: String, selected: Boolean): String =
     if (selected) "$name, đã chọn" else "$name, chưa chọn"
+
+/** Q24: Chỉ cho chuyển sang ngăn đông khi nguyên liệu có hạn ngăn đông; món đang ở ngăn đông luôn chuyển về ngăn mát được. */
+internal fun canToggleCompartment(compartment: PantryCompartment, freezerShelfDays: Int?): Boolean =
+    compartment == PantryCompartment.FREEZE || freezerShelfDays != null
+
+/** Q19/Q20: Gia vị không đếm hạn dùng; hiển thị "Còn" / "Hết rồi → Đi chợ". */
+internal data class SeasoningCardCopy(
+    val statusLabel: String,
+    val markOutAndShopLabel: String,
+)
+
+internal fun seasoningCardCopy(have: Boolean): SeasoningCardCopy = SeasoningCardCopy(
+    statusLabel = if (have) "Còn" else "Hết · Chạm để thêm vào tủ",
+    markOutAndShopLabel = "Hết rồi → Đi chợ",
+)
