@@ -17,7 +17,7 @@
   - Chạm thẻ gợi ý mở đúng công thức được chọn ở tab Món ăn; request recipe ID đi theo thẻ và công thức được chọn, cuộn vào tầm nhìn.
 
 ### 1.2. Tủ Lạnh (Pantry Screen) — Quản lý trực quan & 1 chạm
-- **Tổ chức không gian:** Bộ lọc **Tất cả món (n)**, **Ngăn mát**, **Ngăn đông**; có công tắc **Chỉ xem món đang có**. Từ 2026-11-16 (Q28) Tủ lạnh mở mặc định ở bộ lọc **Đồ tươi**; các bộ lọc nhóm gồm **Đồ tươi**, **Đồ ăn thừa**, **Ăn liền & Uống**, **Gia vị**. Có đồ ăn thừa nên dùng sớm thì hiện một dòng nhắc ở đầu tab, không tự đổi tab.
+- **Tổ chức không gian:** Bộ lọc **Tất cả món (n)**, **Ngăn mát**, **Ngăn đông**; có công tắc **Chỉ xem món đang có**. **Đã chốt (Q28, 2026-11-16), chưa làm (R4-04); hiện app mở ở "Tất cả":** Tủ lạnh mở mặc định ở bộ lọc **Đồ tươi**; các bộ lọc nhóm gồm **Đồ tươi**, **Đồ ăn thừa**, **Ăn liền & Uống**, **Gia vị**. Có đồ ăn thừa nên dùng sớm thì hiện một dòng nhắc ở đầu tab, không tự đổi tab.
 - **Tóm tắt:** Dòng “Trong tủ: n món” đếm món đang có; `Tất cả món (n)` vẫn đếm toàn catalog. Khi bộ lọc rỗng có đường quay về tất cả món.
 - **Thẻ thực phẩm trực quan:**
   - Hình ảnh/icon đồ ăn nhận diện nhanh.
@@ -44,7 +44,7 @@
 - **Thực đơn tuần 7 ngày & Đi chợ 1 chạm (`W6-01`, `W6-02`):**
   - Màn hình Món ăn có thanh chuyển 2 chế độ: `"🍲 Gợi ý hôm nay"` và `"📅 Thực đơn tuần & Đi chợ"`, kèm lối tắt `"Lập thực đơn tuần & đi chợ 📅"` từ Trang chủ.
   - Cá nhân hóa thực đơn cả tuần (`Thứ 2` → `Chủ nhật`) theo định hướng bữa ăn (`DietGoal`: Cân bằng gia đình, Thanh đạm · Nhiều rau, Đậm đà · Đủ đạm, Nấu nhanh ≤ 20 phút) và khẩu vị thành viên (`FamilyPreferenceTag`: Món dễ ăn, Cá & Tôm, Rau, Đậu & Nấm, Thịt heo, bò, gà). Xếp chuẩn mâm cơm 2 món (`🍖 Món chính` + `🥬 Canh/Rau`) mỗi ngày, không trùng món chính hay món phụ ở 2 ngày liên tiếp, ưu tiên nguyên liệu cần dùng sớm ở đầu tuần và cho phép `"Đổi thực đơn ↻"` từng ngày.
-  - Ghi chú rõ ràng: thiết kế cho **Bữa cơm chính trong ngày (Trưa hoặc Tối)** với nhãn `Thứ X · Bữa cơm chính`; hỗ trợ tùy chọn **`"🍱 Nấu thêm phần cơm trưa hôm sau"`** để tự động tính thêm định lượng đi chợ cho ai muốn mang cơm trưa đi làm.
+  - Ghi chú rõ ràng: thiết kế cho **Bữa cơm chính trong ngày (Trưa hoặc Tối)** với nhãn `Thứ X · Bữa cơm chính`; tùy chọn **`"🍱 Nấu thêm phần cơm trưa hôm sau"`** **đã ẩn khỏi UI** theo quyết định 2026-11-12 (`LUNCH_MEAL_PREP_ENABLED = false`; logic và cột lưu còn trong mã). "Bữa trưa" là một bữa riêng trong ngày (SW-03), không phải phần nấu thêm.
   - Tự động tổng hợp danh sách nguyên liệu cần mua (`buildWeeklyShoppingList`), so sánh số lượng cần với số lượng đang có trong tủ (`quantities`), đếm số bữa/phần sử dụng, và hỗ trợ nút 1 chạm `"Đã mua xong (n món) · Cất vào tủ lạnh 🧊"` tự động cộng dồn số lượng nguyên liệu vào tủ lạnh mà không cần nhập tay.
 - **Trang công thức 4 bước rõ ràng:**
   - Bước 1: Chuẩn bị nguyên liệu
@@ -55,7 +55,7 @@
 
 ### 1.4. Cá Nhân & Thiết Lập (Settings Screen)
 - **Tôn trọng người dùng:**
-  - Bật/tắt thông báo, tối đa 1 lần/ngày. Giờ nhắc ngày thường mặc định 16:00, chỉnh được trong khung 14:00–20:00; Chủ Nhật dùng giờ riêng (quyết định 2026-11-16).
+  - Bật/tắt thông báo, tối đa 1 lần/ngày. **Hiện tại:** ngày thường nhắc cố định 17:30, chỉ bật/tắt; Chủ Nhật có giờ riêng chỉnh được (mặc định 8:00). **Đã chốt (Q5, 2026-11-16), chưa làm (R0-02):** giờ nhắc ngày thường mặc định 16:00, chỉnh được trong khung 14:00–20:00.
   - Sao lưu/khôi phục tệp trên thiết bị; định dạng dữ liệu nội bộ là JSON.
   - Đơn vị được chọn trực tiếp trên từng thẻ món ở Tủ lạnh.
 

@@ -16,7 +16,7 @@ Chỉ ghi quyết định có nguồn. Mục đang đề xuất hoặc chờ ng�
 | Chạm thẻ gợi ý Home mở đúng recipe ID trong tab Món ăn. | Yêu cầu người dùng ngày 2026-11-08; `docs/tests/UX-04.md`. |
 | Lưới Pantry dành 88dp phía dưới cho FAB; chỉ món đang có có nút sửa hạn; nút +/- rõ và dòng nhắc căn giữa. | Yêu cầu người dùng ngày 2026-11-08; `docs/tests/UX-04.md`. |
 | Qodo đã phụ trách review PR; chuyển finding thành task sửa thay vì lặp lại lượt review Qodo. | Quy trình trong `AGENTS.override.md`. |
-| Thông báo tối đa một lần mỗi ngày lúc 17:30; nhắc Thứ 4 và cuối tuần gộp vào thông báo ngày đó, kèm thẻ trên Trang chủ. **Phần "cuối tuần" đã bị thay thế bởi dòng ngay dưới (2026-11-13); phần Thứ 4 vẫn giữ.** | 2026-11-11 — Người dùng chốt theo đề xuất trong hội thoại ngày 2026-11-11. |
+| Thông báo tối đa một lần mỗi ngày ~~lúc 17:30~~; nhắc Thứ 4 và cuối tuần gộp vào thông báo ngày đó, kèm thẻ trên Trang chủ. **Giờ 17:30 đã bị thay bởi Q5 (2026-11-16); phần "cuối tuần" đã bị thay thế bởi dòng ngay dưới (2026-11-13); phần Thứ 4 vẫn giữ.** | 2026-11-11 — Người dùng chốt theo đề xuất trong hội thoại ngày 2026-11-11. |
 | Chủ Nhật: thông báo trong ngày được thay bằng "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!", mặc định 8:00, đổi được trong Cài đặt; các ngày khác theo giờ nhắc ngày thường (từ 2026-11-16: mặc định 16:00, chỉnh được). Vẫn tối đa một thông báo mỗi ngày, đồ nên dùng trước vẫn thấy trong app. | 2026-11-13 — Người dùng chốt trong hội thoại (góp ý #10): "Chủ Nhật thay thông báo thường, mặc định 8:00". Cài đặt trong `A-05`, `A-06`. |
 | Thông báo "món ngon hôm nay" (đợt B) dùng chung kênh thông báo ngày; đồ nên dùng sớm luôn thắng. | 2026-11-13 — Người dùng chốt trong hội thoại (góp ý #5): "Đồ nên dùng sớm luôn thắng". Chưa làm, thuộc đợt B. |
 | Lịch sử nấu lưu thêm bữa (Trưa/Tối) trong bảng phụ `CookLogMealEntity` (schema v7); màn "Đã nấu" chỉ liệt kê món, không thống kê. | 2026-11-13 — Người dùng chốt "Chỉ danh sách món" và cho phép đổi test ghim version. Chi tiết `docs/tests/A-11.md`. |
@@ -97,7 +97,11 @@ Nguồn chung: người dùng trả lời "đồng ý hết theo đề xuất" c
 |---|---|
 Bốn mục còn mở trước đây (số món trong thông báo, ngày tính khi món có lại, ngưỡng 0–2 ngày, chiều cao thẻ) đã chốt ở Q13 ngày 2026-11-16.
 
-Bốn đề xuất planner (nhắc rã đông, hạn ngăn đông, ẩn đồ ngăn đông, món ăn nhanh) đã được duyệt ở Q23–Q26 ngày 2026-11-16. Hiện không còn đề xuất nào chờ duyệt.
+Bốn đề xuất planner (nhắc rã đông, hạn ngăn đông, ẩn đồ ngăn đông, món ăn nhanh) đã được duyệt ở Q23–Q26 ngày 2026-11-16. Hiện chỉ còn một đề xuất chờ duyệt:
+
+| Mục | Đề xuất |
+|---|---|
+| Từ vựng thống nhất | Chọn một cụm "nên dùng trước" cho mọi chỗ (hiện có năm cách gọi: "Cần dùng sớm", "Nên dùng sớm", "Nên dùng trước", "ưu tiên dùng sớm", "Dùng đồ sắp dùng") và một nhãn cho dải ở Trang chủ; coi `CLAUDE.md` mục Văn phong là danh sách từ cấm gốc, các file khác chỉ trỏ tới đó. Cân nhắc "Cần dùng sớm" và "Cần mua thêm" nghe như mệnh lệnh nhẹ, ngược quy tắc "gợi ý không ra lệnh". Cần người dùng chọn trước khi đổi chuỗi trong app. |
 
 ## Quy ước ghi nhận
 

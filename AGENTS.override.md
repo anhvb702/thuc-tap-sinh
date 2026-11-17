@@ -21,7 +21,7 @@ YourRefri KHÔNG PHẢI là phần mềm quản lý kho hàng thu nhỏ. YourRef
 - **Phong cách:** Warm Minimalism theo `DESIGN.md`. Giao diện như một cuốn sổ tay căn bếp gia đình mộc mạc, tĩnh lặng.
 - **Bảng màu chuẩn:** Warm Ivory (`#F7F5EF`), Sage Green (`#789477`), Soft Green (`#DDE8D9`), Warm Beige (`#E8D8B9`), Terracotta (`#D98C70`), Deep Charcoal (`#343B34`).
 - **Quy tắc Anti-Slop (Impeccable):** Cấm gradient tím xanh vũ trụ, cấm card lồng card 3 tầng, cấm icon hoạt hình 3D sặc sỡ. Vùng chạm tối thiểu 48dp, bo góc mượt mà 16dp.
-- **Văn phong:** Ấm, ngắn, gợi ý không ra lệnh, luôn có đường lui. Cấm: "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", điểm số, so sánh, streak. Dùng: "ước tính", "khoảng", "nên dùng trước". Thông báo tối đa 1 lần/ngày lúc 17h30.
+- **Văn phong:** Ấm, ngắn, gợi ý không ra lệnh, luôn có đường lui. Cấm: "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", điểm số, so sánh, streak. Dùng: "ước tính", "khoảng", "nên dùng trước". Danh sách từ cấm gốc ở `CLAUDE.md` (mục Văn phong). Thông báo tối đa 1 lần/ngày; giờ nhắc ngày thường hiện 17:30, đã chốt đổi mặc định 16:00 và cho chỉnh giờ (Q5, R0-02).
 
 ## Kiến trúc
 - `:shared` (data + logic thuần, chỉ androidTarget) và `:composeApp` (UI, ViewModel).
