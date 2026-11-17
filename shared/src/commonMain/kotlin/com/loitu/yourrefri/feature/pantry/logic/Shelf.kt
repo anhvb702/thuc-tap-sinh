@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -10,7 +11,8 @@ enum class Urgency { EXPIRED, SOON, OK }
 
 // Đếm theo epoch day để hiệu số ngày lịch đúng qua tháng, năm và năm nhuận.
 fun daysLeft(item: PantryItem, ingredient: Ingredient, today: LocalDate): Int {
-    val shelfDays = ingredient.userShelfDays ?: ingredient.defaultShelfDays
+    val shelfDays = (ingredient.userShelfDays ?: ingredient.defaultShelfDays) *
+        if (item.compartment == PantryCompartment.FREEZE) 10 else 1
     val expiry = item.markedAt.plus(shelfDays, DateTimeUnit.DAY)
     return (expiry.toEpochDays() - today.toEpochDays()).toInt()
 }

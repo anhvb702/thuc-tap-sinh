@@ -1,5 +1,8 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import android.media.AudioManager
+import android.media.ToneGenerator
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,15 +25,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -42,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+import kotlinx.coroutines.delay
 
 private val NavButtonHeight = 72.dp
 private val NavButtonGap = 16.dp
@@ -55,6 +67,8 @@ fun HandsFreeCookScreen(
     recipe: Recipe,
     onClose: () -> Unit,
     onFinished: () -> Unit,
+    onKeepLeftovers: () -> Unit = {},
+    deductionPreview: String = "",
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -111,13 +125,15 @@ fun HandsFreeCookScreen(
         )
 
         val stepText = recipe.steps[state.stepIndex]
+        val stepDurationSeconds = remember(stepText) { parseStepDurationSeconds(stepText) }
         // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn, không cắt chữ.
-        Box(
+        Column(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(
                 text = stepText,
@@ -132,8 +148,22 @@ fun HandsFreeCookScreen(
                     contentDescription = state.announcement(stepText)
                 },
             )
+            if (stepDurationSeconds != null) {
+                StepTimerCard(
+                    stepIndex = state.stepIndex,
+                    initialSeconds = stepDurationSeconds,
+                )
+            }
         }
 
+        if (state.isLast && deductionPreview.isNotBlank()) {
+            Text(
+                text = deductionPreview,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.muted,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(NavButtonGap),
@@ -159,6 +189,169 @@ fun HandsFreeCookScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
             ) {
                 Text(state.nextLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+        }
+        if (state.isLast) TextButton(onClick = onKeepLeftovers, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Chọn nguyên liệu không trừ (còn dư)", color = colors.accentText)
+        }
+    }
+}
+
+@Composable
+private fun StepTimerCard(
+    stepIndex: Int,
+    initialSeconds: Int,
+) {
+    val colors = AppTheme.colors
+    val haptic = LocalHapticFeedback.current
+    var targetSeconds by remember(stepIndex, initialSeconds) { mutableIntStateOf(initialSeconds) }
+    var remainingSeconds by remember(stepIndex, initialSeconds) { mutableIntStateOf(initialSeconds) }
+    var running by remember(stepIndex, initialSeconds) { mutableStateOf(false) }
+    var finished by remember(stepIndex, initialSeconds) { mutableStateOf(false) }
+
+    LaunchedEffect(stepIndex, running) {
+        if (!running) return@LaunchedEffect
+        while (running && remainingSeconds > 0) {
+            delay(1000L)
+            remainingSeconds = (remainingSeconds - 1).coerceAtLeast(0)
+        }
+        if (running && remainingSeconds == 0) {
+            running = false
+            finished = true
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            runCatching {
+                val tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 75)
+                try {
+                    tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 350)
+                    delay(400L)
+                } finally {
+                    tone.release()
+                }
+            }
+        }
+    }
+
+    val progress = if (targetSeconds <= 0) 0f else (remainingSeconds.toFloat() / targetSeconds.toFloat()).coerceIn(0f, 1f)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = if (finished) colors.warnSoft else colors.surface,
+        border = BorderStroke(1.dp, if (running || finished) colors.primary else colors.line),
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = AppIcons.Clock,
+                    contentDescription = null,
+                    tint = if (finished) colors.warnText else colors.accentText,
+                    modifier = Modifier.size(20.dp),
+                )
+                Text(
+                    text = if (finished) HandsFreeCopy.TIMER_DONE else HandsFreeCopy.TIMER_TITLE,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (finished) colors.warnText else colors.accentText,
+                    modifier = if (finished) Modifier.semantics { liveRegion = LiveRegionMode.Assertive } else Modifier,
+                )
+            }
+
+            Text(
+                text = formatTimerClock(remainingSeconds),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = colors.text,
+            )
+
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 6.dp, max = 6.dp),
+                color = if (finished) colors.warnText else colors.primary,
+                trackColor = colors.line,
+            )
+
+            if (!running) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            val next = (remainingSeconds - 60).coerceAtLeast(30)
+                            remainingSeconds = next
+                            targetSeconds = next
+                            finished = false
+                        },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text("-1 phút", color = colors.text)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val next = remainingSeconds + 60
+                            remainingSeconds = next
+                            targetSeconds = next.coerceAtLeast(targetSeconds)
+                            finished = false
+                        },
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text("+1 phút", color = colors.text)
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = {
+                        if (remainingSeconds == 0) {
+                            remainingSeconds = targetSeconds
+                            finished = false
+                            running = true
+                        } else {
+                            finished = false
+                            running = !running
+                        }
+                    },
+                    modifier = Modifier.weight(1.4f).heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (running) colors.surfaceSoft else colors.cta,
+                        contentColor = if (running) colors.text else colors.onCta,
+                    ),
+                ) {
+                    val label = when {
+                        running -> HandsFreeCopy.TIMER_PAUSE
+                        remainingSeconds < targetSeconds && remainingSeconds > 0 -> HandsFreeCopy.TIMER_RESUME
+                        else -> HandsFreeCopy.TIMER_START
+                    }
+                    Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                }
+                if (running || remainingSeconds != targetSeconds || finished) {
+                    OutlinedButton(
+                        onClick = {
+                            running = false
+                            finished = false
+                            targetSeconds = initialSeconds
+                            remainingSeconds = initialSeconds
+                        },
+                        modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text(HandsFreeCopy.TIMER_RESET, color = colors.text, fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
     }

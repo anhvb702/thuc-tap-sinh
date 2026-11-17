@@ -20,9 +20,14 @@ class DailyNoticeCopyTest {
 
     @Test fun oneItem_bodyNamesIt() = assertEquals("A nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(1).body)
     @Test fun twoItems_bothNamed() = assertEquals("A, B nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(2).body)
-    @Test fun threeItems_namesTwoAndCountsRest() {
-        assertEquals("A, B và 1 món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(3).body)
-        assertEquals("A, B và 2 món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(4).body)
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Thông báo liệt kê tối đa 3 món, sau đó là "và vài món khác".
+    @Test fun threeItems_allThreeNamed() {
+        assertEquals("A, B, C nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(3).body)
+    }
+
+    // Căn cứ quyết định Q13a (2026-11-16): Nếu > 3 món thì hiển thị "$names và vài món khác".
+    @Test fun fourItems_namesThreeAndSaysVaiMonKhac() {
+        assertEquals("A, B, C và vài món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice(4).body)
     }
     @Test fun body_hasEstimateAndUseFirst() {
         assertTrue(notice(1).body.contains("nên dùng trước (hạn ước tính)"))

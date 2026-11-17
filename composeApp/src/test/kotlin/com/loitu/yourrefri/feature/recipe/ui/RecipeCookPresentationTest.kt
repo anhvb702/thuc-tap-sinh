@@ -42,6 +42,17 @@ class RecipeCookPresentationTest {
     }
 
     @Test
+    fun deductionPreviewNamesOnlyDeductedIngredientsAndExplainsEmptySelection() {
+        val pantry = PantryGridState(
+            today = today,
+            ingredients = ingredients,
+            pantry = mapOf("egg" to PantryItem("egg", true, today)),
+        )
+        assertEquals("Sẽ trừ khỏi tủ: Trứng gà", recipeCookPresentation(recipe, pantry, true).deductionPreview)
+        assertEquals("Không trừ nguyên liệu nào", recipeCookPresentation(recipe, PantryGridState(today = today, ingredients = ingredients), true).deductionPreview)
+    }
+
+    @Test
     fun emptyPantryDoesNotPromiseQuantityUpdates() {
         val presentation = recipeCookPresentation(
             recipe,

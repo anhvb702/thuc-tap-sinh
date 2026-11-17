@@ -78,6 +78,9 @@ fun SettingsScreen(
     appVersionName: String = "",
     sundayTime: LocalTime = LocalTime(8, 0),
     onSundayTimeChange: (LocalTime) -> Unit = {},
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
+    weekdayTime: LocalTime = LocalTime(16, 0),
+    onWeekdayTimeChange: (LocalTime) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val context = LocalContext.current
@@ -167,7 +170,7 @@ fun SettingsScreen(
         SettingsGroup {
             SettingRow(
                 title = SettingsPresentation.reminderTitle,
-                subtitle = SettingsPresentation.reminderTime,
+                subtitle = ReminderCopy.weekdayTimeLabel(weekdayTime),
                 onClick = { onReminderChanged(!reminderEnabled) },
                 trailing = {
                     Switch(
@@ -181,6 +184,15 @@ fun SettingsScreen(
                             uncheckedBorderColor = colors.line,
                         ),
                     )
+                },
+            )
+            HorizontalDivider(color = colors.line)
+            ValueRow(
+                title = "Ngày thường nhắc",
+                value = ReminderCopy.weekdayTimeLabel(weekdayTime).substringAfter("lúc "),
+                onClick = {
+                    // Căn cứ quyết định Q5 (2026-11-16): Giờ nhắc ngày thường kẹp trong khung 14:00–20:00.
+                    android.app.TimePickerDialog(context, { _, hour, minute -> onWeekdayTimeChange(coerceWeekdayTime(LocalTime(hour, minute))) }, weekdayTime.hour, weekdayTime.minute, true).show()
                 },
             )
             HorizontalDivider(color = colors.line)

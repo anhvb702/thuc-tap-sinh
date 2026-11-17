@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.loitu.yourrefri.shared.db.YourRefriDatabase
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
@@ -20,10 +21,13 @@ class PantryRepositoryImpl(
     private val timeZone: TimeZone,
     private val ioContext: CoroutineContext,
 ) : PantryRepository {
-    override fun observe(): Flow<List<PantryItem>> =
-        db.pantryEntityQueries.selectAll().asFlow().mapToList(ioContext).map { rows ->
-            rows.map { PantryItem(it.ingredientId, it.have, LocalDate.parse(it.markedAt)) }
-        }
+    override fun observe(): Flow<List<PantryItem>> = combine(
+        db.pantryEntityQueries.selectAll().asFlow().mapToList(ioContext),
+        db.pantryCompartmentEntityQueries.selectAll().asFlow().mapToList(ioContext),
+    ) { rows, compartmentRows ->
+        val compartments = compartmentRows.associate { it.ingredientId to PantryCompartment.valueOf(it.compartment) }
+        rows.map { PantryItem(it.ingredientId, it.have, LocalDate.parse(it.markedAt), compartments[it.ingredientId] ?: PantryCompartment.CHILL) }
+    }
 
     override fun observeShelfOverrides(): Flow<Map<String, Int>> =
         db.userShelfEntityQueries.selectAll().asFlow().mapToList(ioContext).map { rows ->
@@ -44,6 +48,7 @@ class PantryRepositoryImpl(
         withContext(ioContext) {
             db.transaction {
                 val pantry = db.pantryEntityQueries
+                // Căn cứ quyết định Q13b (2026-11-16): Món hết rồi có lại: hạn tính từ ngày bấm "Có" lại, xem như vừa mua.
                 if (have) {
                     val date = markedAt ?: clock.now().toLocalDateTime(timeZone).date
                     pantry.upsert(ingredientId, true, date.toString())
@@ -53,6 +58,12 @@ class PantryRepositoryImpl(
                     pantry.upsert(ingredientId, false, markedAt.toString())
                 }
             }
+        }
+    }
+
+    override suspend fun setCompartment(ingredientId: String, compartment: PantryCompartment) {
+        withContext(ioContext) {
+            db.pantryCompartmentEntityQueries.upsert(ingredientId, compartment.name)
         }
     }
 

@@ -84,4 +84,24 @@ class HandsFreeStepsTest {
         listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { assertFalse(it in all) }
         assertEquals("Thoát chế độ nấu rảnh tay", HandsFreeCopy.CLOSE_DESCRIPTION)
     }
+
+    @Test
+    fun parsesStepDurationSecondsFromVietnameseSteps() {
+        assertEquals(600, parseStepDurationSeconds("Ướp cá với muối trong 10 phút."))
+        assertEquals(900, parseStepDurationSeconds("Ướp thịt trong 15-20 phút."))
+        assertEquals(45, parseStepDurationSeconds("Chần sơ khoảng 45 giây."))
+        assertEquals(3600, parseStepDurationSeconds("Hầm xương 1 giờ cho ngọt nước."))
+        assertEquals(1800, parseStepDurationSeconds("Ủ bột nửa tiếng."))
+        assertEquals(60, parseStepDurationSeconds("Đảo thêm một phút rồi dùng nóng."))
+        assertEquals(180, parseStepDurationSeconds("Ướp thịt bò trong vài phút."))
+        assertEquals(null, parseStepDurationSeconds("Rửa sạch rau rồi để ráo."))
+    }
+
+    @Test
+    fun formatsTimerClock() {
+        assertEquals("00:00", formatTimerClock(0))
+        assertEquals("00:05", formatTimerClock(5))
+        assertEquals("10:00", formatTimerClock(600))
+        assertEquals("1:05:09", formatTimerClock(3909))
+    }
 }

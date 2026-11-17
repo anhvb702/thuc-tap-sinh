@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal
 import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
@@ -29,7 +30,7 @@ internal data class RecipeTabSpec(val mode: RecipeScreenMode, val label: String)
 internal fun recipeTabSpecs(): List<RecipeTabSpec> = listOf(
     RecipeTabSpec(RecipeScreenMode.DAILY, "Gợi ý hôm nay"),
     RecipeTabSpec(RecipeScreenMode.WEEKLY, "Thực đơn tuần"),
-    RecipeTabSpec(RecipeScreenMode.SHOPPING, "Đi chợ"),
+    RecipeTabSpec(RecipeScreenMode.SHOPPING, "Giỏ đi chợ lẻ"),
 )
 
 /** "Dễ nấu" khi ít bước và không quá lâu; còn lại "Vừa sức". Thiếu thời gian thì chỉ xét số bước. */
@@ -85,3 +86,50 @@ internal fun todayDayIndex(instant: Instant, timeZone: TimeZone): Int =
 
 internal fun shoppingCardCountText(toBuy: Int): String =
     if (toBuy <= 0) "Tuần này nhà mình đã đủ nguyên liệu" else "$toBuy món cần mua"
+
+internal enum class DailyRecipeEmptyState { EMPTY_DIET, PANTRY_EMPTY }
+
+internal enum class DailyRecipeContentState {
+    EMPTY_DIET,
+    PANTRY_EMPTY,
+    DURATION_EMPTY,
+    RECOMMENDATIONS,
+}
+
+internal data class DailyHeroEmptyPresentation(
+    val state: DailyRecipeEmptyState,
+    val message: String,
+    val actionLabel: String?,
+)
+
+internal fun resolveDailyRecipeContentState(
+    dietFilteredRecipes: List<Recipe>,
+    recommendations: List<RecipeRecommendation>,
+    durationFilteredRecommendations: List<RecipeRecommendation>,
+    dietRestriction: DietRestriction,
+    dietFilteredEmpty: Boolean = dietFilteredRecipes.isEmpty() && dietRestriction != DietRestriction.NONE,
+): DailyRecipeContentState = when {
+    recommendations.isEmpty() && dietFilteredEmpty -> DailyRecipeContentState.EMPTY_DIET
+    recommendations.isEmpty() -> DailyRecipeContentState.PANTRY_EMPTY
+    durationFilteredRecommendations.isEmpty() -> DailyRecipeContentState.DURATION_EMPTY
+    else -> DailyRecipeContentState.RECOMMENDATIONS
+}
+
+internal fun dailyHeroEmptyPresentation(
+    dietFilteredRecipes: List<Recipe>,
+    dietRestriction: DietRestriction,
+    dietFilteredEmpty: Boolean = dietFilteredRecipes.isEmpty() && dietRestriction != DietRestriction.NONE,
+): DailyHeroEmptyPresentation =
+    if (dietFilteredEmpty) {
+        DailyHeroEmptyPresentation(
+            state = DailyRecipeEmptyState.EMPTY_DIET,
+            message = emptyDietRecommendationCopy.message,
+            actionLabel = emptyDietRecommendationCopy.actionLabel,
+        )
+    } else {
+        DailyHeroEmptyPresentation(
+            state = DailyRecipeEmptyState.PANTRY_EMPTY,
+            message = HERO_EMPTY_MESSAGE,
+            actionLabel = null,
+        )
+    }

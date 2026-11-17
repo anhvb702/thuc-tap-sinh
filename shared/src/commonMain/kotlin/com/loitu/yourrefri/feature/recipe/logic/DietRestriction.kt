@@ -17,9 +17,9 @@ enum class DietRestriction(val storageValue: String, val labelVi: String, val hi
 
 /** Nhóm nguyên liệu theo id, định nghĩa một chỗ duy nhất (khớp shelf_table: nhóm "thit" và "ca"). */
 internal object DietIngredients {
-    val redMeat = setOf("thit-heo", "thit-heo-xay", "thit-bo")
-    val meat = redMeat + "thit-ga"
-    val seafood = setOf("ca-basa", "ca-hoi", "tom")
+    val redMeat = setOf("thit-heo", "thit-heo-xay", "thit-bo", "suon-heo", "ba-chi")
+    val meat = redMeat + setOf("thit-ga", "uc-ga")
+    val seafood = setOf("ca-basa", "ca-hoi", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao")
 
     /** Món tự thêm chưa có id quen thuộc thì dựa vào nhóm của nguyên liệu. */
     private const val GROUP_MEAT = "thit"

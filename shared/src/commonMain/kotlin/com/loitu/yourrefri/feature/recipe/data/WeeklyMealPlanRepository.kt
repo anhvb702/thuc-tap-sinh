@@ -14,6 +14,7 @@ import kotlinx.datetime.LocalDate
 import kotlin.coroutines.CoroutineContext
 
 enum class MealSlot {
+    BREAKFAST,
     LUNCH,
     DINNER,
 }

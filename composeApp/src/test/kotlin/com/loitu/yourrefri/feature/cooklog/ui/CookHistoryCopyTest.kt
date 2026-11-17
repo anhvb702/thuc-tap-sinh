@@ -14,6 +14,8 @@ class CookHistoryCopyTest {
         assertEquals("Đã nấu", CookHistoryCopy.title)
         assertEquals("Xem lại các món đã nấu", CookHistoryCopy.homeSubtitle)
         assertEquals("Nấu lại", CookHistoryCopy.cookAgain)
+        assertEquals("Xóa", CookHistoryCopy.delete)
+        assertEquals("Xóa & trả lại tủ", CookHistoryCopy.restoreAndDelete)
         assertEquals("Món đã lưu", CookHistoryCopy.unknownRecipe)
         assertEquals("Chưa có món nào ở đây. Nấu xong, món sẽ nằm gọn trong này nhé", CookHistoryCopy.empty)
     }

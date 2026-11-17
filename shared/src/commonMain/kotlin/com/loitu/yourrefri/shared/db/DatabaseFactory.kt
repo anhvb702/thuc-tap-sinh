@@ -16,6 +16,26 @@ object IdListAdapter : ColumnAdapter<List<String>, String> {
 fun createDatabase(driver: SqlDriver): YourRefriDatabase {
     driver.execute(
         identifier = null,
+        sql = """CREATE TABLE IF NOT EXISTS PantryCompartmentEntity (
+            ingredientId TEXT NOT NULL PRIMARY KEY,
+            compartment TEXT NOT NULL DEFAULT 'CHILL'
+        )""",
+        parameters = 0,
+    )
+    driver.execute(
+        identifier = null,
+        sql = """CREATE TABLE IF NOT EXISTS CustomRecipeEntity (
+            recipeId TEXT NOT NULL PRIMARY KEY,
+            title TEXT NOT NULL,
+            stepsJson TEXT NOT NULL,
+            requiredJson TEXT NOT NULL,
+            optionalJson TEXT NOT NULL,
+            minutes INTEGER
+        )""",
+        parameters = 0,
+    )
+    driver.execute(
+        identifier = null,
         sql = """CREATE TABLE IF NOT EXISTS WeeklyMealPlanSettingsEntity (
             settingsId INTEGER NOT NULL PRIMARY KEY CHECK (settingsId = 1),
             weekStart TEXT NOT NULL,

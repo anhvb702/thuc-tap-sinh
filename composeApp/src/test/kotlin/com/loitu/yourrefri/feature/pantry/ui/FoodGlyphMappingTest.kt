@@ -8,7 +8,11 @@ class FoodGlyphMappingTest {
     fun knownIngredientsMapToTheirGroup() {
         assertEquals(FoodGlyph.MEAT, foodGlyphFor("thit-heo"))
         assertEquals(FoodGlyph.MEAT, foodGlyphFor("thit-ga"))
+        assertEquals(FoodGlyph.MEAT, foodGlyphFor("suon-heo"))
+        assertEquals(FoodGlyph.MEAT, foodGlyphFor("uc-ga"))
         assertEquals(FoodGlyph.FISH, foodGlyphFor("ca-basa"))
+        assertEquals(FoodGlyph.FISH, foodGlyphFor("ca-loc"))
+        assertEquals(FoodGlyph.FISH, foodGlyphFor("muc"))
         assertEquals(FoodGlyph.FISH, foodGlyphFor("tom"))
         assertEquals(FoodGlyph.TOMATO, foodGlyphFor("ca-chua"))
         assertEquals(FoodGlyph.EGG, foodGlyphFor("trung-ga"))

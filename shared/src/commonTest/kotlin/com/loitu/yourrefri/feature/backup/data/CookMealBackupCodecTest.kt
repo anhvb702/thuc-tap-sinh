@@ -30,7 +30,7 @@ class CookMealBackupCodecTest {
 
     @Test
     fun rejectsUnknownMealValue() {
-        assertFailsWith<IllegalArgumentException> { BackupCodec.encode(snapshot(meals = listOf(CookMealBackup(5, "BREAKFAST")))) }
+        assertFailsWith<IllegalArgumentException> { BackupCodec.encode(snapshot(meals = listOf(CookMealBackup(5, "SNACK")))) }
     }
 
     @Test

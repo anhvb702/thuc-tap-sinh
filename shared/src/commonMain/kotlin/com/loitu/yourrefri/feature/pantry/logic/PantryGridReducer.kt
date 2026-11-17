@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.data.DEFAULT_PANTRY_UNIT
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
 import kotlinx.datetime.LocalDate
@@ -53,6 +54,7 @@ sealed interface PantryGridAction {
     data class PickUnit(val unit: String) : PantryGridAction
     data object SaveUnitEditor : PantryGridAction
     data object CancelUnitEditor : PantryGridAction
+    data class ToggleCompartment(val ingredientId: String) : PantryGridAction
 }
 
 sealed interface PantryGridEffect {
@@ -62,6 +64,7 @@ sealed interface PantryGridEffect {
     data class SaveQuantity(val ingredientId: String, val quantity: Int) : PantryGridEffect
     data class SaveShelfDays(val ingredientId: String, val days: Int?) : PantryGridEffect
     data class SaveUnit(val ingredientId: String, val unit: String?) : PantryGridEffect
+    data class SaveCompartment(val ingredientId: String, val compartment: PantryCompartment) : PantryGridEffect
 }
 
 data class PantryGridUpdate(
@@ -78,6 +81,7 @@ data class PantryCell(
     // null khi have = false: món chưa có thì không có hạn để đếm.
     val daysLeft: Int?,
     val urgency: Urgency?,
+    val compartment: PantryCompartment = PantryCompartment.CHILL,
 )
 
 // Cố định, không cho nhập tự do: đủ để chọn bằng một chạm và không tràn màn hình.
@@ -109,6 +113,17 @@ fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate =
     is PantryGridAction.PickUnit -> pickUnit(state, action.unit)
     PantryGridAction.SaveUnitEditor -> saveUnitEditor(state)
     PantryGridAction.CancelUnitEditor -> cancelUnitEditor(state)
+    is PantryGridAction.ToggleCompartment -> toggleCompartment(state, action.ingredientId)
+}
+
+private fun toggleCompartment(state: PantryGridState, id: String): PantryGridUpdate {
+    if (state.ingredients.none { it.id == id }) return PantryGridUpdate(state)
+    val item = state.pantry[id] ?: PantryItem(id, false, state.today)
+    val next = if (item.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
+    return PantryGridUpdate(
+        state.copy(pantry = state.pantry + (id to item.copy(compartment = next))),
+        listOf(PantryGridEffect.SaveCompartment(id, next)),
+    )
 }
 
 private fun addIngredient(state: PantryGridState, id: String, days: Int?): PantryGridUpdate {
@@ -123,7 +138,7 @@ private fun addIngredient(state: PantryGridState, id: String, days: Int?): Pantr
     }
     val added = state.copy(
         ingredients = ingredients,
-        pantry = state.pantry + (id to PantryItem(id, true, state.today)),
+        pantry = state.pantry + (id to PantryItem(id, true, state.today, state.pantry[id]?.compartment ?: PantryCompartment.CHILL)),
         sessionBase = state.sessionBase - id,
     )
     if (days == null) {
@@ -213,9 +228,10 @@ private fun tap(state: PantryGridState, id: String): PantryGridUpdate {
     }
 
     val sessionBase = if (state.sessionBase.containsKey(id)) state.sessionBase else state.sessionBase + (id to base)
+    // Căn cứ quyết định Q13b (2026-11-16): Món hết rồi có lại tính hạn từ ngày bấm "Có" (state.today), xem như vừa mua.
     // Bật lại: ghi ngày hôm nay. Tắt: giữ ngày đánh dấu cũ để biết đồ đã mua từ bao giờ.
     val item = if (newHave) {
-        PantryItem(ingredientId = id, have = true, markedAt = state.today)
+        PantryItem(ingredientId = id, have = true, markedAt = state.today, compartment = current?.compartment ?: PantryCompartment.CHILL)
     } else {
         checkNotNull(current).copy(have = false)
     }
@@ -261,6 +277,7 @@ fun cellsOf(state: PantryGridState): List<PantryCell> = state.ingredients.map { 
             unit = state.unitOverrides[ingredient.id] ?: DEFAULT_PANTRY_UNIT,
             daysLeft = left,
             urgency = urgencyOf(left),
+            compartment = item.compartment,
         )
     } else {
         PantryCell(
@@ -271,6 +288,7 @@ fun cellsOf(state: PantryGridState): List<PantryCell> = state.ingredients.map { 
             unit = state.unitOverrides[ingredient.id] ?: DEFAULT_PANTRY_UNIT,
             daysLeft = null,
             urgency = null,
+            compartment = item?.compartment ?: PantryCompartment.CHILL,
         )
     }
 }

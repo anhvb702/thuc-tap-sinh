@@ -71,6 +71,9 @@ class PantryGridViewModel(
                                 is PantryGridEffect.SaveUnit -> repository.setUnit(
                                     effect.ingredientId, effect.unit,
                                 )
+                                is PantryGridEffect.SaveCompartment -> repository.setCompartment(
+                                    effect.ingredientId, effect.compartment,
+                                )
                                 is PantryGridEffect.SaveShelfDays -> repository.setShelfDays(
                                     effect.ingredientId, effect.days,
                                 )

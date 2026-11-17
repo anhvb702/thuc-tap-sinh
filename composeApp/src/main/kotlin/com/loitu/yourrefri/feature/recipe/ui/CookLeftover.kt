@@ -35,11 +35,13 @@ internal object CookLeftoverCopy {
 
 internal object MealCopy {
     fun heading(meal: MealSlot): String = when (meal) {
+        MealSlot.BREAKFAST -> "Sáng nay nhà mình ăn gì nhỉ?"
         MealSlot.LUNCH -> "Trưa nay nhà mình ăn gì nhỉ?"
         MealSlot.DINNER -> "Tối nay nhà mình ăn gì nhỉ?"
     }
 
     fun label(meal: MealSlot): String = when (meal) {
+        MealSlot.BREAKFAST -> "Bữa sáng"
         MealSlot.LUNCH -> "Bữa trưa"
         MealSlot.DINNER -> "Bữa tối"
     }

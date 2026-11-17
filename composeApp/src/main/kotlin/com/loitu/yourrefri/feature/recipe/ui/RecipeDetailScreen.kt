@@ -29,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +57,7 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * Màn chi tiết một món. Không tự điều hướng: người gọi nối [onBack], [onCook] và [onUndo].
@@ -84,6 +86,7 @@ fun RecipeDetailScreen(
     val scope = rememberCoroutineScope()
     var ticked by rememberSaveable(recipe.id) { mutableStateOf(listOf<Int>()) }
     val chips = remember(recipe, state) { recipeIngredientChips(recipe, state) }
+    val optionalChips = remember(recipe, state) { recipeOptionalChips(recipe, state) }
     var showLeftover by remember(recipe.id) { mutableStateOf(false) }
     val candidateIds = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds }
     val namesById = remember(state.ingredients) { state.ingredients.associate { it.id to it.nameVi } }
@@ -96,11 +99,16 @@ fun RecipeDetailScreen(
         if (!showDoneSnackbar) return
         val undo = cookUndoActions(before, ids)
         scope.launch {
+            val undoJob = scope.launch {
+                delay(30_000)
+                host.currentSnackbarData?.dismiss()
+            }
             val result = host.showSnackbar(
                 message = cookDoneMessage(hasUpdates = ids.isNotEmpty()),
                 actionLabel = if (undo.isNotEmpty()) "Hoàn tác" else null,
-                duration = SnackbarDuration.Long,
+                duration = SnackbarDuration.Indefinite,
             )
+            undoJob.cancel()
             if (result == SnackbarResult.ActionPerformed) onUndo(undo)
         }
     }
@@ -153,7 +161,7 @@ fun RecipeDetailScreen(
                 ) {
                     Icon(AppIcons.Clock, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
                     Text(
-                        text = recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ",
+                        text = recipeTimeAndServingsSummary(recipe),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.muted,
                     )
@@ -170,6 +178,20 @@ fun RecipeDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     chips.forEach { IngredientChip(it) }
+                }
+                if (optionalChips.isNotEmpty()) {
+                    Text(
+                        text = "Tuỳ chọn thêm",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = colors.muted,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        optionalChips.forEach { IngredientChip(it) }
+                    }
                 }
 
                 Text(
@@ -204,10 +226,15 @@ fun RecipeDetailScreen(
                         Text("Nấu rảnh tay", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
                     }
                 }
+                Text(
+                    text = recipeCookPresentation(recipe, state, callbackAvailable = true).deductionPreview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                )
                 Button(
                     onClick = {
-                        // Có nguyên liệu sắp trừ thì hỏi "Dùng hết hay còn lại?" trước; không có thì nấu xong luôn.
-                        if (candidateIds.isEmpty()) finishCook(emptySet()) else showLeftover = true
+                        finishCook(emptySet())
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
                     shape = RoundedCornerShape(16.dp),
@@ -217,6 +244,11 @@ fun RecipeDetailScreen(
                         .heightIn(min = 52.dp),
                 ) {
                     Text("Nấu xong, cập nhật tủ", fontWeight = FontWeight.SemiBold)
+                }
+                if (candidateIds.isNotEmpty()) {
+                    TextButton(onClick = { showLeftover = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Chọn nguyên liệu không trừ (còn dư)", color = colors.accentText)
+                    }
                 }
                 }
             }
@@ -261,8 +293,9 @@ private fun IngredientChip(chip: RecipeIngredientChip) {
         if (chip.have) {
             Icon(AppIcons.Check, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
         }
+        val baseLabel = if (chip.amount != null) "${chip.name} (${chip.amount})" else chip.name
         Text(
-            text = if (suffix != null) "${chip.name} · $suffix" else chip.name,
+            text = if (suffix != null) "$baseLabel · $suffix" else baseLabel,
             style = MaterialTheme.typography.bodyMedium,
             color = if (chip.have) colors.text else colors.muted,
         )

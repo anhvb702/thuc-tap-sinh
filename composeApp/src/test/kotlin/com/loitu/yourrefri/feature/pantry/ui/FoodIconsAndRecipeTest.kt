@@ -26,7 +26,10 @@ class FoodIconsAndRecipeTest {
 
     @Test
     fun isFreezerItem_classifiesMeatFishAndShrimpAsFreezerItems() {
-        listOf("thit-heo", "thit-bo", "thit-ga", "ca-basa", "tom").forEach { id ->
+        listOf(
+            "thit-heo", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "uc-ga",
+            "ca-basa", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao",
+        ).forEach { id ->
             assertTrue(isFreezerItem(id), "$id should be a freezer item")
         }
     }

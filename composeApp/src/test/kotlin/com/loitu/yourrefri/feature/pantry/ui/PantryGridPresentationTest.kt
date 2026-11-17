@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
@@ -27,6 +28,17 @@ class PantryGridPresentationTest {
     }
 
     @Test
+    fun compartmentFeedbackShowsOldAndNewEstimatedDays() {
+        assertEquals("Đã chuyển sang Ngăn đông (hạn ước tính: 2 ngày → 20 ngày)", compartmentChangeMessage("Ngăn đông", 2, 20))
+    }
+
+    @Test
+    fun cardCopyMakesTapActionExplicitForBothPantryStates() {
+        assertEquals("Đang có · Chạm để đánh dấu hết", pantryCardCopy(have = true, quantity = 1).tapHint)
+        assertEquals("Đã hết · Chạm để thêm vào tủ", pantryCardCopy(have = false, quantity = 1).tapHint)
+    }
+
+    @Test
     fun presentCount_countsOnlyPresentCatalogCells_andDoesNotDependOnFilters() {
         assertEquals(2, pantryGridPresentation(catalog, StorageTab.ALL, presentOnly = false).presentCount)
         assertEquals(2, pantryGridPresentation(catalog, StorageTab.FRIDGE, presentOnly = true).presentCount)
@@ -41,7 +53,7 @@ class PantryGridPresentationTest {
     }
 
     @Test
-    fun fridgeAndFreezerUseExistingClassificationAndKeepOrder() {
+    fun fridgeAndFreezerUseSelectedCompartmentAndKeepOrder() {
         val fridge = pantryGridPresentation(catalog, StorageTab.FRIDGE, presentOnly = false)
         val freezer = pantryGridPresentation(catalog, StorageTab.FREEZER, presentOnly = false)
 
@@ -95,6 +107,7 @@ class PantryGridPresentationTest {
         unit = "phần",
         daysLeft = null,
         urgency = null,
+        compartment = if (id == "ca-basa") PantryCompartment.FREEZE else PantryCompartment.CHILL,
     )
 
     private fun List<PantryCell>.ids() = map(PantryCell::ingredientId)

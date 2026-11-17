@@ -1,10 +1,13 @@
 package com.loitu.yourrefri.feature.home.ui
 
+import android.animation.ValueAnimator
+import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,9 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +31,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +39,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +50,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -52,11 +63,18 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.home.logic.homeGreeting
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
-import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
 import com.loitu.yourrefri.feature.recipe.logic.recommendRecipes
+import com.loitu.yourrefri.feature.recipe.logic.RandomPick
+import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import kotlin.random.Random
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
 import com.loitu.yourrefri.feature.recipe.logic.recipesForMeal
@@ -64,6 +82,7 @@ import com.loitu.yourrefri.feature.recipe.ui.MealCopy
 import com.loitu.yourrefri.feature.recipe.ui.PillChip
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
 import com.loitu.yourrefri.feature.recipe.ui.WEEKLY_BUTTON_LABEL
+import com.loitu.yourrefri.feature.recipe.ui.emptyDietRecommendationCopy
 import com.loitu.yourrefri.feature.recipe.ui.emptyRecommendationCopy
 import com.loitu.yourrefri.feature.recipe.ui.shortReasonLabel
 import com.loitu.yourrefri.ui.components.FoodThumb
@@ -93,9 +112,9 @@ internal fun shortEstimateText(daysLeft: Int): String = when {
 // Số món đang có theo khu vực bảo quản (ngăn mát / ngăn đông).
 internal data class PantryZoneCounts(val fridge: Int, val freezer: Int)
 
-internal fun pantryZoneCounts(haveIds: List<String>): PantryZoneCounts {
-    val freezer = haveIds.count { isFreezerItem(it) }
-    return PantryZoneCounts(fridge = haveIds.size - freezer, freezer = freezer)
+internal fun pantryZoneCounts(haveItems: List<PantryCell>): PantryZoneCounts {
+    val freezer = haveItems.count { it.compartment == PantryCompartment.FREEZE }
+    return PantryZoneCounts(fridge = haveItems.size - freezer, freezer = freezer)
 }
 
 // Dòng chữ dưới tên món cần dùng sớm; luôn là ước tính, không khẳng định an toàn.
@@ -109,6 +128,17 @@ internal fun urgentCaption(daysLeft: Int): String = when {
 internal fun recipeStripScrolls(fontScale: Float): Boolean = fontScale >= 1.3f
 
 internal const val homeRecipeLimit = 3
+
+internal data class GachaIngredient(val id: String, val have: Boolean)
+
+internal fun gachaIngredients(recipe: Recipe, state: PantryGridState): List<GachaIngredient> =
+    recipe.required.map { slot ->
+        val present = slot.anyOf.firstOrNull { state.pantry[it]?.have == true }
+        GachaIngredient(present ?: slot.anyOf.first(), present != null)
+    }
+
+internal fun pickHomeGacha(recipes: List<Recipe>, state: PantryGridState, previousId: String?, random: Random): RandomPick? =
+    pickRandomRecipe(recipes, state, previousId.takeIf { recipes.size > 1 }, random)
 
 internal fun pantryCardDescription(count: Int, zones: PantryZoneCounts): String =
     if (count == 0) {
@@ -125,6 +155,8 @@ fun HomeScreen(
     onNavigateToRecipes: () -> Unit,
     onNavigateToRecipe: (String) -> Unit,
     onNavigateToWeeklyRecipes: () -> Unit = onNavigateToRecipes,
+    onAddDailyShopping: (List<String>) -> Unit = {},
+    onAdjustDiet: () -> Unit = {},
     // Lối vào "Đã nấu"; null thì ẩn.
     onNavigateToHistory: (() -> Unit)? = null,
     // Bữa đang chọn (do MainScaffold giữ để lịch sử "Đã nấu" ghi đúng bữa này).
@@ -134,10 +166,24 @@ fun HomeScreen(
 ) {
     val colors = AppTheme.colors
     val haveItems = cellsOf(state).filter { it.have }
-    val zones = pantryZoneCounts(haveItems.map { it.ingredientId })
-    val urgentItems = haveItems.filter { it.daysLeft in 0..2 }.sortedBy { it.daysLeft }
+    val zones = pantryZoneCounts(haveItems)
+    val urgentItems = haveItems.filter {
+        it.compartment != PantryCompartment.FREEZE && it.daysLeft in 0..2
+    }.sortedBy { it.daysLeft }
     // Bữa trưa ưu tiên món nhanh; bữa tối giữ nguyên danh sách.
     val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state).take(homeRecipeLimit)
+    var showGacha by remember { mutableStateOf(false) }
+
+    if (showGacha) {
+        HomeGachaDialog(
+            recipes = recipes,
+            state = state,
+            onDismiss = { showGacha = false },
+            onAdjustDiet = { showGacha = false; onAdjustDiet() },
+            onAddDailyShopping = onAddDailyShopping,
+            onOpenRecipe = { id -> showGacha = false; onNavigateToRecipe(id) },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -169,6 +215,17 @@ fun HomeScreen(
 
         PantrySummaryCard(count = haveItems.size, zones = zones, onOpenPantry = onNavigateToPantry)
 
+        Spacer(modifier = Modifier.height(16.dp))
+        Surface(shape = RoundedCornerShape(16.dp), color = colors.surfaceSoft, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Không biết ăn gì? Đừng lo", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                Button(onClick = { showGacha = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Nấu ngẫu nhiên")
+                }
+                Text("Miễn phí, không mua gì thêm, chỉ chọn món ăn thôi.", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            }
+        }
+
         Spacer(modifier = Modifier.height(24.dp))
 
         SectionHeader(title = "Cần dùng sớm", action = "Xem tất cả", onAction = onNavigateToPantry)
@@ -179,12 +236,18 @@ fun HomeScreen(
                 color = colors.surface,
                 border = BorderStroke(1.dp, colors.line),
             ) {
-                Text(
-                    text = "Chưa có món nào cần ưu tiên dùng sớm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.accentText,
-                    modifier = Modifier.padding(16.dp),
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(AppIcons.Leaf, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(22.dp))
+                    Text(
+                        text = "Tủ lạnh đang rất gọn gàng, không có món nào sắp hỏng cả!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.accentText,
+                    )
+                }
             }
         } else {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -203,13 +266,24 @@ fun HomeScreen(
 
         SectionHeader(title = "Gợi ý bữa cơm hôm nay", action = "Xem thêm", onAction = onNavigateToRecipes)
         if (recommendations.isEmpty()) {
-            Text(
-                text = emptyRecommendationCopy.message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.muted,
-            )
-            TextButton(onClick = onNavigateToPantry, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(emptyRecommendationCopy.actionLabel)
+            if (recipes.isEmpty()) {
+                Text(
+                    text = emptyDietRecommendationCopy.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.muted,
+                )
+                TextButton(onClick = onAdjustDiet, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(emptyDietRecommendationCopy.actionLabel)
+                }
+            } else {
+                Text(
+                    text = emptyRecommendationCopy.message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.muted,
+                )
+                TextButton(onClick = onNavigateToPantry, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(emptyRecommendationCopy.actionLabel)
+                }
             }
         } else if (recipeStripScrolls(LocalDensity.current.fontScale)) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -240,6 +314,97 @@ fun HomeScreen(
             )
         }
     }
+}
+
+@Composable
+private fun HomeGachaDialog(
+    recipes: List<Recipe>,
+    state: PantryGridState,
+    onDismiss: () -> Unit,
+    onAdjustDiet: () -> Unit,
+    onAddDailyShopping: (List<String>) -> Unit,
+    onOpenRecipe: (String) -> Unit,
+) {
+    val colors = AppTheme.colors
+    val haptic = LocalHapticFeedback.current
+    var pick by remember(recipes) { mutableStateOf(pickHomeGacha(recipes, state, null, Random.Default)) }
+    var roll by remember { mutableStateOf(0) }
+    var landed by remember { mutableStateOf(false) }
+    var added by remember { mutableStateOf(false) }
+    val position = remember { Animatable(0f) }
+    val reel = remember(recipes, pick, roll) {
+        val candidates = recipes.shuffled(Random(roll)).take(8)
+        if (pick == null) emptyList() else List(3) { candidates }.flatten() + listOf(pick!!.recipe)
+    }
+    LaunchedEffect(roll, pick?.recipe?.id) {
+        landed = false
+        if (pick != null) {
+            position.snapTo(0f)
+            val finalPosition = reel.lastIndex.toFloat()
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()) {
+                position.animateTo(finalPosition, tween(durationMillis = 4200, easing = FastOutSlowInEasing))
+            } else {
+                position.snapTo(finalPosition)
+            }
+            landed = true
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nấu ngẫu nhiên") },
+        text = {
+            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val chosen = pick
+                if (chosen == null) {
+                    Text("Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé.", color = colors.text)
+                    TextButton(onClick = onAdjustDiet, modifier = Modifier.heightIn(min = 48.dp)) { Text("Điều chỉnh chế độ ăn") }
+                } else {
+                    BoxWithConstraints(Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(16.dp)).background(colors.surfaceSoft)) {
+                        val left = maxWidth / 2 - 64.dp
+                        Row(
+                            Modifier
+                                .wrapContentWidth(unbounded = true, align = Alignment.Start)
+                                .offset(x = left - (position.value * 136).dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            reel.forEach { item ->
+                                Surface(Modifier.width(128.dp).height(84.dp), shape = RoundedCornerShape(12.dp), color = colors.surface) {
+                                    Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
+                                        Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis, color = colors.text)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (landed) {
+                        Column(Modifier.semantics { liveRegion = LiveRegionMode.Assertive }) {
+                            Text("Nay tổ tiên bảo bạn nấu món này nè", color = colors.accentText)
+                            Text(chosen.recipe.title, style = MaterialTheme.typography.titleLarge, color = colors.text)
+                        }
+                        val ingredients = gachaIngredients(chosen.recipe, state)
+                        val names = state.ingredients.associate { it.id to it.nameVi }
+                        val have = ingredients.filter { it.have }
+                        val missing = ingredients.filterNot { it.have }
+                        Text("Đã có: " + if (have.isEmpty()) "Chưa có nguyên liệu" else have.joinToString(", ") { names[it.id] ?: it.id }, color = colors.text)
+                        Text("Cần thêm: " + if (missing.isEmpty()) "Đã đủ nguyên liệu" else missing.joinToString(", ") { names[it.id] ?: it.id }, color = colors.text)
+                        if (missing.isNotEmpty()) {
+                            TextButton(onClick = { onAddDailyShopping(missing.map { it.id }.distinct()); added = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text(if (added) "Đã đưa vào Đi chợ hàng ngày" else "Đưa vào Đi chợ hàng ngày")
+                            }
+                        }
+                        Button(onClick = { onOpenRecipe(chosen.recipe.id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Nấu món này") }
+                        TextButton(onClick = {
+                            pick = pickHomeGacha(recipes, state, chosen.recipe.id, Random.Default)
+                            added = false
+                            roll++
+                        }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Chọn món khác") }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Đóng") } },
+    )
 }
 
 @Composable

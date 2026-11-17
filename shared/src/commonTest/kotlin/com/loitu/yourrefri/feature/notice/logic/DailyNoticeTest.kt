@@ -2,6 +2,9 @@ package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.Slot
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.plus
@@ -9,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class DailyNoticeTest {
     private val today = LocalDate(2026, 11, 5)
@@ -21,6 +25,30 @@ class DailyNoticeTest {
         assertNull(planDailyNotice(listOf(item("egg", false)), listOf(ingredient("egg")), today, null))
         assertNull(planDailyNotice(listOf(item("egg")), listOf(ingredient("egg", 3)), today, null))
         assertNull(planDailyNotice(listOf(item("unknown")), listOf(ingredient("egg")), today, null))
+    }
+
+    @Test
+    fun emptyWeekdayListSuggestsDietSafeRecipeAndThrottlesForThreeDays() {
+        val recipes = listOf(
+            Recipe("beef", "Bò xào", listOf("Nấu"), listOf(Slot(listOf("thit-bo")))),
+            Recipe("egg", "Trứng hấp", listOf("Hấp"), listOf(Slot(listOf("trung")))),
+        )
+        val first = assertNotNull(planDailyNotice(
+            emptyList(), listOf(ingredient("thit-bo"), ingredient("trung")), today, null,
+            sundayShopping = false, recipes = recipes, dietRestriction = DietRestriction.VEGETARIAN,
+        ))
+        assertEquals("Nay trời dịu nhẹ, tối nay làm món Trứng hấp là hết ý luôn nè!", first.body)
+        assertTrue(first.isContextualNudge)
+        assertNull(planDailyNotice(
+            emptyList(), listOf(ingredient("thit-bo"), ingredient("trung")), today.plus(2, DateTimeUnit.DAY), null,
+            sundayShopping = false, recipes = recipes, dietRestriction = DietRestriction.VEGETARIAN,
+            lastNudgeSent = today,
+        ))
+        assertNotNull(planDailyNotice(
+            emptyList(), listOf(ingredient("thit-bo"), ingredient("trung")), today.plus(3, DateTimeUnit.DAY), null,
+            sundayShopping = false, recipes = recipes, dietRestriction = DietRestriction.VEGETARIAN,
+            lastNudgeSent = today,
+        ))
     }
 
     @Test
@@ -44,6 +72,7 @@ class DailyNoticeTest {
         }
     }
 
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Thông báo liệt kê tối đa 3 món, sau đó là "và vài món khác".
     @Test
     fun contentHasEstimateAndCheckForPastDate() {
         val notice = assertNotNull(planDailyNotice(
@@ -51,9 +80,27 @@ class DailyNoticeTest {
             listOf(ingredient("two"), ingredient("old"), ingredient("zero")), today, null,
         ))
         assertEquals("Gợi ý từ tủ nhà mình", notice.title)
-        // Contract UX-18 (chỉ thị người dùng 2026-11-12) thay copy W2-03
         assertEquals(
-            "Tên old, Tên zero và 1 món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.",
+            "Tên old, Tên zero, Tên two nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.",
+            notice.body,
+        )
+    }
+
+    // Căn cứ quyết định Q13a (2026-11-16): Nếu > 3 món thì hiển thị "$names và vài món khác".
+    @Test
+    fun contentWithMoreThanThreeItems_usesVaiMonKhac() {
+        val notice = assertNotNull(planDailyNotice(
+            listOf(
+                item("two"),
+                item("old", date = LocalDate(2026, 11, 1)),
+                item("zero", date = LocalDate(2026, 11, 3)),
+                item("four", date = LocalDate(2026, 11, 3)),
+            ),
+            listOf(ingredient("two"), ingredient("old"), ingredient("zero"), ingredient("four")), today, null,
+        ))
+        assertEquals("Gợi ý từ tủ nhà mình", notice.title)
+        assertEquals(
+            "Tên old, Tên four, Tên zero và vài món khác nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.",
             notice.body,
         )
     }

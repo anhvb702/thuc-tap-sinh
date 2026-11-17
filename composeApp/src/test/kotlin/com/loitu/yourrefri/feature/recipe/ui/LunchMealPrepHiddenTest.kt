@@ -13,25 +13,17 @@ class LunchMealPrepHiddenTest {
             .first { it.isFile }.readText()
     }
 
-    @Test fun lunchPrepIsDisabledForShopping() {
-        assertFalse(LUNCH_MEAL_PREP_ENABLED)
-    }
-
-    @Test fun weeklyContentHasNoLunchPrepChip() {
-        val content = source("feature/recipe/ui/WeeklyMealPlanContent.kt")
-        assertFalse(content.contains("cơm trưa hôm sau"))
-        assertFalse(content.contains("lunchPrepSummaryText"))
-        assertFalse(content.contains("lunchPrepDayLabel"))
-        assertFalse(content.contains("isLunchPrep"))
-    }
-
-    @Test fun recipeScreenAndScaffoldDoNotPassLunchPrep() {
+    @Test fun lunchPrepIsWiredForTwoMealBatchCooking() {
         val screen = source("feature/recipe/ui/RecipeScreen.kt")
         val scaffold = source("ui/MainScaffold.kt")
-        assertTrue(screen.contains("includeLunchMealPrep = LUNCH_MEAL_PREP_ENABLED"))
-        assertFalse(screen.contains("weeklyIncludeLunchMealPrep ?:"))
-        assertFalse(screen.contains("onToggleLunchMealPrep ="))
-        assertFalse(scaffold.contains("weeklyIncludeLunchMealPrep ="))
+        assertTrue(screen.contains("weeklyIncludeLunchMealPrep"))
+        assertTrue(screen.contains("onToggleLunchMealPrep"))
+        assertTrue(scaffold.contains("weeklyIncludeLunchMealPrep"))
+    }
+
+    @Test fun weeklyContentHasBatchCookToggleLabel() {
+        val content = source("feature/recipe/ui/WeeklyMealPlanContent.kt")
+        assertTrue(content.contains("Nấu gộp cùng bữa tối (x2 phần)"))
     }
 
     @Test fun pantryStockSubtitleWithoutLunch() {

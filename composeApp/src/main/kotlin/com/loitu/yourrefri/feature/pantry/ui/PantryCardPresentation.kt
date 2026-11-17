@@ -5,6 +5,7 @@ internal data class PantryCardCopy(
     val absentHint: String?,
     val showEstimatedStatus: Boolean,
     val quantityHint: String?,
+    val tapHint: String,
 )
 
 internal const val UNDO_LABEL = "Hoàn tác"
@@ -24,6 +25,7 @@ internal fun pantryCardCopy(have: Boolean, quantity: Int): PantryCardCopy =
             absentHint = null,
             showEstimatedStatus = true,
             quantityHint = if (quantity == 1) "− để đánh dấu hết" else null,
+            tapHint = "Đang có · Chạm để đánh dấu hết",
         )
     } else {
         PantryCardCopy(
@@ -31,6 +33,7 @@ internal fun pantryCardCopy(have: Boolean, quantity: Int): PantryCardCopy =
             absentHint = "Chạm để thêm vào tủ",
             showEstimatedStatus = false,
             quantityHint = null,
+            tapHint = "Đã hết · Chạm để thêm vào tủ",
         )
     }
 

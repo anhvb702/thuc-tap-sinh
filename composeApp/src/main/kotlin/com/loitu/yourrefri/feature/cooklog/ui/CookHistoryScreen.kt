@@ -15,10 +15,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +44,8 @@ fun CookHistoryScreen(
     recipes: List<Recipe>,
     onOpenRecipe: (String) -> Unit,
     onBack: () -> Unit,
+    onDelete: (Long) -> Unit = {},
+    onRestoreAndDelete: (CookLog) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -75,7 +80,7 @@ fun CookHistoryScreen(
                         )
                     }
                     items(week.entries, key = { it.id }) { log ->
-                        CookHistoryRow(log, titles[log.recipeId], onOpen = { onOpenRecipe(log.recipeId) })
+                        CookHistoryRow(log, titles[log.recipeId], onOpen = { onOpenRecipe(log.recipeId) }, onDelete = { onDelete(log.id) }, onRestoreAndDelete = { onRestoreAndDelete(log) })
                     }
                 }
             }
@@ -84,8 +89,16 @@ fun CookHistoryScreen(
 }
 
 @Composable
-private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit) {
+private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit, onDelete: () -> Unit, onRestoreAndDelete: () -> Unit) {
     val colors = AppTheme.colors
+    var confirmDelete by androidx.compose.runtime.remember(log.id) { androidx.compose.runtime.mutableStateOf(false) }
+    if (confirmDelete) AlertDialog(
+        onDismissRequest = { confirmDelete = false },
+        title = { Text(CookHistoryCopy.delete) },
+        text = { Text(CookHistoryCopy.restorePrompt) },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; onRestoreAndDelete() }) { Text(CookHistoryCopy.restoreAndDelete) } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text(CookHistoryCopy.delete) } },
+    )
     val shape = RoundedCornerShape(16.dp)
     val shown = log.savedIngredientIds.take(MAX_INGREDIENT_ICONS)
     val hidden = log.savedIngredientIds.size - shown.size
@@ -118,8 +131,13 @@ private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit) {
                 }
             }
         }
-        TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(CookHistoryCopy.cookAgain, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+        Column(horizontalAlignment = Alignment.End) {
+            TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(CookHistoryCopy.cookAgain, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+            }
+            TextButton(onClick = { confirmDelete = true }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(CookHistoryCopy.delete, color = colors.muted)
+            }
         }
     }
 }

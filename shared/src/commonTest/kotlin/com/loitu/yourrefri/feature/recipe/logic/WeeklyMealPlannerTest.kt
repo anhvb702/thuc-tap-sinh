@@ -5,9 +5,12 @@ import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class WeeklyMealPlannerTest {
     private val catalog = listOf(
@@ -29,6 +32,13 @@ class WeeklyMealPlannerTest {
         assertEquals(listOf("Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật"), plan.map { it.dayLabelVi })
         assertEquals(7, plan.size)
         assertEquals(true, plan.zipWithNext().all { (a, b) -> a.recipe.id != b.recipe.id })
+    }
+
+    @Test fun buildsDistinctBreakfastLunchAndDinnerSlots() {
+        val schedule = buildWeeklyMealSchedule(recipes, state)
+        val mondayMeals = schedule.filter { it.dayIndex == 0 }
+        assertEquals(listOf(MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER), mondayMeals.map { it.mealSlot })
+        assertEquals(3, mondayMeals.map { it.recipe.id }.distinct().size)
     }
 
     @Test fun swapOffsetSelectsNextEligibleRecipe() {
@@ -60,8 +70,20 @@ class WeeklyMealPlannerTest {
     }
 
     @Test fun earlyDaysPreferUrgentPantryIngredients() {
-        val urgentState = state.copy(pantry = state.pantry + ("pork" to PantryItem("pork", true, LocalDate(2026, 11, 8))))
+        val urgentState = state.copy(pantry = state.pantry + ("pork" to PantryItem("pork", true, LocalDate(2026, 11, 3))))
         assertEquals("pork", buildWeeklyMealPlan(recipes, urgentState).first().recipe.id)
+    }
+
+    @Test fun freshnessTierSchedulesShortLifeEarlyAndLongLifeLate() {
+        val extended = state.copy(
+            ingredients = listOf(Ingredient("leaf", "Rau lá", "rau-la", 3), Ingredient("root", "Củ", "rau-cu", 14)),
+            pantry = emptyMap(),
+        )
+        val short = recipe("short", "leaf")
+        val long = recipe("long", "root")
+        val plan = buildWeeklyMealPlan(listOf(long, short), extended)
+        assertEquals("short", plan[0].recipe.id)
+        assertEquals("long", plan[3].recipe.id)
     }
 
     @Test fun shoppingUsesAvailableAlternativeAndCountsMeals() {
@@ -78,6 +100,23 @@ class WeeklyMealPlannerTest {
         val items = buildWeeklyShoppingList(plan, state)
         assertEquals(listOf("rice", "rau-muong"), items.map { it.ingredient.id })
         assertEquals(listOf("rice"), shoppingIdsToStock(items, uncheckedIds = setOf("pork")))
+    }
+
+    @Test fun disabledMealIsExcludedFromShoppingAndCanBeRestored() {
+        val entry = PlannedDayMeal(0, "Thứ 2", recipe("dish", "rice"), "", mealSlot = MealSlot.BREAKFAST)
+        val key = MealSlotKey(LocalDate(2026, 11, 9), MealSlot.BREAKFAST)
+        assertEquals(emptyList(), buildWeeklyShoppingList(listOf(entry), state, disabledMeals = listOf(key)))
+        assertEquals(1, buildWeeklyShoppingList(listOf(entry), state).single().mealCount)
+    }
+
+    @Test fun disabledSlotsAreExcludedFromMultimealShoppingAndRestored() {
+        val monday = LocalDate(2026, 11, 9)
+        val meals = listOf(MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER).map { slot ->
+            PlannedDayMeal(0, "Thứ 2", recipe(slot.name, "rice"), "", mealSlot = slot)
+        }
+        val disabled = listOf(MealSlot.BREAKFAST, MealSlot.LUNCH).map { MealSlotKey(monday, it) }
+        assertEquals(1, buildWeeklyShoppingList(meals, state, disabledMeals = disabled).single().mealCount)
+        assertEquals(3, buildWeeklyShoppingList(meals, state).single().mealCount)
     }
 
     @Test fun pairsSavoryMainWithSoupOrVeggieCoursePerDay() {
@@ -147,5 +186,32 @@ class WeeklyMealPlannerTest {
         val withLunch = buildWeeklyShoppingList(plan, state.copy(pantry = emptyMap()), includeLunchMealPrep = true)
         assertEquals(4, withLunch.single().mealCount)
         assertEquals(mapOf("pork" to 4), shoppingQuantitiesToStock(withLunch))
+    }
+
+    @Test
+    fun weeklyPlanRespectsDietHardFilter_returnsEmptyWhenNoMatchingRecipes_decisionQ2() {
+        // Căn cứ quyết định Q2 (2026-11-16): Chế độ ăn là bộ lọc cứng ở mọi nơi gợi ý món.
+        // Khi danh sách công thức lọc theo chế độ ăn rỗng, thực đơn tuần trả về rỗng.
+        val meatOnlyCatalog = listOf(recipe("pork", "pork"))
+        val vegetarianRecipes = filterRecipesByDiet(meatOnlyCatalog, DietRestriction.VEGETARIAN, catalog)
+        val plan = buildWeeklyMealPlan(vegetarianRecipes, state)
+        assertEquals(emptyList(), plan)
+
+        val schedule = buildWeeklyMealSchedule(vegetarianRecipes, state)
+        assertEquals(emptyList(), schedule)
+    }
+
+    @Test
+    fun weeklyPlanContainsOnlyDietCompliantRecipes_decisionQ2() {
+        // Căn cứ quyết định Q2 (2026-11-16): Thực đơn tuần chỉ chọn từ các món thỏa mãn chế độ ăn.
+        val mixedRecipes = listOf(
+            recipe("pork", "pork"),
+            recipe("green", "rau-muong"),
+            recipe("rice", "rice"),
+        )
+        val vegetarianRecipes = filterRecipesByDiet(mixedRecipes, DietRestriction.VEGETARIAN, catalog)
+        val plan = buildWeeklyMealPlan(vegetarianRecipes, state)
+        assertEquals(7, plan.size)
+        assertTrue(plan.all { it.recipe.id != "pork" && it.sideRecipe?.id != "pork" })
     }
 }

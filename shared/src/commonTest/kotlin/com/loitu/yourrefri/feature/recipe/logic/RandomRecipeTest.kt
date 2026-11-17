@@ -56,6 +56,15 @@ class RandomRecipeTest {
     }
 
     @Test
+    fun fallbackPrefersRecipesWithFewestMissingRequiredSlots() {
+        val oneMissing = recipe("one", "ca", "hanh")
+        val twoMissing = recipe("two", "ca", "hanh", "toi")
+        val pick = pickRandomRecipe(listOf(twoMissing, oneMissing), stateWith("ca"), null, Random(5))
+        assertEquals("one", pick?.recipe?.id)
+        assertFalse(pick!!.canCookNow)
+    }
+
+    @Test
     fun neverReturnsExcludedId() {
         val state = stateWith("trung", "hanh")
         repeat(40) { seed ->
@@ -82,9 +91,26 @@ class RandomRecipeTest {
         assertNull(pickRandomRecipe(emptyList(), stateWith("trung"), null, Random(0)))
     }
 
+    /**
+     * Căn cứ quyết định Q2 (2026-11-16): Chế độ ăn là bộ lọc cứng ở mọi nơi gợi ý món,
+     * thay thế contract A-03 cũ (trước: nấu ngẫu nhiên không lọc). Lọc xong không còn món
+     * thì trả về null, tuyệt đối không lách bộ lọc.
+     */
     @Test
-    fun ignoresDietByConstruction_acceptsAnyRecipeGiven() {
-        val pick = pickRandomRecipe(listOf(missing), stateWith(), null, Random(0))
-        assertEquals("c", pick?.recipe?.id)
+    fun returnsNullWhenDietFilterLeavesNoRecipes_decisionQ2() {
+        val meatRecipe = recipe("c", "thit-bo")
+        val vegetarianPool = filterRecipesByDiet(listOf(meatRecipe), DietRestriction.VEGETARIAN)
+        val pick = pickRandomRecipe(vegetarianPool, stateWith(), null, Random(0))
+        assertNull(pick)
+    }
+
+    @Test
+    fun picksOnlyFromDietCompliantRecipes_decisionQ2() {
+        val vegRecipe = recipe("veg", "trung")
+        val meatRecipe = recipe("meat", "thit-bo")
+        val filtered = filterRecipesByDiet(listOf(vegRecipe, meatRecipe), DietRestriction.VEGETARIAN)
+        val pick = pickRandomRecipe(filtered, stateWith("trung"), null, Random(0))
+        assertNotNull(pick)
+        assertEquals("veg", pick.recipe.id)
     }
 }

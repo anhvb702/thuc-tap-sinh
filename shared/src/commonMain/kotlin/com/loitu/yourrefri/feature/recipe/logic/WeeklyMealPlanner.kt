@@ -40,6 +40,7 @@ data class ShoppingListItem(
     val alreadyInPantry: Boolean,
     val availableQuantity: Int = if (alreadyInPantry) mealCount else 0,
     val missingQuantity: Int = if (alreadyInPantry) 0 else mealCount,
+    val usedDayIndexes: Set<Int> = emptySet(),
 )
 
 private val days = listOf("Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật")
@@ -74,10 +75,16 @@ fun buildWeeklyMealPlan(
     val unique = recipes.distinctBy { it.id }
     if (unique.isEmpty()) return emptyList()
     val cells = cellsOf(state).associateBy { it.ingredientId }
+    val ingredientCatalog = state.ingredients.associateBy { it.id }
     val available = cells.values.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
     val urgent = cells.values.filter { it.have && it.daysLeft in 0..2 }.mapTo(HashSet()) { it.ingredientId }
     fun score(recipe: Recipe, day: Int): Int {
         val ids = recipe.ids()
+        val freshnessScore = if (day <= 2) {
+            ids.count { id -> ingredientCatalog[id]?.defaultShelfDays?.let { it <= 3 } == true } * 60
+        } else {
+            ids.count { id -> ingredientCatalog[id]?.defaultShelfDays?.let { it >= 5 } == true } * 60
+        }
         val pantryScore = recipe.required.count { slot -> slot.anyOf.any { it in urgent } } * 100 +
             if (recipe.required.all { slot -> slot.anyOf.any { it in available } }) 50 else 0
         val goalScore = when (goal) {
@@ -89,7 +96,7 @@ fun buildWeeklyMealPlan(
         val preferenceScore = preferences.sumOf { tag ->
             if (ids.any { it in tag.ingredientIds() }) 20 else 0
         }
-        return (if (day <= 1) pantryScore else 0) + goalScore + preferenceScore
+        return (if (day <= 1) pantryScore else 0) + goalScore + preferenceScore + freshnessScore
     }
     fun rankedFrom(pool: List<Recipe>, day: Int, excluded: Set<String>) = pool.withIndex()
         .filter { it.value.id !in excluded }
@@ -165,6 +172,32 @@ fun buildWeeklyMealPlan(
     return chosen
 }
 
+/** Builds a complete three-slot schedule while preserving the legacy dinner-only planner. */
+fun buildWeeklyMealSchedule(
+    recipes: List<Recipe>, state: PantryGridState, goal: DietGoal = DietGoal.BALANCED,
+    preferences: Set<FamilyPreferenceTag> = emptySet(), swappedOffsets: Map<Int, Int> = emptyMap(),
+    includeLunchMealPrep: Boolean = false,
+): List<PlannedDayMeal> {
+    val dinners = buildWeeklyMealPlan(recipes, state, goal, preferences, swappedOffsets)
+    if (dinners.isEmpty()) return emptyList()
+    val quickIds = setOf("mien", "bun-kho", "trung-ga", "sua-tuoi", "sua-chua", "chuoi", "tao", "cam")
+    val quick = recipes.distinctBy { it.id }.filter { recipe ->
+        recipe.minutes?.let { it <= 15 } == true || recipe.ids().any { it in quickIds }
+    }.ifEmpty { recipes.distinctBy { it.id } }
+    return buildList {
+        dinners.forEach { dinner ->
+            val day = dinner.dayIndex
+            val breakfast = quick.firstOrNull { it.id != dinner.recipe.id }
+            if (breakfast != null) add(dinner.copy(recipe = breakfast, sideRecipe = null, mealSlot = MealSlot.BREAKFAST, mealTypeVi = "Bữa sáng"))
+            if (!includeLunchMealPrep) {
+                val lunch = recipes.distinctBy { it.id }.firstOrNull { it.id != dinner.recipe.id && it.id != breakfast?.id }
+                if (lunch != null) add(dinner.copy(recipe = lunch, sideRecipe = null, mealSlot = MealSlot.LUNCH, mealTypeVi = "Bữa trưa"))
+            }
+            add(dinner.copy(mealSlot = MealSlot.DINNER, mealTypeVi = "Bữa tối"))
+        }
+    }
+}
+
 fun buildWeeklyShoppingList(
     plan: List<PlannedDayMeal>,
     state: PantryGridState,
@@ -175,6 +208,7 @@ fun buildWeeklyShoppingList(
 ): List<ShoppingListItem> {
     val preferredIds = preferences.flatMapTo(HashSet()) { it.ingredientIds() }
     val counts = linkedMapOf<String, Int>()
+    val usedDays = linkedMapOf<String, MutableSet<Int>>()
     val portionMultiplier = if (includeLunchMealPrep) 2 else 1
     val disabled = disabledMeals.toSet()
     plan.forEach { meal ->
@@ -185,6 +219,7 @@ fun buildWeeklyShoppingList(
                     ?: slot.anyOf.firstOrNull { it in preferredIds }
                     ?: slot.anyOf.first()
                 counts[selected] = (counts[selected] ?: 0) + portionMultiplier
+                usedDays.getOrPut(selected) { linkedSetOf() }.add(meal.dayIndex)
             }
         }
     }
@@ -201,6 +236,7 @@ fun buildWeeklyShoppingList(
                 alreadyInPantry = have,
                 availableQuantity = currentQty,
                 missingQuantity = missingQty,
+                usedDayIndexes = usedDays[id].orEmpty(),
             )
         }
     }.sortedWith(compareBy<ShoppingListItem> { it.alreadyInPantry && it.missingQuantity == 0 }.thenBy { order[it.ingredient.id] ?: Int.MAX_VALUE })

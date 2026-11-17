@@ -2,6 +2,8 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +22,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -33,15 +36,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
+import com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal
+import com.loitu.yourrefri.ui.theme.AppIcons
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
+import kotlinx.datetime.plus
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.ui.theme.AppTheme
+
+internal const val WEEKLY_EMPTY_DIET_MESSAGE = "Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé."
+internal const val WEEKLY_ADJUST_DIET_ACTION = "Điều chỉnh chế độ ăn"
 
 /**
  * Tab "Thực đơn tuần": mục tiêu, khẩu vị, các thẻ ngày, đổi thực đơn, xem cách nấu, Đã nấu xong.
@@ -49,7 +67,13 @@ import com.loitu.yourrefri.ui.theme.AppTheme
  */
 @Composable
 internal fun WeeklyMealPlanSection(
-    plan: List<com.loitu.yourrefri.feature.recipe.logic.PlannedDayMeal>,
+    weeklyPlanSchedule: List<PlannedDayMeal>,
+    weekStart: LocalDate,
+    disabledMeals: List<MealSlotKey> = emptyList(),
+    includeLunchMealPrep: Boolean = false,
+    onApplyMealPreset: (WeeklyMealPreset) -> Unit = {},
+    onToggleMealSlot: (Int, MealSlot) -> Unit = { _, _ -> },
+    onToggleLunchMealPrep: (Boolean) -> Unit = {},
     goal: DietGoal,
     preferences: Set<FamilyPreferenceTag>,
     onGoal: (DietGoal) -> Unit,
@@ -57,13 +81,41 @@ internal fun WeeklyMealPlanSection(
     onSwap: (Int) -> Unit,
     onRequestCook: (Recipe) -> Unit,
     updatedRecipeResult: Pair<String, String>?,
+    cookedRecipeIdsByDay: Map<Int, Set<String>> = emptyMap(),
+    confirmed: Boolean = false,
+    onConfirmWeek: () -> Unit = {},
+    onOpenWeekendShopping: () -> Unit = {},
+    onAdjustDiet: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
+    val haptic = LocalHapticFeedback.current
     var openedDay by remember { mutableStateOf<Int?>(null) }
     var goalMenuOpen by remember { mutableStateOf(false) }
     var preferenceMenuOpen by remember { mutableStateOf(false) }
     Column(modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(
+                WeeklyMealPreset.ONE_MEAL to "1 bữa/ngày (Bữa Tối)",
+                WeeklyMealPreset.TWO_MEALS to "2 bữa/ngày (Trưa + Tối)",
+                WeeklyMealPreset.THREE_MEALS to "3 bữa/ngày (Sáng + Trưa + Tối)",
+                WeeklyMealPreset.WORKWEEK to "Lịch đi làm (T2–T6: 1 bữa · T7–CN: 2–3 bữa)",
+            ).forEach { (preset, label) ->
+                PillChip(
+                    label,
+                    selected = (0..6).all { dayIndex ->
+                        MealSlot.entries.all { slot ->
+                            (MealSlotKey(weekStart + DatePeriod(days = dayIndex), slot) !in disabledMeals) ==
+                                (slot in enabledMealSlots(preset, dayIndex))
+                        }
+                    },
+                    onClick = { onApplyMealPreset(preset) },
+                )
+            }
+        }
         Surface(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
             shape = RoundedCornerShape(12.dp),
@@ -127,58 +179,141 @@ internal fun WeeklyMealPlanSection(
                 }
             }
         }
-        plan.forEach { day ->
-            val isExpanded = openedDay == day.dayIndex
-            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(16.dp)) {
-                Column(Modifier.padding(14.dp)) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(dayMealCardHeader(day.dayLabelVi, day.mealTypeVi), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
-                        val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
-                        Text(totalMinutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+        if (weeklyPlanSchedule.isEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.surface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, colors.line),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = WEEKLY_EMPTY_DIET_MESSAGE,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.text,
+                    )
+                    TextButton(onClick = onAdjustDiet, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(WEEKLY_ADJUST_DIET_ACTION, color = colors.accentText, fontWeight = FontWeight.SemiBold)
                     }
-                    Spacer(Modifier.height(4.dp))
-                    Text("Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
-                    day.sideRecipe?.let { side ->
-                        Text("Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = colors.text, modifier = Modifier.padding(top = 2.dp))
+                }
+            }
+        } else {
+            val planByDay = weeklyPlanSchedule.groupBy { it.dayIndex }
+            (0..6).forEach { dayIndex ->
+                val dayMeals = planByDay[dayIndex].orEmpty()
+                val dayLabel = dayMeals.firstOrNull()?.dayLabelVi ?: listOf("Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ nhật")[dayIndex]
+                Text(dayLabel, style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold), color = colors.text, modifier = Modifier.padding(top = 8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    MealSlot.entries.forEach { slot ->
+                        val isEnabled = MealSlotKey(weekStart + DatePeriod(days = dayIndex), slot) !in disabledMeals
+                        PillChip(
+                            label = when (slot) { MealSlot.BREAKFAST -> "Sáng"; MealSlot.LUNCH -> "Trưa"; MealSlot.DINNER -> "Tối" },
+                            selected = isEnabled,
+                            onClick = { onToggleMealSlot(dayIndex, slot) },
+                        )
                     }
-                    Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
-                    Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
-                            onClick = { openedDay = if (isExpanded) null else day.dayIndex },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text(if (isExpanded) "Thu gọn cách nấu ▲" else "Xem cách nấu ▼", color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                }
+                val enabledMeals = enabledMealsForDay(weeklyPlanSchedule, dayIndex, weekStart, disabledMeals)
+                if (enabledMeals.isEmpty()) {
+                    Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(16.dp)) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Icon(AppIcons.Leaf, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(22.dp))
+                            Text(EMPTY_MEAL_DAY_LABEL, style = MaterialTheme.typography.bodyMedium, color = colors.text)
                         }
-                        TextButton(
-                            onClick = { onSwap(day.dayIndex) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text("Đổi thực đơn ↻", color = colors.text)
-                        }
                     }
-                    if (isExpanded) {
-                        day.dishes.forEach { dish ->
-                            Spacer(Modifier.height(8.dp))
-                            Text("Cách nấu ${dish.title}:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
-                            dish.steps.forEachIndexed { index, step ->
-                                Text("${index + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = colors.text, modifier = Modifier.padding(vertical = 3.dp))
+                    return@forEach
+                }
+                if (MealSlot.LUNCH in enabledMeals.map { it.mealSlot } && MealSlot.DINNER in enabledMeals.map { it.mealSlot }) {
+                    PillChip(
+                        label = "Nấu gộp cùng bữa tối (x2 phần)",
+                        selected = includeLunchMealPrep,
+                        onClick = { onToggleLunchMealPrep(!includeLunchMealPrep) },
+                    )
+                }
+                enabledMeals.forEach { day ->
+                val isExpanded = openedDay == day.dayIndex
+                Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(16.dp)) {
+                    Column(Modifier.padding(14.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(dayMealCardHeader(day.dayLabelVi, day.mealTypeVi), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
+                            val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
+                            Text(totalMinutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text("Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                        if (wasCookedOnDay(cookedRecipeIdsByDay, day.dayIndex, day.recipe.id)) {
+                            CookedBadge()
+                        }
+                        day.sideRecipe?.let { side ->
+                            Text("Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = colors.text, modifier = Modifier.padding(top = 2.dp))
+                            if (wasCookedOnDay(cookedRecipeIdsByDay, day.dayIndex, side.id)) {
+                                CookedBadge()
                             }
-                            Button(
-                                onClick = { onRequestCook(dish) },
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                        }
+                        Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
+                        Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(
+                                onClick = { openedDay = if (isExpanded) null else day.dayIndex },
+                                modifier = Modifier.heightIn(min = 48.dp),
                             ) {
-                                Text("Đã nấu xong: ${dish.title}", color = colors.onPrimary)
+                                Text(if (isExpanded) "Thu gọn cách nấu ▲" else "Xem cách nấu ▼", color = colors.accentText, fontWeight = FontWeight.SemiBold)
                             }
-                            if (updatedRecipeResult?.first == dish.id) {
-                                Text(updatedRecipeResult.second, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
+                            TextButton(
+                                onClick = { onSwap(day.dayIndex) },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                            ) {
+                                Text("Đổi thực đơn ↻", color = colors.text)
+                            }
+                        }
+                        if (isExpanded) {
+                            day.dishes.forEach { dish ->
+                                Spacer(Modifier.height(8.dp))
+                                Text("Cách nấu ${dish.title}:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                                dish.steps.forEachIndexed { index, step ->
+                                    Text("${index + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = colors.text, modifier = Modifier.padding(vertical = 3.dp))
+                                }
+                                Button(
+                                    onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onRequestCook(dish) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                                ) {
+                                    Text("Đã nấu xong: ${dish.title}", color = colors.onPrimary)
+                                }
+                                if (updatedRecipeResult?.first == dish.id) {
+                                    Text(updatedRecipeResult.second, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
+                                }
                             }
                         }
                     }
                 }
+                }
+            }
+            Button(
+                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onConfirmWeek() },
+                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
+            ) {
+                Text(if (confirmed) "Đã xác nhận thực đơn tuần" else "Xác nhận thực đơn tuần")
+            }
+            TextButton(onClick = onOpenWeekendShopping, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Đi chợ cuối tuần", color = colors.accentText)
             }
         }
+    }
+}
+
+@Composable
+private fun CookedBadge() {
+    val colors = AppTheme.colors
+    Surface(shape = RoundedCornerShape(16.dp), color = colors.primarySoft) {
+        Text("Đã nấu", modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium, color = colors.accentText)
     }
 }
 
@@ -189,27 +324,37 @@ internal fun WeeklyShoppingSection(
     uncheckedIds: Set<String>,
     onToggleChecked: (String, Boolean) -> Unit,
     onStock: ((List<String>) -> Unit)?,
+    onStockWithCompartments: ((List<Pair<String, PantryCompartment>>) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
+    val clipboard = LocalClipboardManager.current
     var result by remember { mutableStateOf<String?>(null) }
+    var compartments by remember(shopping) {
+        mutableStateOf(shopping.associate { it.ingredient.id to suggestedWeeklyCompartment(it) })
+    }
     val buyItems = shopping.filter { !it.alreadyInPantry || it.missingQuantity > 0 }
     val selectedIds = shoppingIdsToStock(shopping, uncheckedIds)
     val stockListForAction = remember(shopping, uncheckedIds) {
         shopping.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
             .flatMap { item -> List(item.missingQuantity.coerceAtLeast(1)) { item.ingredient.id } }
     }
+    val checklist = buyItems.map {
+        WeeklyChecklistItem(it.ingredient.nameVi, compartments[it.ingredient.id] ?: suggestedWeeklyCompartment(it), it.ingredient.id !in uncheckedIds)
+    }
     Column(modifier.fillMaxWidth()) {
         Text("Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.padding(top = 14.dp))
         Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = colors.accentText)
-        buyItems.forEach { item ->
+        weeklyShoppingAisles(buyItems).forEach { (aisle, aisleItems) ->
+            Text(aisle, style = MaterialTheme.typography.titleMedium, color = colors.accentText, modifier = Modifier.padding(top = 12.dp))
+            aisleItems.forEach { item ->
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = item.ingredient.id !in uncheckedIds,
                     onCheckedChange = { onToggleChecked(item.ingredient.id, it) },
                     colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.muted, checkmarkColor = colors.onPrimary),
                 )
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(item.ingredient.nameVi, color = colors.text, fontWeight = FontWeight.Medium)
                     Text(
                         text = shoppingItemSubtitle(
@@ -221,6 +366,14 @@ internal fun WeeklyShoppingSection(
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
+                TextButton(onClick = {
+                    val current = compartments[item.ingredient.id] ?: suggestedWeeklyCompartment(item)
+                    val next = if (current == PantryCompartment.FREEZE) PantryCompartment.CHILL else PantryCompartment.FREEZE
+                    compartments = compartments + (item.ingredient.id to next)
+                }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if ((compartments[item.ingredient.id] ?: suggestedWeeklyCompartment(item)) == PantryCompartment.FREEZE) "Ngăn đông" else "Ngăn mát")
+                }
+            }
             }
         }
         val haveItems = shopping.filter { it.alreadyInPantry && it.missingQuantity == 0 }
@@ -230,10 +383,17 @@ internal fun WeeklyShoppingSection(
         if (buyItems.isEmpty()) {
             Text("Tuần này nhà mình đã đủ nguyên liệu", Modifier.padding(top = 8.dp), color = colors.accentText)
         } else {
+            TextButton(onClick = { clipboard.setText(AnnotatedString(weeklyChecklistText(checklist))) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Sao chép gửi Zalo")
+            }
             Button(onClick = {
-                onStock?.invoke(stockListForAction)
-                if (onStock != null) result = stockResultMessage(selectedIds.size)
-            }, enabled = onStock != null && selectedIds.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                if (onStockWithCompartments != null) {
+                    onStockWithCompartments(weeklyStockCompartments(stockListForAction, compartments))
+                } else {
+                    onStock?.invoke(stockListForAction)
+                }
+                if (onStockWithCompartments != null || onStock != null) result = stockResultMessage(selectedIds.size)
+            }, enabled = (onStockWithCompartments != null || onStock != null) && selectedIds.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 // stockActionButtonLabel còn emoji vì test SW-02 khóa chuỗi gốc; giao diện chỉ hiện phần chữ.
                 Text(stockActionButtonLabel(selectedIds.size).removeSuffix(" 🧊")) // guard:allow
             }

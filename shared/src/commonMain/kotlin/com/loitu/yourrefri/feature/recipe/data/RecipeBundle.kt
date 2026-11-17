@@ -5,7 +5,7 @@ import kotlinx.serialization.json.Json
 
 object RecipeBundle {
     @Serializable
-    private data class SlotRow(val anyOf: List<String>)
+    private data class SlotRow(val anyOf: List<String>, val amount: String? = null)
 
     @Serializable
     private data class RecipeRow(
@@ -15,6 +15,9 @@ object RecipeBundle {
         val required: List<SlotRow>,
         val optional: List<SlotRow> = emptyList(),
         val minutes: Int? = null,
+        val servings: String? = null,
+        val prepMinutes: Int? = null,
+        val cookMinutes: Int? = null,
     )
 
     fun parse(json: String): List<Recipe> {
@@ -26,9 +29,12 @@ object RecipeBundle {
                 id = row.id,
                 title = row.title,
                 steps = row.steps,
-                required = row.required.map { Slot(it.anyOf) },
-                optional = row.optional.map { Slot(it.anyOf) },
+                required = row.required.map { Slot(it.anyOf, it.amount) },
+                optional = row.optional.map { Slot(it.anyOf, it.amount) },
                 minutes = row.minutes,
+                servings = row.servings,
+                prepMinutes = row.prepMinutes,
+                cookMinutes = row.cookMinutes,
             )
         }
     }

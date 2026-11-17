@@ -24,6 +24,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -47,6 +51,7 @@ import com.loitu.yourrefri.feature.recipe.ui.CookDone
 import com.loitu.yourrefri.feature.recipe.ui.CookDoneScreen
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
+import com.loitu.yourrefri.feature.recipe.ui.cookUndoActions
 import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
@@ -57,6 +62,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanAction
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanState
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForAllRecipes
@@ -78,6 +84,8 @@ internal const val NAV_LABEL_MAX_DISPLAY_SP = 18f
 internal fun navLabelFontSizeSp(fontScale: Float): Float =
     if (fontScale <= 0f) 14f else minOf(14f, NAV_LABEL_MAX_DISPLAY_SP / fontScale)
 
+internal fun dietAdjustmentTab(): NavTab = NavTab.SETTINGS
+
 enum class NavTab(val label: String, val icon: ImageVector) {
     HOME("Trang chủ", AppIcons.Home),
     PANTRY("Tủ lạnh", AppIcons.Fridge),
@@ -92,6 +100,11 @@ fun MainScaffold(
     onWeeklyMealPlanAction: (WeeklyMealPlanAction) -> Unit,
     snackbarHostState: SnackbarHostState,
     recipes: List<Recipe>,
+    customRecipeIds: Set<String> = emptySet(),
+    onAddCustomRecipe: (String, List<String>) -> Unit = { _, _ -> },
+    onEditCustomRecipe: (Recipe) -> Unit = {},
+    onDeleteCustomRecipe: (String) -> Unit = {},
+    onAddDailyShopping: (List<String>) -> Unit = {},
     onAction: (PantryGridAction) -> Unit,
     backupStatus: String? = null,
     restoreConfirmationPending: Boolean = false,
@@ -110,9 +123,12 @@ fun MainScaffold(
     appVersionName: String = "",
     sundayTime: kotlinx.datetime.LocalTime = kotlinx.datetime.LocalTime(8, 0),
     onSundayTimeChange: (kotlinx.datetime.LocalTime) -> Unit = {},
+    weekdayTime: kotlinx.datetime.LocalTime = kotlinx.datetime.LocalTime(16, 0),
+    onWeekdayTimeChange: (kotlinx.datetime.LocalTime) -> Unit = {},
     // Ghi "Đã nấu": nhận id bản ghi (hoặc null nếu không ghi được) để Hoàn tác xóa đúng bản ghi đó.
     onRecordCook: (recipeId: String, savedIngredientIds: List<String>, meal: com.loitu.yourrefri.feature.recipe.data.MealSlot, onResult: (Long?) -> Unit) -> Unit = { _, _, _, done -> done(null) },
     currentHour: (() -> Int)? = null,
+    onDeleteCookLog: (Long) -> Unit = {},
     cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
     modifier: Modifier = Modifier,
 ) {
@@ -129,6 +145,18 @@ fun MainScaffold(
     BackHandler(enabled = handsFreeRecipeId != null) { handsFreeRecipeId = null }
     BackHandler(enabled = handsFreeRecipeId == null && openedRecipeId != null) { openedRecipeId = null }
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val weekKey = weeklyMealPlanState.weekStart.toString()
+    val confirmationPrefs = remember(context) { context.getSharedPreferences("weekly_confirmation", Context.MODE_PRIVATE) }
+    var weeklyConfirmed by remember(weekKey) { mutableStateOf(confirmationPrefs.getBoolean(weekKey, false)) }
+    val weeklyCookedRecipeIdsByDay = remember(cookHistoryState) {
+        cookHistoryState.weeks
+            .filter { it.label == com.loitu.yourrefri.feature.cooklog.logic.CookHistoryWeekLabel.THIS_WEEK }
+            .flatMap { it.entries }
+            .groupBy { it.cookedOn.dayOfWeek.ordinal }
+            .mapValues { (_, logs) -> logs.mapTo(linkedSetOf()) { it.recipeId } }
+    }
 
     // Bữa người dùng chọn ở Trang chủ; null = chưa chọn thì theo giờ. Giữ ở đây để không mất khi đổi tab.
     var chosenMeal by rememberSaveable { mutableStateOf<com.loitu.yourrefri.feature.recipe.data.MealSlot?>(null) }
@@ -146,26 +174,49 @@ fun MainScaffold(
     }
     BackHandler(enabled = cookDone != null) { goHomeAfterCook() }
 
-    // Chế độ ăn lọc danh sách gợi ý một lần ở đây, mọi màn dùng chung. Lọc hết món thì nới ra và nhắn nhẹ.
+    // Căn cứ Q2: Chế độ ăn là bộ lọc cứng (không nới); lọc hết món thì để rỗng và màn tự gợi ý điều chỉnh chế độ ăn.
     val dietTooStrict = remember(recipes, dietRestriction, state.ingredients) {
         isDietFilterTooStrict(recipes, dietRestriction, state.ingredients)
     }
-    val visibleRecipes = remember(recipes, dietRestriction, dietTooStrict, state.ingredients) {
-        if (dietTooStrict) recipes else filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
+    val visibleRecipes = remember(recipes, dietRestriction, state.ingredients) {
+        filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
     }
     LaunchedEffect(dietTooStrict, dietRestriction) {
         if (dietTooStrict) snackbarHostState.showSnackbar(SettingsPresentation.dietTooStrictNotice)
+    }
+    LaunchedEffect(currentTab) {
+        snackbarHostState.currentSnackbarData?.dismiss()
     }
     val handsFreeRecipe = findRecipeById(handsFreeRecipeId, visibleRecipes, recipes)
 
     // Một chỗ duy nhất khi nấu xong (cả ba luồng): trừ nguyên liệu đang có, ghi một dòng vào "Đã nấu", hiện màn chúc mừng.
     fun completeCook(recipe: Recipe, consumedIds: List<String>) {
+        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         val before = state
         val ids = consumedIds.distinct().filter { before.pantry[it]?.have == true }
         ids.forEach { onAction(PantryGridAction.ConsumeIngredient(it)) }
-        // Ghi đúng bữa người dùng đang chọn ở Trang chủ; chưa chọn thì ViewModel tính theo giờ lúc ghi.
-        // Chưa chọn bữa thì tính theo giờ lúc bấm nấu xong (không dùng giá trị cũ của state).
-        onRecordCook(recipe.id, ids, chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)) {}
+        // Ghi đúng bữa người dùng đang chọn ở Trang chủ (chưa chọn thì theo giờ lúc bấm nấu xong).
+        val actualMeal = chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)
+        onRecordCook(recipe.id, ids, actualMeal) { logId ->
+            if (ids.isNotEmpty()) scope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                val snackbarJob = launch {
+                    val result = snackbarHostState.showSnackbar(
+                        message = "Đã cập nhật trong tủ",
+                        actionLabel = "Hoàn tác",
+                        withDismissAction = true,
+                        duration = SnackbarDuration.Indefinite,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        cookUndoActions(before, ids).forEach(onAction)
+                        logId?.let(onDeleteCookLog)
+                    }
+                }
+                delay(30_000)
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbarJob.join()
+            }
+        }
         val namesById = before.ingredients.associate { it.id to it.nameVi }
         cookDone = CookDone(
             recipeTitle = recipe.title,
@@ -183,11 +234,10 @@ fun MainScaffold(
         completeCook(recipe, ids)
     }
 
-    // Bấm "Kết thúc" ở chế độ rảnh tay: có nguyên liệu sắp trừ thì hỏi "Dùng hết hay còn lại?" trước.
+    // Kết thúc rảnh tay mặc định trừ nguyên liệu; lựa chọn giữ phần dư mở hộp riêng.
     var leftoverRecipe by remember { mutableStateOf<Recipe?>(null) }
     fun requestFinishHandsFree(recipe: Recipe) {
-        val candidates = recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds
-        if (candidates.isEmpty()) finishHandsFree(recipe, emptySet()) else leftoverRecipe = recipe
+        finishHandsFree(recipe, emptySet())
     }
     leftoverRecipe?.let { pending ->
         val names = state.ingredients.associate { it.id to it.nameVi }
@@ -284,8 +334,10 @@ fun MainScaffold(
             } else if (handsFreeRecipe != null) {
                 HandsFreeCookScreen(
                     recipe = handsFreeRecipe,
+                    deductionPreview = recipeCookPresentation(handsFreeRecipe, state, callbackAvailable = true).deductionPreview,
                     onClose = { handsFreeRecipeId = null },
                     onFinished = { requestFinishHandsFree(handsFreeRecipe) },
+                    onKeepLeftovers = { leftoverRecipe = handsFreeRecipe },
                 )
             } else if (showHistory && currentTab == NavTab.HOME) {
                 com.loitu.yourrefri.feature.cooklog.ui.CookHistoryScreen(
@@ -300,6 +352,13 @@ fun MainScaffold(
                         currentTab = NavTab.RECIPES
                     },
                     onBack = { showHistory = false },
+                    onDelete = onDeleteCookLog,
+                    onRestoreAndDelete = { log ->
+                        log.savedIngredientIds.distinct().forEach { id ->
+                            if (state.pantry[id]?.have != true) onAction(PantryGridAction.Tap(id))
+                        }
+                        onDeleteCookLog(log.id)
+                    },
                 )
             } else when (currentTab) {
                 NavTab.HOME -> HomeScreen(
@@ -323,6 +382,8 @@ fun MainScaffold(
                         currentTab = NavTab.RECIPES
                     },
                     onNavigateToHistory = { showHistory = true },
+                    onAddDailyShopping = onAddDailyShopping,
+                    onAdjustDiet = { currentTab = dietAdjustmentTab() },
                     meal = currentMeal,
                     onMealChange = { chosenMeal = it },
                 )
@@ -337,7 +398,7 @@ fun MainScaffold(
                     },
                 )
                 NavTab.RECIPES -> {
-                    // Nút "Nấu ngẫu nhiên" bỏ qua chế độ ăn nên món mở ra có thể không nằm trong danh sách đã lọc.
+                    // Món mở từ danh sách hoặc kết quả ngẫu nhiên được tra cứu trong danh sách đã lọc trước.
                     val opened = findRecipeById(openedRecipeId, visibleRecipes, recipes)
                     if (opened != null) {
                         RecipeDetailScreen(
@@ -354,11 +415,16 @@ fun MainScaffold(
                     } else RecipeScreen(
                     state = state,
                     recipes = visibleRecipes,
+                    customRecipes = recipes.filter { it.id in customRecipeIds },
+                    onAddCustomRecipe = onAddCustomRecipe,
+                    onEditCustomRecipe = onEditCustomRecipe,
+                    onDeleteCustomRecipe = onDeleteCustomRecipe,
                     favoriteIds = favoriteIds,
                     onToggleFavorite = onToggleFavorite,
                     onOpenHandsFree = { handsFreeRecipeId = it },
-                    randomPool = recipes,
                     dietRestriction = dietRestriction,
+                    dietFilteredEmpty = dietTooStrict,
+                    onAdjustDiet = { currentTab = dietAdjustmentTab() },
                     initialRecipeId = requestedRecipeId,
                     initialMode = requestedRecipeMode,
                     onWeeklyAction = onWeeklyMealPlanAction,
@@ -366,9 +432,40 @@ fun MainScaffold(
                     weeklyPreferences = weeklyMealPlanState.preferences,
                     weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
                     weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
+                    weeklyDisabledMeals = weeklyMealPlanState.disabledMeals,
+                    weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
                     onModeChange = { requestedRecipeMode = it },
+                    weeklyCookedRecipeIdsByDay = weeklyCookedRecipeIdsByDay,
+                    weeklyConfirmed = weeklyConfirmed,
+                    onConfirmWeek = {
+                        confirmationPrefs.edit().putBoolean(weekKey, true).apply()
+                        weeklyConfirmed = true
+                    },
                     onOpenRecipe = { openedRecipeId = it },
                     onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
+                    onStockShopping = { items ->
+                        items.forEach { item ->
+                            val current = state.pantry[item.id]
+                            if (current?.have == true) onAction(PantryGridAction.IncreaseQuantity(item.id))
+                            else onAction(PantryGridAction.AddIngredient(item.id, null))
+                            if ((current?.compartment ?: com.loitu.yourrefri.feature.pantry.data.PantryCompartment.CHILL) != item.compartment) {
+                                onAction(PantryGridAction.ToggleCompartment(item.id))
+                            }
+                        }
+                    },
+                    onStockWeekend = { items ->
+                        items.groupBy { it.first }.forEach { (id, rows) ->
+                            val current = state.pantry[id]
+                            if (current?.have == true) repeat(rows.size) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+                            else {
+                                onAction(PantryGridAction.AddIngredient(id, null))
+                                repeat(rows.size - 1) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+                            }
+                            if ((current?.compartment ?: com.loitu.yourrefri.feature.pantry.data.PantryCompartment.CHILL) != rows.first().second) {
+                                onAction(PantryGridAction.ToggleCompartment(id))
+                            }
+                        }
+                    },
                     onStockIngredients = { ids ->
                         ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
                             val alreadyHave = state.pantry[id]?.have == true
@@ -411,6 +508,8 @@ fun MainScaffold(
                     appVersionName = appVersionName,
                     sundayTime = sundayTime,
                     onSundayTimeChange = onSundayTimeChange,
+                    weekdayTime = weekdayTime,
+                    onWeekdayTimeChange = onWeekdayTimeChange,
                 )
             }
         }

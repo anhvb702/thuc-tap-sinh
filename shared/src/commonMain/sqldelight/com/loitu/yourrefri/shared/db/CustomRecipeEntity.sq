@@ -1,0 +1,18 @@
+CREATE TABLE CustomRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    stepsJson TEXT NOT NULL,
+    requiredJson TEXT NOT NULL,
+    optionalJson TEXT NOT NULL,
+    minutes INTEGER
+);
+
+upsert:
+INSERT OR REPLACE INTO CustomRecipeEntity(recipeId, title, stepsJson, requiredJson, optionalJson, minutes)
+VALUES (:recipeId, :title, :stepsJson, :requiredJson, :optionalJson, :minutes);
+
+selectAll:
+SELECT * FROM CustomRecipeEntity ORDER BY title COLLATE NOCASE, recipeId;
+
+deleteById:
+DELETE FROM CustomRecipeEntity WHERE recipeId = :recipeId;

@@ -11,6 +11,7 @@ internal data class RecipeCookPresentation(
     val ingredientNames: List<String>,
     val confirmationMessage: String,
     val resultMessage: String?,
+    val deductionPreview: String = "",
 )
 
 internal fun confirmedCookIngredientIds(
@@ -42,7 +43,8 @@ internal fun recipeCookPresentation(
         else -> "Đã cập nhật trong tủ: ${ingredientNames.joinToString(", ")}."
     }
 
-    return RecipeCookPresentation(ingredientIds, ingredientNames, confirmationMessage, resultMessage)
+    val deductionPreview = if (ingredientNames.isEmpty()) "Không trừ nguyên liệu nào" else "Sẽ trừ khỏi tủ: ${ingredientNames.joinToString(", ")}"
+    return RecipeCookPresentation(ingredientIds, ingredientNames, confirmationMessage, resultMessage, deductionPreview)
 }
 
 // Hoàn tác "Nấu xong": đưa tủ về đúng trạng thái trước khi nấu.
@@ -54,7 +56,7 @@ internal fun cookUndoActions(before: PantryGridState, ids: List<String>): List<P
         if ((before.quantities[id] ?: 1) > 1) PantryGridAction.IncreaseQuantity(id) else PantryGridAction.Tap(id)
     }
 
-internal data class RecipeIngredientChip(val name: String, val have: Boolean)
+internal data class RecipeIngredientChip(val name: String, val have: Boolean, val amount: String? = null)
 
 // Mỗi nhóm nguyên liệu bắt buộc thành một chip: ưu tiên món đang có trong tủ, không thì món đầu tiên của nhóm.
 internal fun recipeIngredientChips(recipe: Recipe, state: PantryGridState): List<RecipeIngredientChip> {
@@ -63,8 +65,28 @@ internal fun recipeIngredientChips(recipe: Recipe, state: PantryGridState): List
     return recipe.required.map { slot ->
         val owned = slot.anyOf.firstOrNull { it in haveIds }
         val id = owned ?: slot.anyOf.first()
-        RecipeIngredientChip(namesById[id] ?: id, owned != null)
+        RecipeIngredientChip(namesById[id] ?: id, owned != null, slot.amount)
     }
+}
+
+internal fun recipeOptionalChips(recipe: Recipe, state: PantryGridState): List<RecipeIngredientChip> {
+    val haveIds = state.pantry.values.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
+    val namesById = state.ingredients.associate { it.id to it.nameVi }
+    return recipe.optional.map { slot ->
+        val owned = slot.anyOf.firstOrNull { it in haveIds }
+        val id = owned ?: slot.anyOf.first()
+        RecipeIngredientChip(namesById[id] ?: id, owned != null, slot.amount)
+    }
+}
+
+internal fun recipeTimeAndServingsSummary(recipe: Recipe): String {
+    val timeText = when {
+        recipe.minutes != null && recipe.prepMinutes != null && recipe.cookMinutes != null ->
+            "${recipe.minutes} phút (Sơ chế ${recipe.prepMinutes}p · Nấu ${recipe.cookMinutes}p)"
+        recipe.minutes != null -> "Khoảng ${recipe.minutes} phút"
+        else -> "Thời gian chưa rõ"
+    }
+    return if (recipe.servings != null) "$timeText · Khẩu phần ${recipe.servings}" else timeText
 }
 
 internal fun missingChipSuffix(have: Boolean): String? = if (have) null else "chưa có"

@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.ui
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.Urgency
 
@@ -24,8 +25,8 @@ internal fun pantryGridPresentation(
     }
     val locationCells = when (storageTab) {
         StorageTab.ALL, StorageTab.SOON -> catalogCells
-        StorageTab.FRIDGE -> catalogCells.filterNot { isFreezerItem(it.ingredientId) }
-        StorageTab.FREEZER -> catalogCells.filter { isFreezerItem(it.ingredientId) }
+        StorageTab.FRIDGE -> catalogCells.filter { it.compartment == PantryCompartment.CHILL }
+        StorageTab.FREEZER -> catalogCells.filter { it.compartment == PantryCompartment.FREEZE }
     }
     val visibleCells = if (presentOnly) locationCells.filter { it.have } else locationCells
 
@@ -37,7 +38,13 @@ internal fun pantryGridPresentation(
 
 // Cùng quy tắc với expiringList(): món đang có và urgency khác OK; quá hạn ước tính đứng đầu.
 private fun soonCells(cells: List<PantryCell>): List<PantryCell> =
-    cells.filter { it.have && it.urgency != null && it.urgency != Urgency.OK && it.daysLeft != null }
+    cells.filter {
+        it.have && it.compartment != PantryCompartment.FREEZE &&
+            it.urgency != null && it.urgency != Urgency.OK && it.daysLeft != null
+    }
         .sortedWith(compareBy<PantryCell> { it.daysLeft }.thenBy { it.ingredientId })
 
 internal fun soonCount(cells: List<PantryCell>): Int = soonCells(cells).size
+
+internal fun compartmentChangeMessage(target: String, oldDays: Int, newDays: Int): String =
+    "Đã chuyển sang $target (hạn ước tính: $oldDays ngày → $newDays ngày)"

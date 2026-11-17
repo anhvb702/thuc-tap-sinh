@@ -7,13 +7,14 @@ import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 internal object SettingsPresentation {
     const val title = "Cài đặt"
     const val reminderTitle = "Nhắc gợi ý món ăn mỗi ngày"
-    const val reminderTime = "Ngày thường lúc 17:30"
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
+    const val reminderTime = "Ngày thường lúc 16:00"
     const val exportTitle = "Xuất dữ liệu (Backup)"
     const val exportSubtitle = "Lưu file JSON trên thiết bị"
     const val importTitle = "Nhập dữ liệu (Restore)"
     const val importSubtitle = "Phục hồi từ file JSON"
     const val onDeviceLine = "Lưu trữ trên thiết bị 100%, không cần tài khoản"
-    const val dietTooStrictNotice = "Chế độ ăn này đang lọc hết món, mình nới ra giúp nhé"
+    const val dietTooStrictNotice = "Chưa có món phù hợp với chế độ ăn này"
     const val doneLabel = "Xong"
     const val tasteTitle = "Khẩu vị gia đình"
     const val goalTitle = "Ưu tiên gợi ý"

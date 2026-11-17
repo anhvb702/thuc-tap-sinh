@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.LocalDate
 
 data class ExpiringItem(
@@ -17,7 +18,7 @@ fun expiringList(
     today: LocalDate,
 ): List<ExpiringItem> {
     val byId = ingredients.associateBy { it.id }
-    return pantry.filter { it.have }.mapNotNull { item ->
+    return pantry.filter { it.have && it.compartment != PantryCompartment.FREEZE }.mapNotNull { item ->
         val ingredient = byId[item.ingredientId] ?: return@mapNotNull null
         val left = daysLeft(item, ingredient, today)
         val urgency = urgencyOf(left)

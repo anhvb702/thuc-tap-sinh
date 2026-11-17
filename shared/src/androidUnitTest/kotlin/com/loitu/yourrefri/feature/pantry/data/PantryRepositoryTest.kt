@@ -88,6 +88,31 @@ class PantryRepositoryTest {
     }
 
     @Test
+    fun compartment_roundTripsAndDefaultsExistingRowsToChill() = runTest {
+        val repository = repo(FakeClock(at("2026-03-10T05:00:00Z")))
+        repository.setHave("egg", true)
+        assertEquals(PantryCompartment.CHILL, repository.observe().first().single().compartment)
+
+        repository.setCompartment("egg", PantryCompartment.FREEZE)
+
+        assertEquals(PantryCompartment.FREEZE, repository.observe().first().single().compartment)
+        assertEquals("FREEZE", db.pantryCompartmentEntityQueries.selectById("egg").executeAsOne())
+    }
+
+    @Test
+    fun databaseFactoryRecreatesCompanionTablesForLegacyDatabase() = runTest {
+        db.pantryEntityQueries.upsert("egg", true, "2026-03-10")
+        driver.execute(null, "DROP TABLE PantryCompartmentEntity", 0)
+        driver.execute(null, "DROP TABLE CustomRecipeEntity", 0)
+
+        db = createDatabase(driver)
+
+        val repository = repo(FakeClock(at("2026-03-10T05:00:00Z")))
+        assertEquals(PantryCompartment.CHILL, repository.observe().first().single().compartment)
+        assertTrue(db.customRecipeEntityQueries.selectAll().executeAsList().isEmpty())
+    }
+
+    @Test
     fun setHave_true_at2330Utc_withUtcPlus7_marksNextDay() = runTest {
         val repo = repo(FakeClock(at("2026-03-10T23:30:00Z")), plus7)
 
@@ -170,6 +195,35 @@ class PantryRepositoryTest {
         repo.setHave("egg", true)
 
         assertEquals(listOf(PantryItem("egg", true, d("2026-03-14"))), repo.observe().first())
+    }
+
+    /**
+     * Căn cứ quyết định Q13b (ngày 2026-11-16):
+     * Món hết rồi có lại: hạn tính từ ngày bấm "Có" lại, xem như vừa mua. Gỡ chặn SW-10.
+     * Món có have = false với markedAt từ 10 ngày trước, khi bấm "Có" (setHave true)
+     * thì markedAt trong DB và observe() trở thành ngày hiện tại (today).
+     */
+    @Test
+    fun setHave_true_restockItemDepletedTenDaysAgo_resetsMarkedAtToToday_q13b() = runTest {
+        val clock = FakeClock(at("2026-03-01T05:00:00Z"))
+        val repo = repo(clock)
+        repo.setHave("egg", true)
+        assertEquals(d("2026-03-01"), repo.observe().first().single().markedAt)
+
+        // Hết hàng vào ngày hôm sau 2026-03-02 (giữ markedAt = 2026-03-01)
+        clock.current = at("2026-03-02T05:00:00Z")
+        repo.setHave("egg", false)
+        assertEquals(listOf(PantryItem("egg", false, d("2026-03-01"))), repo.observe().first())
+
+        // 10 ngày sau (2026-03-12), người dùng bấm "Có" trở lại
+        clock.current = at("2026-03-12T05:00:00Z")
+        repo.setHave("egg", true)
+
+        val items = repo.observe().first()
+        val restockedEgg = items.single { it.ingredientId == "egg" }
+        assertTrue(restockedEgg.have)
+        assertEquals(d("2026-03-12"), restockedEgg.markedAt)
+        assertEquals("2026-03-12", db.pantryEntityQueries.selectById("egg").executeAsOne().markedAt)
     }
 
     @Test

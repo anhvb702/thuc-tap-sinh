@@ -1,5 +1,11 @@
 # HANDOFF: YourRefri
 
+## Cập nhật lượt 2026-11-13: Batch 4B
+
+- Đã triển khai UI Gacha ở Trang chủ, danh sách đi chợ hằng ngày lưu SharedPreferences, đi chợ cuối tuần mở riêng không khóa, xác nhận theo tuần, badge “Đã nấu”, chọn ngăn, sao chép Zalo, chỉnh sửa Lite recipe và phản hồi rung nhẹ. Contracts: `docs/tests/4B-home-gacha.md`, `docs/tests/4B-daily-shopping-recipe.md`, `docs/tests/4B-weekly-shopping.md`.
+- Đã thêm test Compose cho logic Gacha, checklist, biên tập recipe và tuần; shared repository test có round-trip `upsert` cho Lite recipe. `NoEmojiInUiTest` chỉ miễn đúng chuỗi chúc mừng Gacha.
+- **Chưa xác minh test/build:** `:shared:testDebugUnitTest` dừng trước Gradle vì wrapper không tải được Gradle 8.5 (lỗi khởi tạo SSL trust store); đường dẫn JDK trong hướng dẫn không tồn tại trên máy này. JDK khả dụng là `C:\Setups\JavaJDK\jdk-21.0.9`, Android SDK là `C:\Users\anhvb2\AppData\Local\Android\Sdk`. Cần chạy tuần tự shared/compose tests và sáu mutation khi toolchain khả dụng. Runtime reduced-motion, TalkBack, rung và UI shopping cũng chưa được xác minh.
+
 > Cập nhật: **2026-11-11**. Repo `anhvb702/thuc-tap-sinh`; `HEAD` và `origin/main` cùng ở `c4d12d1`.
 > Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — giao diện Warm Minimalism, dữ liệu chỉ lưu trên thiết bị.
 

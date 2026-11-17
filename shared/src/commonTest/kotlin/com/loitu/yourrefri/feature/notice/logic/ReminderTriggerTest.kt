@@ -14,33 +14,37 @@ class ReminderTriggerTest {
         assertNull(nextReminderTrigger(false, Instant.parse("2026-11-05T10:00:00Z"), TimeZone.UTC))
     }
 
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00), thông báo tối đa 3 món.
     @Test
-    fun enabledBefore1730_usesTodayLocalTime() {
+    fun enabledBefore1600_usesTodayLocalTime() {
         assertEquals(
-            Instant.parse("2026-11-05T10:30:00Z"),
-            nextReminderTrigger(true, Instant.parse("2026-11-05T10:29:59.999Z"), TimeZone.of("UTC+07:00")),
+            Instant.parse("2026-11-05T09:00:00Z"),
+            nextReminderTrigger(true, Instant.parse("2026-11-05T08:59:59.999Z"), TimeZone.of("UTC+07:00")),
         )
     }
 
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
     @Test
-    fun enabledAtOrAfter1730_usesNextDay() {
+    fun enabledAtOrAfter1600_usesNextDay() {
         assertEquals(
-            Instant.parse("2026-11-06T10:30:00Z"),
-            nextReminderTrigger(true, Instant.parse("2026-11-05T10:30:00Z"), TimeZone.of("UTC+07:00")),
+            Instant.parse("2026-11-06T09:00:00Z"),
+            nextReminderTrigger(true, Instant.parse("2026-11-05T09:00:00Z"), TimeZone.of("UTC+07:00")),
         )
     }
 
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
     @Test
     fun timezone_keepsWallClockTime() {
         val now = Instant.parse("2026-11-05T23:00:00Z")
-        assertEquals(Instant.parse("2026-11-06T10:30:00Z"), nextReminderTrigger(true, now, TimeZone.of("UTC+07:00")))
-        assertEquals(Instant.parse("2026-11-06T22:30:00Z"), nextReminderTrigger(true, now, TimeZone.of("UTC-05:00")))
+        assertEquals(Instant.parse("2026-11-06T09:00:00Z"), nextReminderTrigger(true, now, TimeZone.of("UTC+07:00")))
+        assertEquals(Instant.parse("2026-11-06T21:00:00Z"), nextReminderTrigger(true, now, TimeZone.of("UTC-05:00")))
     }
 
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00).
     @Test
-    fun dstTransition_keepsLocal1730() {
+    fun dstTransition_keepsLocal1600() {
         assertEquals(
-            Instant.parse("2026-03-08T21:30:00Z"),
+            Instant.parse("2026-03-08T20:00:00Z"),
             nextReminderTrigger(true, Instant.parse("2026-03-07T23:00:00Z"), TimeZone.of("America/New_York")),
         )
     }

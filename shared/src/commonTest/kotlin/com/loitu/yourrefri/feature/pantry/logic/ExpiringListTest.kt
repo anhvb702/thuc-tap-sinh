@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -27,6 +28,15 @@ class ExpiringListTest {
             expiringList(listOf(item("rice", false), item("egg")), ingredients, today)
                 .map { it.item.ingredientId },
         )
+    }
+
+    @Test
+    fun frozenItems_areExcludedFromExpiringList() {
+        val chilled = item("egg")
+        val frozen = item("meat").copy(compartment = PantryCompartment.FREEZE)
+        assertEquals(listOf("egg"), expiringList(
+            listOf(frozen, chilled), listOf(ingredient("egg"), ingredient("meat")), today,
+        ).map { it.item.ingredientId })
     }
 
     @Test

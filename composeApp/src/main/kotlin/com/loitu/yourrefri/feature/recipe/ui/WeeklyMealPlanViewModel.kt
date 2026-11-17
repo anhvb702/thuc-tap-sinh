@@ -3,6 +3,8 @@ package com.loitu.yourrefri.feature.recipe.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
@@ -16,6 +18,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
@@ -27,7 +30,10 @@ data class WeeklyMealPlanState(
     val swappedOffsets: Map<Int, Int> = emptyMap(),
     val uncheckedIds: Set<String> = emptySet(),
     val includeLunchMealPrep: Boolean = false,
+    val disabledMeals: List<MealSlotKey> = emptyList(),
 )
+
+enum class WeeklyMealPreset { ONE_MEAL, TWO_MEALS, THREE_MEALS, WORKWEEK }
 
 sealed interface WeeklyMealPlanAction {
     data class SetGoal(val value: DietGoal) : WeeklyMealPlanAction
@@ -35,6 +41,9 @@ sealed interface WeeklyMealPlanAction {
     data class SwapDay(val dayIndex: Int) : WeeklyMealPlanAction
     data class ToggleIngredient(val id: String, val checked: Boolean) : WeeklyMealPlanAction
     data class SetLunchMealPrep(val enabled: Boolean) : WeeklyMealPlanAction
+    data class ToggleMealSlot(val dayIndex: Int, val slot: MealSlot) : WeeklyMealPlanAction
+    data class ApplyMealPreset(val preset: WeeklyMealPreset) : WeeklyMealPlanAction
+    data class ToggleLunchMealPrep(val enabled: Boolean) : WeeklyMealPlanAction
 }
 
 sealed interface WeeklyMealPlanEffect {
@@ -53,6 +62,7 @@ class WeeklyMealPlanViewModel(
         data class Action(val value: WeeklyMealPlanAction) : Event
         data class Refresh(val timeZone: TimeZone) : Event
         data class Settings(val value: WeeklyMealPlanSettings?, val replace: Boolean) : Event
+        data class Disabled(val value: List<MealSlotKey>) : Event
         data object SettingsLoadFailed : Event
     }
 
@@ -70,6 +80,9 @@ class WeeklyMealPlanViewModel(
     init {
         requestSettings(replace = false)
         workerScope.launch {
+            repository.observeDisabledMeals().collect { events.send(Event.Disabled(it)) }
+        }
+        workerScope.launch {
             for (event in events) {
                 when (event) {
                     is Event.Action -> {
@@ -80,6 +93,7 @@ class WeeklyMealPlanViewModel(
                         if (mutableState.value.isLoaded) refreshWeek(event.timeZone)
                     }
                     is Event.Settings -> acceptSettings(event.value, event.replace)
+                    is Event.Disabled -> mutableState.value = mutableState.value.copy(disabledMeals = event.value)
                     Event.SettingsLoadFailed -> {
                         if (!mutableState.value.isLoaded) {
                             mutableState.value = mutableState.value.copy(isLoaded = true)
@@ -137,6 +151,31 @@ class WeeklyMealPlanViewModel(
                 current.copy(uncheckedIds = unchecked)
             }
             is WeeklyMealPlanAction.SetLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
+            is WeeklyMealPlanAction.ToggleLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
+            is WeeklyMealPlanAction.ToggleMealSlot -> {
+                if (action.dayIndex !in 0..6) return
+                val date = current.weekStart + kotlinx.datetime.DatePeriod(days = action.dayIndex)
+                val key = MealSlotKey(date, action.slot)
+                repository.setMealEnabled(date, action.slot, key in current.disabledMeals)
+                return
+            }
+            is WeeklyMealPlanAction.ApplyMealPreset -> {
+                val enabledSlots = when (action.preset) {
+                    WeeklyMealPreset.ONE_MEAL -> setOf(MealSlot.DINNER)
+                    WeeklyMealPreset.TWO_MEALS -> setOf(MealSlot.LUNCH, MealSlot.DINNER)
+                    WeeklyMealPreset.THREE_MEALS -> MealSlot.entries.toSet()
+                    WeeklyMealPreset.WORKWEEK -> emptySet()
+                }
+                for (day in 0..6) for (slot in MealSlot.entries) {
+                    val enabled = when (action.preset) {
+                        WeeklyMealPreset.WORKWEEK -> if (day < 5) slot == MealSlot.DINNER else slot != MealSlot.BREAKFAST
+                        else -> slot in enabledSlots
+                    }
+                    val date = current.weekStart + kotlinx.datetime.DatePeriod(days = day)
+                    repository.setMealEnabled(date, slot, enabled)
+                }
+                return
+            }
         }
         mutableState.value = next
         save(next)

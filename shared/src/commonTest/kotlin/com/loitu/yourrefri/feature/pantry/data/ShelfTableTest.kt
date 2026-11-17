@@ -200,8 +200,8 @@ class ShelfTableTest {
     private val bundle: List<Ingredient> by lazy { ShelfTable.parse(readShelfTableJson()) }
 
     @Test
-    fun bundle_hasBetween25And40Items() {
-        assertTrue(bundle.size in 25..40, "Bảng hạn có ${bundle.size} món, cần 25..40")
+    fun bundle_hasBetween50And60Items() {
+        assertTrue(bundle.size in 50..60, "Bảng hạn có ${bundle.size} món, cần 50..60")
     }
 
     @Test

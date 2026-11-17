@@ -9,7 +9,8 @@ import kotlin.test.assertEquals
 import kotlin.time.Instant
 
 class NextTriggerTimeTest {
-    private val target = LocalTime(17, 30)
+    // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00 (14:00–20:00), thông báo tối đa 3 món.
+    private val target = LocalTime(16, 0)
     private fun instant(value: String) = Instant.parse(value)
     private fun check(now: String, zone: String, time: LocalTime, expected: String) {
         assertEquals(instant(expected), nextTriggerTime(instant(now), TimeZone.of(zone), time))
@@ -17,24 +18,24 @@ class NextTriggerTimeTest {
 
     @Test
     fun beforeTarget_usesToday() {
-        check("2026-11-05T17:29:59.999Z", "UTC", target, "2026-11-05T17:30:00Z")
+        check("2026-11-05T15:59:59.999Z", "UTC", target, "2026-11-05T16:00:00Z")
     }
 
     @Test
     fun exactTarget_usesTomorrow() {
-        check("2026-11-05T17:30:00Z", "UTC", target, "2026-11-06T17:30:00Z")
+        check("2026-11-05T16:00:00Z", "UTC", target, "2026-11-06T16:00:00Z")
     }
 
     @Test
     fun afterTarget_usesTomorrow() {
-        check("2026-11-05T17:30:00.001Z", "UTC", target, "2026-11-06T17:30:00Z")
+        check("2026-11-05T16:00:00.001Z", "UTC", target, "2026-11-06T16:00:00Z")
     }
 
     @Test
     fun timeZone_changesLocalDateAndInstant() {
-        check("2026-11-05T23:00:00Z", "UTC+07:00", target, "2026-11-06T10:30:00Z")
-        check("2026-11-05T23:00:00Z", "UTC-05:00", target, "2026-11-06T22:30:00Z")
-        check("2026-11-05T01:00:00Z", "UTC-05:00", target, "2026-11-05T22:30:00Z")
+        check("2026-11-05T23:00:00Z", "UTC+07:00", target, "2026-11-06T09:00:00Z")
+        check("2026-11-05T23:00:00Z", "UTC-05:00", target, "2026-11-06T21:00:00Z")
+        check("2026-11-05T01:00:00Z", "UTC-05:00", target, "2026-11-05T21:00:00Z")
     }
 
     @Test
@@ -46,12 +47,12 @@ class NextTriggerTimeTest {
 
     @Test
     fun springForward_usesCalendarDayNot24Hours() {
-        check("2026-03-07T23:00:00Z", "America/New_York", target, "2026-03-08T21:30:00Z")
+        check("2026-03-07T23:00:00Z", "America/New_York", target, "2026-03-08T20:00:00Z")
     }
 
     @Test
     fun fallBack_usesCalendarDayNot24Hours() {
-        check("2026-10-31T22:00:00Z", "America/New_York", target, "2026-11-01T22:30:00Z")
+        check("2026-10-31T22:00:00Z", "America/New_York", target, "2026-11-01T21:00:00Z")
     }
 
     @Test

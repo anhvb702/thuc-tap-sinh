@@ -22,6 +22,14 @@ class ThumbAssetPathTest {
     }
 
     @Test
+    fun newRecipeIdsUseTheSameSafeAssetPathConvention() {
+        assertEquals(
+            listOf("recipes/suon-heo-kho.webp", "recipes/suon-heo-kho.jpg", "recipes/suon-heo-kho.png"),
+            recipeAssetCandidates("suon-heo-kho"),
+        )
+    }
+
+    @Test
     fun unsafeIdsNeverEscapeTheAssetFolder() {
         listOf("../secret", "a/b", "a\\b", "").forEach { id ->
             assertTrue(foodAssetCandidates(id).isEmpty(), "food id '$id'")

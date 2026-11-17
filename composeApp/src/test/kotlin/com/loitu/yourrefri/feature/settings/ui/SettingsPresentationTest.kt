@@ -51,7 +51,7 @@ class SettingsPresentationTest {
 
     @Test fun copy_statesOnDeviceOnlyAndHasNoBannedWords() {
         assertEquals("Lưu trữ trên thiết bị 100%, không cần tài khoản", SettingsPresentation.onDeviceLine)
-        assertEquals("Chế độ ăn này đang lọc hết món, mình nới ra giúp nhé", SettingsPresentation.dietTooStrictNotice)
+        assertEquals("Chưa có món phù hợp với chế độ ăn này", SettingsPresentation.dietTooStrictNotice)
         val all = listOf(
             SettingsPresentation.title, SettingsPresentation.onDeviceLine, SettingsPresentation.dietTooStrictNotice,
             SettingsPresentation.reminderTitle, SettingsPresentation.reminderTime,
@@ -59,6 +59,7 @@ class SettingsPresentationTest {
             SettingsPresentation.importTitle, SettingsPresentation.importSubtitle,
         ).joinToString(" ")
         for (word in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")) assertFalse(all.contains(word, ignoreCase = true))
-        assertTrue(SettingsPresentation.reminderTime.contains("17:30"))
+        // Căn cứ quyết định Q5/Q13a (2026-11-16): Giờ nhắc ngày thường đổi sang mặc định 16:00.
+        assertTrue(SettingsPresentation.reminderTime.contains("16:00"))
     }
 }

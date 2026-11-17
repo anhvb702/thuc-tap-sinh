@@ -67,6 +67,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -90,7 +91,9 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.SHELF_DAY_OPTIONS
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
+import com.loitu.yourrefri.feature.pantry.logic.daysLeft
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -114,11 +117,16 @@ fun PantryGridScreen(
         val host = snackbarHostState ?: return
         scope.launch {
             host.currentSnackbarData?.dismiss()
+            val timeoutJob = scope.launch {
+                delay(30_000)
+                host.currentSnackbarData?.dismiss()
+            }
             val result = host.showSnackbar(
                 message = markedOutMessage(cell.nameVi),
                 actionLabel = UNDO_LABEL,
-                duration = SnackbarDuration.Short,
+                duration = SnackbarDuration.Indefinite,
             )
+            timeoutJob.cancel()
             if (result == SnackbarResult.ActionPerformed) {
                 onAction(PantryGridAction.Tap(cell.ingredientId))
             }
@@ -450,6 +458,26 @@ fun PantryGridScreen(
                 },
                 onEditShelf = { onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId)) },
                 onEditUnit = { onAction(PantryGridAction.OpenUnitEditor(cell.ingredientId)) },
+                onToggleCompartment = {
+                    val ingredient = state.ingredients.firstOrNull { it.id == cell.ingredientId }
+                    val item = state.pantry[cell.ingredientId]
+                    val next = if (cell.compartment == PantryCompartment.CHILL) PantryCompartment.FREEZE else PantryCompartment.CHILL
+                    onAction(PantryGridAction.ToggleCompartment(cell.ingredientId))
+                    val oldDays = cell.daysLeft
+                    if (ingredient != null && item?.have == true && oldDays != null) {
+                        val newDays = daysLeft(item.copy(compartment = next), ingredient, state.today)
+                        val target = if (next == PantryCompartment.FREEZE) "Ngăn đông" else "Ngăn mát"
+                        val host = snackbarHostState
+                        if (host != null) scope.launch {
+                            val result = host.showSnackbar(
+                                message = compartmentChangeMessage(target, oldDays, newDays),
+                                actionLabel = "Sửa hạn",
+                                withDismissAction = true,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId))
+                        }
+                    }
+                },
                 onIncreaseQty = { onAction(PantryGridAction.IncreaseQuantity(cell.ingredientId)) },
                 onDecreaseQty = {
                     if (decreaseMarksOut(cell.quantity)) offerUndo(cell)
@@ -1074,6 +1102,7 @@ private fun WarmFoodCard(
     onTap: () -> Unit,
     onEditShelf: () -> Unit,
     onEditUnit: () -> Unit,
+    onToggleCompartment: () -> Unit,
     onIncreaseQty: () -> Unit,
     onDecreaseQty: () -> Unit,
 ) {
@@ -1130,6 +1159,7 @@ private fun WarmFoodCard(
                                 color = if (urgent) colors.ctaText else colors.accentText,
                             )
                         }
+                        Text(cardCopy.tapHint, style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     } else {
                         Text(
                             text = listOfNotNull(cardCopy.statusLabel, cardCopy.absentHint).joinToString(" · "),
@@ -1143,6 +1173,22 @@ private fun WarmFoodCard(
                 }
             }
 
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(
+                    onClick = onToggleCompartment,
+                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        contentDescription = "Chuyển ${cell.nameVi} sang ${if (cell.compartment == PantryCompartment.CHILL) "ngăn đông" else "ngăn mát"}"
+                    },
+                ) {
+                    Text(
+                        if (cell.compartment == PantryCompartment.FREEZE) "Ngăn đông · Chuyển ngăn mát" else "Ngăn mát · Chuyển ngăn đông",
+                        color = colors.accentText,
+                    )
+                }
+            }
             if (cell.have) {
                 if (stacked) {
                     QuantityStepper(
@@ -1410,7 +1456,7 @@ internal object PantrySearchCopy {
 }
 
 internal object PantryActionCopy {
-    const val manual = "Thêm thủ công"
+    const val manual = "Khác · thêm món"
     const val voice = "Thêm bằng giọng nói"
     const val voiceDescription = "Thêm thực phẩm bằng giọng nói"
 }

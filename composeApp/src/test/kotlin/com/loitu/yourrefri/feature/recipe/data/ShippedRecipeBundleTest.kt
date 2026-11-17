@@ -66,19 +66,23 @@ class ShippedRecipeBundleTest {
     )
 
     @Test
-    fun shippedBundleKeepsThreeOriginalRecipesAndAddsSevenSpecifiedRecipes() {
+    fun shippedBundleContainsOriginalRecipesAndSpecifiedRecipes() {
         val recipes = shippedRecipes()
 
-        assertEquals(10, recipes.size)
-        assertEquals(originalRecipeIds + newRecipeContracts.keys, recipes.map { it.id }.toSet())
+        assertTrue(recipes.size in 25..30, "Expected 25..30 family recipes, got ${recipes.size}")
+        assertEquals(recipes.size, recipes.map { it.id }.toSet().size)
+        assertTrue(recipes.map { it.id }.toSet().containsAll(originalRecipeIds + newRecipeContracts.keys))
     }
 
     @Test
     fun everyShippedRecipeHasFourNonBlankStepsAndPositiveDuration() {
         shippedRecipes().forEach { recipe ->
+            assertTrue(recipe.id.isNotBlank(), "${recipe.id} must have a nonblank id")
+            assertTrue(recipe.title.isNotBlank(), "${recipe.id} must have a nonblank title")
             assertEquals(4, recipe.steps.size, "${recipe.id} must have four steps")
             assertTrue(recipe.steps.all(String::isNotBlank), "${recipe.id} has a blank step")
-            assertTrue((recipe.minutes ?: 0) > 0, "${recipe.id} must have positive minutes")
+            assertTrue(recipe.required.isNotEmpty(), "${recipe.id} must have required ingredients")
+            assertTrue((recipe.minutes ?: 0) in 1..1440, "${recipe.id} must have valid minutes")
         }
     }
 
@@ -91,7 +95,19 @@ class ShippedRecipeBundleTest {
     }
 
     @Test
-    fun shippedBundleCoversEverySavoryCatalogIngredient() {
+    fun shippedBundleHasMeatSeafoodAndVegetarianOptions() {
+        val recipes = shippedRecipes()
+        val meatIds = setOf("thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "uc-ga")
+        val seafoodIds = setOf("ca-basa", "ca-hoi", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao")
+        val requiredIds = recipes.flatMap { it.required }.flatMap { it.anyOf }.toSet()
+
+        assertTrue(requiredIds.any { it in meatIds })
+        assertTrue(requiredIds.any { it in seafoodIds })
+        assertTrue(recipes.any { recipe -> recipe.required.flatMap { it.anyOf }.all { it !in meatIds && it !in seafoodIds } })
+    }
+
+    @Test
+    fun shippedBundleCoversEveryOriginalSavoryCatalogIngredient() {
         val coveredIds = shippedRecipes()
             .flatMap { it.required + it.optional }
             .flatMap { it.anyOf }
@@ -124,6 +140,18 @@ class ShippedRecipeBundleTest {
             .forEach { ingredientId ->
                 assertTrue(ingredientId in ingredientIds, "Unknown ingredient ID: $ingredientId")
             }
+    }
+
+    @Test
+    fun everyShippedRecipeHasServingsPrepCookTimeAndSlotAmounts() {
+        shippedRecipes().forEach { recipe ->
+            assertTrue(!recipe.servings.isNullOrBlank(), "${recipe.id} missing servings")
+            assertTrue(recipe.prepMinutes != null && recipe.cookMinutes != null, "${recipe.id} missing prep/cook minutes")
+            assertEquals(recipe.minutes, recipe.prepMinutes!! + recipe.cookMinutes!!, "${recipe.id} minutes mismatch")
+            (recipe.required + recipe.optional).forEach { slot ->
+                assertTrue(!slot.amount.isNullOrBlank(), "${recipe.id} slot ${slot.anyOf} missing amount")
+            }
+        }
     }
 
     @Test

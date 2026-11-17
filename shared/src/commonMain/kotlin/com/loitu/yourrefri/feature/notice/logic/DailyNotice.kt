@@ -3,6 +3,9 @@ package com.loitu.yourrefri.feature.notice.logic
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 
@@ -11,6 +14,7 @@ data class DailyNotice(
     val ingredientIds: List<String>,
     val title: String,
     val body: String,
+    val isContextualNudge: Boolean = false,
 )
 
 fun planDailyNotice(
@@ -19,6 +23,9 @@ fun planDailyNotice(
     today: LocalDate,
     lastSent: LocalDate?,
     sundayShopping: Boolean = true,
+    recipes: List<Recipe> = emptyList(),
+    dietRestriction: DietRestriction = DietRestriction.NONE,
+    lastNudgeSent: LocalDate? = null,
 ): DailyNotice? {
     // Ngày tương lai cũng chặn để đổi giờ máy lùi không gây gửi lại.
     if (lastSent != null && lastSent >= today) return null
@@ -32,9 +39,21 @@ fun planDailyNotice(
         )
     }
     val items = expiringList(pantry, ingredients, today)
-    if (items.isEmpty()) return null
-    val names = items.take(2).joinToString(", ") { it.ingredient.nameVi }
-    val summary = if (items.size > 2) "$names và ${items.size - 2} món khác" else names
+    if (items.isEmpty()) {
+        val daysSinceNudge = lastNudgeSent?.let { today.toEpochDays() - it.toEpochDays() }
+        if (daysSinceNudge != null && daysSinceNudge < 3) return null
+        val suggestion = filterRecipesByDiet(recipes, dietRestriction, ingredients).firstOrNull() ?: return null
+        return DailyNotice(
+            day = today,
+            ingredientIds = emptyList(),
+            title = "Gợi ý món ngon hôm nay",
+            body = "Nay trời dịu nhẹ, tối nay làm món ${suggestion.title} là hết ý luôn nè!",
+            isContextualNudge = true,
+        )
+    }
+    // Căn cứ quyết định Q13a (2026-11-16): Thông báo liệt kê tối đa 3 món, sau đó là "và vài món khác".
+    val names = items.take(3).joinToString(", ") { it.ingredient.nameVi }
+    val summary = if (items.size > 3) "$names và vài món khác" else names
     return DailyNotice(
         day = today,
         ingredientIds = items.map { it.item.ingredientId },

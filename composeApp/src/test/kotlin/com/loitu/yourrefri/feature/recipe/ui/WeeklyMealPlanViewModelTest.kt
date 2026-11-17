@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanEntry
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
@@ -19,6 +20,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Clock
@@ -107,6 +109,42 @@ class WeeklyMealPlanViewModelTest {
             ),
             repository.saved.value,
         )
+    }
+
+    @Test fun mealPresetSetsExpectedSlotsAndIndividualToggleRestoresSlot() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.ONE_MEAL))
+        runCurrent()
+        assertEquals(
+            (0..6).flatMap { day -> listOf(MealSlot.BREAKFAST, MealSlot.LUNCH).map { MealSlotKey(monday.plus(kotlinx.datetime.DatePeriod(days = day)), it) } }.toSet(),
+            repository.disabledMeals.value.toSet(),
+        )
+
+        val breakfast = MealSlotKey(monday, MealSlot.BREAKFAST)
+        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.BREAKFAST))
+        runCurrent()
+        assertEquals(false, breakfast in repository.disabledMeals.value)
+        viewModel.dispatch(WeeklyMealPlanAction.ToggleMealSlot(0, MealSlot.BREAKFAST))
+        runCurrent()
+        assertEquals(true, breakfast in repository.disabledMeals.value)
+
+        viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.TWO_MEALS))
+        runCurrent()
+        assertEquals(true, breakfast in repository.disabledMeals.value)
+        assertEquals(false, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
+        viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.THREE_MEALS))
+        runCurrent()
+        runCurrent()
+        assertEquals(emptyList(), repository.disabledMeals.value)
+
+        viewModel.dispatch(WeeklyMealPlanAction.ApplyMealPreset(WeeklyMealPreset.WORKWEEK))
+        runCurrent()
+        assertEquals(true, MealSlot.BREAKFAST in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
+        assertEquals(false, MealSlot.DINNER in repository.disabledMeals.value.filter { it.day == monday }.map { it.slot })
+        assertEquals(false, MealSlot.LUNCH in repository.disabledMeals.value.filter { it.day == monday.plus(kotlinx.datetime.DatePeriod(days = 5)) }.map { it.slot })
     }
 
     @Test
@@ -205,7 +243,15 @@ class WeeklyMealPlanViewModelTest {
         initial: WeeklyMealPlanSettings? = null,
     ) : WeeklyMealPlanRepository {
         val saved = MutableStateFlow(initial)
+        val disabledMeals = MutableStateFlow<List<MealSlotKey>>(emptyList())
         var failSaves = false
+
+        override fun observeDisabledMeals(): Flow<List<MealSlotKey>> = disabledMeals
+
+        override suspend fun setMealEnabled(day: LocalDate, slot: MealSlot, enabled: Boolean) {
+            val key = MealSlotKey(day, slot)
+            disabledMeals.value = if (enabled) disabledMeals.value.filterNot { it == key } else (disabledMeals.value + key).distinct()
+        }
 
         override fun observeAll(): Flow<List<WeeklyMealPlanEntry>> = emptyFlow()
 

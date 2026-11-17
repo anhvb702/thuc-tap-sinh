@@ -78,11 +78,35 @@ class DietRestrictionTest {
 
     @Test
     fun everyShelfTableMeatOrFishIdIsClassified() {
-        listOf("thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "ca-basa", "ca-hoi", "tom").forEach {
+        listOf(
+            "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "uc-ga",
+            "ca-basa", "ca-hoi", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao",
+        ).forEach {
             assertTrue(DietIngredients.meat.contains(it) || DietIngredients.seafood.contains(it), it)
         }
-        assertTrue(DietIngredients.redMeat.containsAll(listOf("thit-heo", "thit-heo-xay", "thit-bo")))
+        assertTrue(DietIngredients.redMeat.containsAll(listOf("thit-heo", "thit-heo-xay", "thit-bo", "suon-heo", "ba-chi")))
         assertFalse(DietIngredients.redMeat.contains("thit-ga"))
+    }
+
+    @Test
+    fun addedCatalogMeatsAndSeafoodRespectDietRestrictions() {
+        val addedRedMeats = listOf("suon-heo", "ba-chi")
+        val addedWhiteMeats = listOf("uc-ga")
+        val addedSeafood = listOf("ca-thu", "ca-loc", "ca-dieu-hong", "muc", "ngao")
+
+        addedRedMeats.forEach { id ->
+            assertTrue(filterRecipesByDiet(listOf(recipe(id, listOf(id))), DietRestriction.NO_RED_MEAT).isEmpty(), id)
+            assertTrue(filterRecipesByDiet(listOf(recipe(id, listOf(id))), DietRestriction.VEGETARIAN).isEmpty(), id)
+        }
+        addedWhiteMeats.forEach { id ->
+            assertEquals(1, filterRecipesByDiet(listOf(recipe(id, listOf(id))), DietRestriction.NO_RED_MEAT).size, id)
+            assertTrue(filterRecipesByDiet(listOf(recipe(id, listOf(id))), DietRestriction.VEGETARIAN).isEmpty(), id)
+        }
+        addedSeafood.forEach { id ->
+            val item = listOf(recipe(id, listOf(id)))
+            assertTrue(filterRecipesByDiet(item, DietRestriction.NO_SEAFOOD).isEmpty(), id)
+            assertTrue(filterRecipesByDiet(item, DietRestriction.VEGETARIAN).isEmpty(), id)
+        }
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -29,6 +30,12 @@ class ShelfTest {
         val left = daysLeft(item("2026-11-01"), ingredient(5), d("2026-11-03"))
         assertEquals(3, left)
         assertEquals(Urgency.OK, urgencyOf(left))
+    }
+
+    @Test
+    fun daysLeft_frozenItem_multipliesSelectedShelfDaysByTen() {
+        val frozen = item("2026-11-01").copy(compartment = PantryCompartment.FREEZE)
+        assertEquals(38, daysLeft(frozen, ingredient(5, userShelfDays = 4), d("2026-11-03")))
     }
 
     @Test
@@ -156,6 +163,31 @@ class ShelfTest {
     @Test
     fun daysLeft_ignoresHaveFlag_whenExpired() {
         assertEquals(-1, daysLeft(item("2026-11-01", have = false), ingredient(5), d("2026-11-07")))
+    }
+
+    /**
+     * Căn cứ quyết định Q13b (ngày 2026-11-16):
+     * Món hết rồi có lại: hạn tính từ ngày bấm "Có" lại, xem như vừa mua. Gỡ chặn SW-10.
+     * Nếu giữ mốc cũ 10 ngày trước, món sẽ bị tính là quá hạn (daysLeft < 0).
+     * Khi restock với markedAt = today, daysLeft bằng đúng nguyên vẹn shelfDays (không bị quá hạn).
+     */
+    @Test
+    fun daysLeft_restockItemWithResetMarkedAt_hasFullShelfDaysInsteadOfExpired_q13b() {
+        val today = d("2026-11-15")
+        val tenDaysAgo = d("2026-11-05")
+        val eggIngredient = ingredient(defaultShelfDays = 5)
+
+        // Nếu giữ mốc cũ 10 ngày trước: 2026-11-05 + 5 ngày = 2026-11-10 -> ngày 15/11 đã quá hạn 5 ngày (-5)
+        val depletedOldItem = item("2026-11-05", have = false)
+        val oldDaysLeft = daysLeft(depletedOldItem, eggIngredient, today)
+        assertEquals(-5, oldDaysLeft)
+        assertEquals(Urgency.EXPIRED, urgencyOf(oldDaysLeft))
+
+        // Theo Q13b: Khi món có lại, markedAt được tính từ ngày bấm "Có" (today = 2026-11-15)
+        val restockedItem = item("2026-11-15", have = true)
+        val restockedDaysLeft = daysLeft(restockedItem, eggIngredient, today)
+        assertEquals(5, restockedDaysLeft)
+        assertEquals(Urgency.OK, urgencyOf(restockedDaysLeft))
     }
 
     // --- biên urgencyOf ---

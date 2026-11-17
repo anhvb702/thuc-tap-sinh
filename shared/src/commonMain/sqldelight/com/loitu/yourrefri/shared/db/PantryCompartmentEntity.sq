@@ -1,0 +1,16 @@
+CREATE TABLE PantryCompartmentEntity (
+    ingredientId TEXT NOT NULL PRIMARY KEY,
+    compartment TEXT NOT NULL
+);
+
+upsert:
+INSERT OR REPLACE INTO PantryCompartmentEntity VALUES (:ingredientId, :compartment);
+
+selectAll:
+SELECT * FROM PantryCompartmentEntity ORDER BY ingredientId ASC;
+
+selectById:
+SELECT compartment FROM PantryCompartmentEntity WHERE ingredientId = :ingredientId;
+
+deleteById:
+DELETE FROM PantryCompartmentEntity WHERE ingredientId = :ingredientId;

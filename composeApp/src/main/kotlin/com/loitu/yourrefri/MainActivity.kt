@@ -32,6 +32,7 @@ import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.ShelfTable
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
+import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.FavoriteRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
@@ -81,6 +82,7 @@ private object AppGraph {
             ingredients = parsedIngredients,
             backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
             recipes = RecipeBundle.parse(recipeJson),
+            customRecipeRepository = CustomRecipeRepositoryImpl(db, Dispatchers.IO),
             weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
             favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
             cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
@@ -112,6 +114,7 @@ private data class AppDependencies(
     val ingredients: List<Ingredient>,
     val backupRepository: PantryBackupRepositoryImpl,
     val recipes: List<Recipe>,
+    val customRecipeRepository: CustomRecipeRepositoryImpl,
     val weeklyMealPlanRepository: WeeklyMealPlanRepositoryImpl,
     val favoriteRepository: FavoriteRecipeRepositoryImpl,
     val cookLogRepository: com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl,
@@ -123,6 +126,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     val context = LocalContext.current
     var reminderEnabled by remember { mutableStateOf(ReminderScheduler.enabled(context)) }
     var sundayTime by remember { mutableStateOf(ReminderScheduler.sundayTime(context)) }
+    var weekdayTime by remember { mutableStateOf(ReminderScheduler.weekdayTime(context)) }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         reminderEnabled = granted
         ReminderScheduler.setEnabled(context, granted)
@@ -208,6 +212,11 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     }
 
     val state by viewModel.state.collectAsState()
+    val customRecipesFlow = remember(dependencies.customRecipeRepository) {
+        dependencies.customRecipeRepository.observeAll()
+    }
+    val customRecipes by customRecipesFlow.collectAsState(initial = emptyList())
+    val allRecipes = remember(dependencies.recipes, customRecipes) { dependencies.recipes + customRecipes }
     val weeklyMealPlanState by weeklyMealPlanViewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -277,7 +286,22 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         weeklyMealPlanState = weeklyMealPlanState,
         onWeeklyMealPlanAction = weeklyMealPlanViewModel::dispatch,
         snackbarHostState = snackbarHostState,
-        recipes = dependencies.recipes,
+        recipes = allRecipes,
+        customRecipeIds = customRecipes.mapTo(linkedSetOf()) { it.id },
+        onAddCustomRecipe = { title, ingredientIds ->
+            scope.launch { dependencies.customRecipeRepository.addLite(title, ingredientIds) }
+        },
+        onEditCustomRecipe = { recipe ->
+            scope.launch { dependencies.customRecipeRepository.upsert(recipe) }
+        },
+        onAddDailyShopping = { ids ->
+            com.loitu.yourrefri.feature.recipe.ui.DailyShoppingStore.addIds(
+                context, ids, state.ingredients.associate { it.id to it.nameVi },
+            )
+        },
+        onDeleteCustomRecipe = { recipeId ->
+            scope.launch { dependencies.customRecipeRepository.delete(recipeId) }
+        },
         onAction = viewModel::dispatch,
         reminderEnabled = reminderEnabled,
         onReminderChanged = { enabled ->
@@ -304,7 +328,13 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         cookHistoryState = cookHistoryState,
         onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
         currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
+        onDeleteCookLog = { cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(it)) },
         sundayTime = sundayTime,
+        weekdayTime = weekdayTime,
+        onWeekdayTimeChange = { time ->
+            weekdayTime = time
+            ReminderScheduler.setWeekdayTime(context, time)
+        },
         onSundayTimeChange = { time ->
             sundayTime = time
             ReminderScheduler.setSundayTime(context, time)

@@ -33,14 +33,18 @@ class RandomRecipeCopyTest {
     fun copyIsExactAndAvoidsBannedWords() {
         assertEquals("Nấu ngẫu nhiên", RandomRecipeCopy.button)
         assertEquals("Món này cần thêm vài thứ nữa nè", RandomRecipeCopy.needMore)
+        @Suppress("DEPRECATION")
         assertEquals("Món này ngoài chế độ ăn của bạn", RandomRecipeCopy.outsideDiet)
         assertEquals("Thử món khác", RandomRecipeCopy.tryAnother)
         assertEquals("Chưa có món khác để thử", RandomRecipeCopy.noOther)
         assertEquals("Quay lại", RandomRecipeCopy.back)
         assertEquals("Xem món này", RandomRecipeCopy.open)
+        assertEquals("Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé.", RandomRecipeCopy.emptyDietMessage)
+        assertEquals("Điều chỉnh chế độ ăn", RandomRecipeCopy.adjustDietAction)
         listOf(
-            RandomRecipeCopy.button, RandomRecipeCopy.needMore, RandomRecipeCopy.outsideDiet,
+            RandomRecipeCopy.button, RandomRecipeCopy.needMore,
             RandomRecipeCopy.tryAnother, RandomRecipeCopy.noOther, RandomRecipeCopy.back, RandomRecipeCopy.open,
+            RandomRecipeCopy.emptyDietMessage, RandomRecipeCopy.adjustDietAction,
         ).forEach { text -> banned.forEach { w -> assertFalse(text.contains(w, ignoreCase = true), "$text chứa $w") } }
     }
 }

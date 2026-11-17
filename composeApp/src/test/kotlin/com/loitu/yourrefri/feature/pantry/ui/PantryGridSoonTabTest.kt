@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.Urgency
@@ -19,6 +20,7 @@ class PantryGridSoonTabTest {
         cell("soon-b", have = true, daysLeft = 1, urgency = Urgency.SOON),
         cell("expired", have = true, daysLeft = -1, urgency = Urgency.EXPIRED),
         cell("soon-a", have = true, daysLeft = 1, urgency = Urgency.SOON),
+        cell("frozen", have = true, daysLeft = 1, urgency = Urgency.SOON, compartment = PantryCompartment.FREEZE),
         cell("absent", have = false, daysLeft = null, urgency = null),
         cell("today", have = true, daysLeft = 0, urgency = Urgency.SOON),
     )
@@ -93,7 +95,13 @@ class PantryGridSoonTabTest {
         assertEquals(2, soonCount(cellsOf(state)))
     }
 
-    private fun cell(id: String, have: Boolean, daysLeft: Int?, urgency: Urgency?) = PantryCell(
+    private fun cell(
+        id: String,
+        have: Boolean,
+        daysLeft: Int?,
+        urgency: Urgency?,
+        compartment: PantryCompartment = PantryCompartment.CHILL,
+    ) = PantryCell(
         ingredientId = id,
         nameVi = id,
         have = have,
@@ -101,5 +109,6 @@ class PantryGridSoonTabTest {
         unit = "phần",
         daysLeft = daysLeft,
         urgency = urgency,
+        compartment = compartment,
     )
 }

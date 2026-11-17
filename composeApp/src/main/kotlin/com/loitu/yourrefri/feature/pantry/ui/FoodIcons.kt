@@ -37,8 +37,8 @@ fun foodEmojiFor(ingredientId: String): String = when (ingredientId) {
 enum class FoodGlyph { TOMATO, EGG, MEAT, FISH, MILK, LEAF, TOFU }
 
 fun foodGlyphFor(ingredientId: String): FoodGlyph = when (ingredientId) {
-    "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga" -> FoodGlyph.MEAT
-    "ca-basa", "ca-hoi", "tom" -> FoodGlyph.FISH
+    "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "uc-ga" -> FoodGlyph.MEAT
+    "ca-basa", "ca-hoi", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao" -> FoodGlyph.FISH
     "ca-chua", "ca-rot", "khoai-tay", "bi-xanh", "hanh-tay", "chuoi", "tao", "cam" -> FoodGlyph.TOMATO
     "trung-ga" -> FoodGlyph.EGG
     "sua-tuoi", "sua-chua" -> FoodGlyph.MILK
@@ -60,6 +60,7 @@ fun foodIconFor(ingredientId: String): ImageVector = when (foodGlyphFor(ingredie
  * Phân loại khu vực bảo quản: Ngăn đông hay Ngăn mát.
  */
 fun isFreezerItem(ingredientId: String): Boolean = when (ingredientId) {
-    "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "ca-basa", "ca-hoi", "tom" -> true
+    "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "uc-ga",
+    "ca-basa", "ca-hoi", "ca-thu", "ca-loc", "ca-dieu-hong", "tom", "muc", "ngao" -> true
     else -> false
 }

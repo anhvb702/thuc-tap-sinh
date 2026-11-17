@@ -75,7 +75,7 @@ object BackupCodec {
         validateUniqueIds("cookMeals", snapshot.cookMeals.map { it.cookLogId.toString() })
         snapshot.cookMeals.forEach { meal ->
             require(meal.cookLogId in cookLogIds) { "Cook meal must belong to a cook log" }
-            require(meal.meal == MealSlot.LUNCH.name || meal.meal == MealSlot.DINNER.name) { "Unsupported meal slot" }
+            require(meal.meal in MealSlot.entries.map { it.name }) { "Unsupported meal slot" }
         }
 
         validateUniqueIds("favorites", snapshot.favorites.map { it.recipeId })
@@ -87,14 +87,14 @@ object BackupCodec {
         val toggleKeys = HashSet<Pair<String, String>>()
         snapshot.mealToggles.forEach { toggle ->
             LocalDate.parse(toggle.day)
-            require(toggle.mealSlot == MealSlot.LUNCH.name || toggle.mealSlot == MealSlot.DINNER.name) { "Unsupported meal slot" }
+            require(toggle.mealSlot in MealSlot.entries.map { it.name }) { "Unsupported meal slot" }
             require(toggleKeys.add(toggle.day to toggle.mealSlot)) { "Meal toggle day and slot must be unique" }
         }
 
         val weeklyKeys = HashSet<Pair<String, String>>()
         snapshot.weeklyMeals.forEach { meal ->
             LocalDate.parse(meal.day)
-            require(meal.meal == MealSlot.LUNCH.name || meal.meal == MealSlot.DINNER.name) { "Unsupported meal slot" }
+            require(meal.meal in MealSlot.entries.map { it.name }) { "Unsupported meal slot" }
             require(meal.recipeId.isNotBlank()) { "Weekly recipe id must not be blank" }
             require(meal.portions >= 1) { "Weekly portions must be positive" }
             require(weeklyKeys.add(meal.day to meal.meal)) { "Weekly day and meal must be unique" }

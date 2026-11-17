@@ -8,6 +8,7 @@ interface PantryRepository {
     fun observeShelfOverrides(): Flow<Map<String, Int>>
     fun observeQuantities(): Flow<Map<String, Int>>
     fun observeUnits(): Flow<Map<String, String>>
+    suspend fun setCompartment(ingredientId: String, compartment: PantryCompartment) {}
     suspend fun setHave(ingredientId: String, have: Boolean, markedAt: LocalDate? = null)
     suspend fun deleteHave(ingredientId: String)
     suspend fun setShelfDays(ingredientId: String, days: Int?)

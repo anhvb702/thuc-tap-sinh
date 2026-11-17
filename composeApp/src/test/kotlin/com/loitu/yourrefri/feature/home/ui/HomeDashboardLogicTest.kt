@@ -1,5 +1,7 @@
 package com.loitu.yourrefri.feature.home.ui
 
+import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
+import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -13,19 +15,31 @@ class HomeDashboardLogicTest {
     }
 
     @Test
-    fun zoneCounts_splitsFreezerAndFridge() {
-        val freezer = "thit-ga"
-        val counts = pantryZoneCounts(listOf(freezer, "ca-chua", "trung"))
+    fun zoneCounts_usesSavedCompartmentInsteadOfIngredientType() {
+        val freezer = cell("thit-ga", PantryCompartment.CHILL)
+        val chilled = cell("ca-chua", PantryCompartment.FREEZE)
+        val counts = pantryZoneCounts(listOf(freezer, chilled, cell("trung", PantryCompartment.CHILL)))
         assertEquals(1, counts.freezer)
         assertEquals(2, counts.fridge)
     }
 
     @Test
     fun zoneCounts_sumEqualsInput() {
-        val ids = listOf("a", "b", "c", "d")
-        val c = pantryZoneCounts(ids)
-        assertEquals(ids.size, c.fridge + c.freezer)
+        val items = listOf("a", "b", "c", "d").map { cell(it, PantryCompartment.CHILL) }
+        val counts = pantryZoneCounts(items)
+        assertEquals(items.size, counts.fridge + counts.freezer)
     }
+
+    private fun cell(id: String, compartment: PantryCompartment) = PantryCell(
+        ingredientId = id,
+        nameVi = id,
+        have = true,
+        quantity = 1,
+        unit = "phần",
+        daysLeft = null,
+        urgency = null,
+        compartment = compartment,
+    )
 
     @Test
     fun urgentCaption_containsEstimateWord() {

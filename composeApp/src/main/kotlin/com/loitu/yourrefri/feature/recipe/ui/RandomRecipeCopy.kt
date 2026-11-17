@@ -28,26 +28,29 @@ import com.loitu.yourrefri.ui.theme.AppTheme
 internal object RandomRecipeCopy {
     const val button = "Nấu ngẫu nhiên"
     const val needMore = "Món này cần thêm vài thứ nữa nè"
+    @Deprecated("Q2 decision: diet is a hard filter; outsideDiet is no longer picked")
     const val outsideDiet = "Món này ngoài chế độ ăn của bạn"
     const val tryAnother = "Thử món khác"
     const val noOther = "Chưa có món khác để thử"
     const val back = "Quay lại"
     const val open = "Xem món này"
+    const val emptyDietMessage = "Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé."
+    const val adjustDietAction = "Điều chỉnh chế độ ăn"
 }
 
-/** Nút "Nấu ngẫu nhiên" bỏ qua chế độ ăn; hàm này chỉ để báo nhẹ khi món rút ra nằm ngoài chế độ đó. */
+/** Dùng để giải thích chế độ ăn khi một món được mở từ luồng không áp dụng bộ lọc. */
 internal fun isOutsideDiet(recipe: Recipe, restriction: DietRestriction, ingredients: List<Ingredient>): Boolean =
     filterRecipesByDiet(listOf(recipe), restriction, ingredients).isEmpty()
 
-/** Thẻ kết quả sau khi rút món; `pick == null` nghĩa là không còn món nào khác. */
+/** Thẻ kết quả sau khi rút món; `pick == null` nghĩa là không còn món nào thỏa mãn chế độ ăn. */
 @Composable
 internal fun RandomRecipeCard(
     pick: RandomPick?,
-    outsideDiet: Boolean,
     onOpen: () -> Unit,
     onTryAnother: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onAdjustDiet: (() -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     Column(
@@ -59,7 +62,12 @@ internal fun RandomRecipeCard(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (pick == null) {
-            Text(RandomRecipeCopy.noOther, style = MaterialTheme.typography.bodyLarge, color = colors.ctaText)
+            Text(RandomRecipeCopy.emptyDietMessage, style = MaterialTheme.typography.bodyLarge, color = colors.ctaText)
+            if (onAdjustDiet != null) {
+                TextButton(onClick = onAdjustDiet, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(RandomRecipeCopy.adjustDietAction, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                }
+            }
         } else {
             Text(
                 pick.recipe.title,
@@ -67,7 +75,6 @@ internal fun RandomRecipeCard(
                 color = colors.ctaText,
             )
             if (!pick.canCookNow) Text(RandomRecipeCopy.needMore, style = MaterialTheme.typography.bodyMedium, color = colors.ctaText)
-            if (outsideDiet) Text(RandomRecipeCopy.outsideDiet, style = MaterialTheme.typography.bodyMedium, color = colors.ctaText)
             Button(
                 onClick = onOpen,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -76,8 +83,10 @@ internal fun RandomRecipeCard(
             ) { Text(RandomRecipeCopy.open, fontWeight = FontWeight.Bold) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = onTryAnother, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(RandomRecipeCopy.tryAnother, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+            if (pick != null) {
+                TextButton(onClick = onTryAnother, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(RandomRecipeCopy.tryAnother, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                }
             }
             TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(RandomRecipeCopy.back, color = colors.muted)
@@ -85,3 +94,15 @@ internal fun RandomRecipeCard(
         }
     }
 }
+
+/** Tương thích ngược trước Q2. Cờ outsideDiet bị bỏ qua theo quyết định Q2 (chế độ ăn là bộ lọc cứng). */
+@Deprecated("Q2 decision: diet is a hard filter; outsideDiet flag is removed", ReplaceWith("RandomRecipeCard(pick, onOpen, onTryAnother, onBack, modifier)"))
+@Composable
+internal fun RandomRecipeCard(
+    pick: RandomPick?,
+    outsideDiet: Boolean,
+    onOpen: () -> Unit,
+    onTryAnother: () -> Unit,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) = RandomRecipeCard(pick, onOpen, onTryAnother, onBack, modifier)

@@ -40,7 +40,7 @@ class RecipeTabsPresentationTest {
             listOf(RecipeScreenMode.DAILY, RecipeScreenMode.WEEKLY, RecipeScreenMode.SHOPPING),
             tabs.map { it.mode },
         )
-        assertEquals(listOf("Gợi ý hôm nay", "Thực đơn tuần", "Đi chợ"), tabs.map { it.label })
+        assertEquals(listOf("Gợi ý hôm nay", "Thực đơn tuần", "Giỏ đi chợ lẻ"), tabs.map { it.label })
     }
 
     @Test fun oldEnumValuesStillExist() {

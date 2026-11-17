@@ -3,165 +3,485 @@
     "id": "canh-chua-ca-basa",
     "title": "Canh chua cá basa",
     "minutes": 25,
+    "servings": "2–3 người",
+    "prepMinutes": 10,
+    "cookMinutes": 15,
     "steps": [
-      "Rửa sạch cá basa, cắt khúc vừa ăn; cà chua bổ múi cau; hành lá cắt nhỏ.",
-      "Ướp cá với một chút muối, tiêu và nước mắm trong 10 phút.",
-      "Đun sôi nước, thêm cà chua và me chua; nấu đến khi cà chua mềm.",
-      "Cho cá vào nấu chín, nêm vừa ăn rồi rắc hành lá trước khi dùng."
+      "Rửa sạch 350g cá basa, cắt khúc dày 2–3cm; 2 quả cà chua bổ múi cau; 2 nhánh hành lá cắt nhỏ.",
+      "Ướp cá với 1/2 thìa cà phê muối, 1/3 thìa cà phê tiêu và 1 thìa canh nước mắm trong 10 phút.",
+      "Đun sôi 700ml nước với 20g me chua (hoặc 1.5 thìa canh nước cốt me), cho cà chua vào nấu 4 phút đến khi mềm.",
+      "Thả cá vào nấu lửa vừa 8 phút đến khi chín tới, nêm thêm 1 thìa canh nước mắm và 1 thìa cà phê đường rồi rắc hành lá."
     ],
     "required": [
-      { "anyOf": ["ca-basa"] },
-      { "anyOf": ["ca-chua"] },
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["ca-basa"], "amount": "350g" },
+      { "anyOf": ["ca-chua"], "amount": "2 quả" },
+      { "anyOf": ["hanh-la"], "amount": "2 nhánh" }
     ]
   },
   {
     "id": "thit-kho-trung",
     "title": "Thịt heo kho trứng",
     "minutes": 35,
+    "servings": "3–4 người",
+    "prepMinutes": 15,
+    "cookMinutes": 20,
     "steps": [
-      "Thịt heo rửa sạch, cắt miếng vừa ăn; trứng gà luộc chín và bóc vỏ.",
-      "Ướp thịt với hành tím, nước mắm, đường và tiêu trong 15 phút.",
-      "Thắng nước màu, cho thịt vào đảo săn rồi thêm nước vừa xâm xấp.",
-      "Cho trứng vào kho lửa nhỏ đến khi thịt mềm và nước sốt sánh lại."
+      "Rửa sạch 400g thịt ba chỉ hoặc thịt vai, cắt miếng 3cm; luộc 4 quả trứng gà 8 phút rồi ngâm nước lạnh, bóc vỏ.",
+      "Ướp thịt với 2 củ hành tím băm, 2 thìa canh nước mắm, 1 thìa canh đường và 1/2 thìa cà phê tiêu trong 15 phút.",
+      "Thắng 1 thìa canh đường với 1 thìa canh dầu ăn đến khi chuyển màu cánh gián, cho thịt vào đảo săn 3 phút rồi thêm 350ml nước.",
+      "Cho trứng vào kho lửa nhỏ 15 phút đến khi thịt mềm và nước sốt sánh nhẹ."
     ],
     "required": [
-      { "anyOf": ["thit-heo", "thit-heo-xay"] },
-      { "anyOf": ["trung-ga"] }
+      { "anyOf": ["thit-heo", "thit-heo-xay"], "amount": "400g" },
+      { "anyOf": ["trung-ga"], "amount": "4 quả" }
     ]
   },
   {
     "id": "rau-muong-xao-hanh",
     "title": "Rau muống xào hành tây",
     "minutes": 12,
+    "servings": "2–3 người",
+    "prepMinutes": 5,
+    "cookMinutes": 7,
     "steps": [
-      "Rau muống nhặt ngọn non, rửa sạch và để ráo; hành tây thái mỏng.",
-      "Phi thơm hành tây với một ít dầu, cho rau muống vào xào nhanh trên lửa lớn.",
-      "Nêm vừa ăn, đảo thêm một phút rồi dùng nóng.",
-      "Dọn rau ra đĩa, dùng cùng cơm nóng."
+      "Nhặt 300g rau muống lấy ngọn non, rửa sạch và để ráo; 1/2 củ hành tây thái múi cau mỏng.",
+      "Làm nóng 1.5 thìa canh dầu ăn, phi thơm hành tây 1 phút rồi cho rau muống vào xào nhanh trên lửa lớn 3 phút.",
+      "Nêm 1 thìa canh nước mắm (hoặc dầu hào) và 1/3 thìa cà phê bột ngọt/hạt nêm, đảo thêm 1 phút rồi tắt bếp.",
+      "Dọn rau ra đĩa, dùng ngay cùng cơm nóng."
     ],
     "required": [
-      { "anyOf": ["rau-muong"] },
-      { "anyOf": ["hanh-tay"] }
+      { "anyOf": ["rau-muong"], "amount": "300g" },
+      { "anyOf": ["hanh-tay"], "amount": "1/2 củ" }
     ]
   },
   {
     "id": "thit-bo-xao-hanh-tay",
     "title": "Thịt bò xào hành tây",
     "minutes": 15,
+    "servings": "2–3 người",
+    "prepMinutes": 7,
+    "cookMinutes": 8,
     "steps": [
-      "Thịt bò thái mỏng; hành tây thái múi cau, cà rốt thái lát nếu nhà mình có.",
-      "Ướp thịt bò với chút nước mắm và tiêu trong vài phút.",
-      "Làm nóng chảo, đảo thịt bò vừa săn rồi cho hành tây vào xào, thêm cà rốt nếu có.",
-      "Nêm vừa ăn, đảo đến khi rau vừa mềm và dọn cùng cơm nóng."
+      "Thái mỏng 250g thịt bò theo thớ ngang; 1 củ hành tây thái múi cau; 1/2 củ cà rốt thái lát mỏng nếu dùng thêm.",
+      "Ướp thịt bò với 1 thìa canh nước mắm (hoặc dầu hào), 1/2 thìa cà phê tiêu và 1 thìa cà phê dầu ăn trong 5 phút.",
+      "Làm nóng 1 thìa canh dầu ăn trên lửa lớn, đảo thịt bò nhanh 2 phút đến khi vừa tái rồi trút ra đĩa.",
+      "Xào hành tây (và cà rốt) 3 phút với 1/2 thìa cà phê hạt nêm, trút bò vào đảo chung 1 phút rồi dọn nóng."
     ],
     "required": [
-      { "anyOf": ["thit-bo"] },
-      { "anyOf": ["hanh-tay"] }
+      { "anyOf": ["thit-bo"], "amount": "250g" },
+      { "anyOf": ["hanh-tay"], "amount": "1 củ" }
     ],
     "optional": [
-      { "anyOf": ["ca-rot"] }
+      { "anyOf": ["ca-rot"], "amount": "1/2 củ" }
     ]
   },
   {
     "id": "canh-rau-ngot-thit-bam",
     "title": "Canh rau ngót nấu thịt",
     "minutes": 15,
+    "servings": "2–3 người",
+    "prepMinutes": 5,
+    "cookMinutes": 10,
     "steps": [
-      "Rau ngót tuốt lá, rửa sạch; thịt băm để riêng.",
-      "Ướp thịt với chút nước mắm, rồi xào nhẹ cho thơm.",
-      "Thêm nước vừa đủ, đun sôi và cho rau ngót vào nấu mềm.",
-      "Nêm vừa ăn, múc canh ra tô dùng cùng bữa cơm."
+      "Tuốt lá 200g rau ngót, rửa sạch và vò nhẹ cho mềm; chuẩn bị 150g thịt heo băm.",
+      "Ướp thịt băm với 1/2 thìa canh nước mắm và 1/3 thìa cà phê tiêu, xào nhẹ 2 phút với 1 thìa cà phê dầu ăn cho thơm.",
+      "Thêm 650ml nước, đun sôi rồi thả rau ngót vào nấu lửa vừa 5 phút đến khi rau chín mềm.",
+      "Nêm thêm 1/2 thìa cà phê muối (hoặc hạt nêm) vừa ăn, múc canh ra tô."
     ],
     "required": [
-      { "anyOf": ["rau-ngot"] },
-      { "anyOf": ["thit-heo-xay", "thit-heo"] }
+      { "anyOf": ["rau-ngot"], "amount": "200g" },
+      { "anyOf": ["thit-heo-xay", "thit-heo"], "amount": "150g" }
     ]
   },
   {
     "id": "dau-phu-sot-ca-chua",
     "title": "Đậu phụ sốt cà chua",
     "minutes": 15,
+    "servings": "2–3 người",
+    "prepMinutes": 5,
+    "cookMinutes": 10,
     "steps": [
-      "Đậu phụ cắt miếng vừa ăn; cà chua bổ nhỏ và hành lá thái khúc.",
-      "Áp chảo đậu phụ đến khi các mặt vàng nhẹ rồi gắp ra.",
-      "Xào cà chua mềm với chút nước, nêm vừa ăn rồi cho đậu vào đảo nhẹ.",
-      "Rắc hành lá, tắt bếp và dùng món sốt cùng cơm nóng."
+      "Cắt 3 bìa đậu phụ (khoảng 300g) thành miếng vuông 3cm; 2 quả cà chua băm nhỏ; 2 nhánh hành lá thái khúc.",
+      "Áp chảo đậu phụ với 2 thìa canh dầu ăn 4 phút đến khi các mặt vàng giòn nhẹ rồi gắp ra.",
+      "Xào cà chua 3 phút với 50ml nước đến khi nhuyễn, nêm 1 thìa canh nước mắm và 1/2 thìa cà phê đường rồi cho đậu vào rim 3 phút.",
+      "Rắc hành lá, tắt bếp và dùng nóng cùng cơm."
     ],
     "required": [
-      { "anyOf": ["dau-phu"] },
-      { "anyOf": ["ca-chua"] },
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["dau-phu"], "amount": "3 bìa (300g)" },
+      { "anyOf": ["ca-chua"], "amount": "2 quả" },
+      { "anyOf": ["hanh-la"], "amount": "2 nhánh" }
     ]
   },
   {
     "id": "tom-rim-thit",
     "title": "Tôm rim mặn ngọt",
     "minutes": 20,
+    "servings": "2–3 người",
+    "prepMinutes": 8,
+    "cookMinutes": 12,
     "steps": [
-      "Tôm làm sạch; hành lá cắt nhỏ, thịt heo thái mỏng nếu dùng thêm.",
-      "Ướp tôm với nước mắm và chút đường trong vài phút.",
-      "Rim thịt heo trước nếu có, rồi cho tôm vào đảo đến khi săn lại.",
-      "Thêm ít nước, rim đến khi sốt sánh nhẹ; rắc hành lá và dọn cơm."
+      "Bóc vỏ hoặc cắt râu 250g tôm tươi, rút chỉ lưng; 2 nhánh hành lá cắt nhỏ; 100g thịt heo thái mỏng nếu dùng thêm.",
+      "Ướp tôm với 1.5 thìa canh nước mắm, 1 thìa cà phê đường và 1/3 thìa cà phê tiêu trong 5 phút.",
+      "Đảo thịt heo 3 phút cho săn (nếu có), sau đó cho tôm vào đảo trên lửa vừa 4 phút đến khi chuyển màu đỏ hồng.",
+      "Thêm 30ml nước, rim lửa nhỏ 4 phút đến khi sốt sánh bám đều tôm; rắc hành lá và tắt bếp."
     ],
     "required": [
-      { "anyOf": ["tom"] },
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["tom"], "amount": "250g" },
+      { "anyOf": ["hanh-la"], "amount": "2 nhánh" }
     ],
     "optional": [
-      { "anyOf": ["thit-heo"] }
+      { "anyOf": ["thit-heo"], "amount": "100g" }
     ]
   },
   {
     "id": "ga-kho-khoai-tay",
     "title": "Thịt gà kho khoai tây cà rốt",
     "minutes": 30,
+    "servings": "3–4 người",
+    "prepMinutes": 10,
+    "cookMinutes": 20,
     "steps": [
-      "Thịt gà chặt miếng vừa ăn; khoai tây hoặc cà rốt gọt vỏ, cắt miếng.",
-      "Ướp gà với chút nước mắm, tiêu và hành tím trong ít phút.",
-      "Xào gà săn mặt, thêm khoai tây hoặc cà rốt cùng nước vừa xâm xấp.",
-      "Kho lửa nhỏ đến khi gà mềm, nêm vừa ăn và dùng với cơm."
+      "Chặt 450g thịt gà thành miếng 4cm; gọt vỏ 2 củ khoai tây (hoặc cà rốt) và cắt miếng vừa ăn.",
+      "Ướp gà với 2 thìa canh nước mắm, 1 thìa cà phê đường, 1/2 thìa cà phê tiêu và 2 củ hành tím băm trong 10 phút.",
+      "Xào gà với 1 thìa canh dầu ăn 4 phút cho săn mặt, thêm khoai tây/cà rốt cùng 250ml nước xâm xấp.",
+      "Kho lửa nhỏ 15 phút đến khi gà mềm và khoai chín bở, nêm lại vừa ăn rồi dùng nóng."
     ],
     "required": [
-      { "anyOf": ["thit-ga"] },
-      { "anyOf": ["khoai-tay", "ca-rot"] }
+      { "anyOf": ["thit-ga"], "amount": "450g" },
+      { "anyOf": ["khoai-tay", "ca-rot"], "amount": "2 củ (250g)" }
     ]
   },
   {
     "id": "canh-bi-xanh-nau-tom",
     "title": "Canh bí xanh nấu tôm nấm",
     "minutes": 20,
+    "servings": "2–3 người",
+    "prepMinutes": 8,
+    "cookMinutes": 12,
     "steps": [
-      "Bí xanh gọt vỏ, bỏ ruột và cắt miếng; tôm làm sạch hoặc dùng thịt băm.",
-      "Xào nhẹ tôm hoặc thịt với chút nước mắm cho thơm.",
-      "Thêm nước, đun sôi rồi cho bí xanh vào nấu mềm, thêm nấm nếu có.",
-      "Nêm vừa ăn, rắc hành lá nếu có và múc canh ra tô."
+      "Gọt vỏ 350g bí xanh, bỏ ruột và cắt miếng dày 1cm; làm sạch 150g tôm (hoặc thịt băm) và giã/băm sơ.",
+      "Xào thơm tôm hoặc thịt với 1 thìa cà phê dầu ăn và 1 thìa canh nước mắm trong 2 phút.",
+      "Thêm 700ml nước, đun sôi rồi cho bí xanh (và 100g nấm nếu có) vào nấu 7 phút đến khi bí trong mềm.",
+      "Nêm 1/2 thìa cà phê muối, rắc hành lá nếu có và múc canh ra tô."
     ],
     "required": [
-      { "anyOf": ["bi-xanh"] },
-      { "anyOf": ["tom", "thit-heo-xay"] }
+      { "anyOf": ["bi-xanh"], "amount": "350g" },
+      { "anyOf": ["tom", "thit-heo-xay"], "amount": "150g" }
     ],
     "optional": [
-      { "anyOf": ["nam"] },
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["nam"], "amount": "100g" },
+      { "anyOf": ["hanh-la"], "amount": "2 nhánh" }
     ]
   },
   {
     "id": "ca-hoi-ap-chao-xa-lach",
     "title": "Cá hồi áp chảo trộn xà lách",
     "minutes": 15,
+    "servings": "2 người",
+    "prepMinutes": 5,
+    "cookMinutes": 10,
     "steps": [
-      "Cá hồi thấm khô, ướp nhẹ với muối và tiêu; rửa sạch xà lách hoặc cải ngọt.",
-      "Áp chảo cá hồi với chút dầu đến khi hai mặt chín vàng.",
-      "Nếu dùng cải ngọt, chần nhanh cho vừa mềm; cà chua bổ miếng nếu có.",
-      "Xếp cá cùng rau, thêm cà chua nếu có, dọn ra đĩa và dùng ngay với cơm nóng."
+      "Thấm khô 250g phi lê cá hồi, ướp 1/2 thìa cà phê muối và 1/3 thìa cà phê tiêu trong 5 phút; rửa sạch 150g xà lách hoặc cải ngọt.",
+      "Áp chảo cá hồi với 1 thìa canh dầu ăn 4 phút mặt da trước, lật mặt áp thêm 3 phút đến khi vàng đều.",
+      "Nếu dùng cải ngọt, chần nước sôi 2 phút cho vừa mềm; cắt múi cau 1 quả cà chua nếu có.",
+      "Xếp cá cùng rau và cà chua ra đĩa, dùng ngay khi cá còn ấm."
     ],
     "required": [
-      { "anyOf": ["ca-hoi"] },
-      { "anyOf": ["xa-lach", "cai-ngot"] }
+      { "anyOf": ["ca-hoi"], "amount": "250g" },
+      { "anyOf": ["xa-lach", "cai-ngot"], "amount": "150g" }
     ],
     "optional": [
-      { "anyOf": ["ca-chua"] }
+      { "anyOf": ["ca-chua"], "amount": "1 quả" }
+    ]
+  },
+  {
+    "id": "suon-heo-kho",
+    "title": "Sườn heo kho tiêu",
+    "minutes": 35,
+    "servings": "3 người",
+    "prepMinutes": 10,
+    "cookMinutes": 25,
+    "steps": [
+      "Rửa sạch 400g sườn heo, chần nước sôi 2 phút rồi rửa lại, chặt miếng 3–4cm.",
+      "Ướp sườn với 2 củ hành tím băm, 2 thìa canh nước mắm, 1 thìa canh đường và 1 thìa cà phê tiêu trong 10 phút.",
+      "Đảo sườn trên chảo với 1 thìa canh dầu ăn 4 phút cho săn, thêm 300ml nước xâm xấp.",
+      "Kho lửa nhỏ 20 phút đến khi sườn mềm và nước sốt sệt lại, rắc thêm chút tiêu."
+    ],
+    "required": [
+      { "anyOf": ["suon-heo"], "amount": "400g" },
+      { "anyOf": ["hanh-tim"], "amount": "2 củ" }
+    ]
+  },
+  {
+    "id": "ba-chi-rang-chay-canh",
+    "title": "Ba chỉ rang cháy cạnh",
+    "minutes": 25,
+    "servings": "2–3 người",
+    "prepMinutes": 7,
+    "cookMinutes": 18,
+    "steps": [
+      "Rửa sạch 350g thịt ba chỉ, thái lát mỏng vừa ăn khoảng 0.5cm; băm nhỏ 2 củ hành tím.",
+      "Rang ba chỉ trên chảo khô lửa vừa 10 phút đến khi ra bớt mỡ và các cạnh xém vàng.",
+      "Chắt bớt mỡ thừa, cho hành tím vào đảo thơm 1 phút rồi thêm 1.5 thìa canh nước mắm và 1 thìa cà phê đường.",
+      "Đảo đều trên lửa vừa 3 phút cho gia vị áo bóng quanh thịt rồi tắt bếp."
+    ],
+    "required": [
+      { "anyOf": ["ba-chi"], "amount": "350g" },
+      { "anyOf": ["hanh-tim"], "amount": "2 củ" }
+    ]
+  },
+  {
+    "id": "uc-ga-xao-sa-ot",
+    "title": "Ức gà xào sả ớt",
+    "minutes": 20,
+    "servings": "2–3 người",
+    "prepMinutes": 10,
+    "cookMinutes": 10,
+    "steps": [
+      "Thái 300g ức gà thành miếng vuông 2cm; băm nhỏ 2 cây sả và 1 quả ớt.",
+      "Ướp gà với một nửa phần sả ớt, 1.5 thìa canh nước mắm và 1/2 thìa cà phê đường trong 8 phút.",
+      "Phi thơm phần sả ớt còn lại với 1 thìa canh dầu ăn 1 phút rồi cho gà vào xào lửa lớn.",
+      "Đảo đều 7 phút đến khi gà chín săn, nêm lại vừa ăn rồi dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["uc-ga"], "amount": "300g" },
+      { "anyOf": ["sa"], "amount": "2 cây" },
+      { "anyOf": ["ot"], "amount": "1 quả" }
+    ]
+  },
+  {
+    "id": "ca-thu-sot-ca-chua",
+    "title": "Cá thu sốt cà chua",
+    "minutes": 30,
+    "servings": "2–3 người",
+    "prepMinutes": 10,
+    "cookMinutes": 20,
+    "steps": [
+      "Rửa sạch 350g cá thu (2 khứa), thấm khô và ướp với 1/2 thìa cà phê muối, 1/3 thìa cà phê tiêu trong 8 phút.",
+      "Áp chảo cá với 1.5 thìa canh dầu ăn mỗi mặt 3 phút cho săn vàng rồi vớt ra.",
+      "Xào nhuyễn 3 quả cà chua băm 4 phút với 80ml nước, nêm 1.5 thìa canh nước mắm và 1 thìa cà phê đường.",
+      "Cho cá vào rim lửa nhỏ 8 phút cho thấm sốt, trở mặt nhẹ rồi tắt bếp."
+    ],
+    "required": [
+      { "anyOf": ["ca-thu"], "amount": "350g" },
+      { "anyOf": ["ca-chua"], "amount": "3 quả" }
+    ]
+  },
+  {
+    "id": "ca-loc-kho-to",
+    "title": "Cá lóc kho tộ",
+    "minutes": 40,
+    "servings": "3–4 người",
+    "prepMinutes": 15,
+    "cookMinutes": 25,
+    "steps": [
+      "Làm sạch 450g cá lóc với chút muối cho hết nhớt, rửa sạch và cắt khúc 3cm.",
+      "Ướp cá với 2.5 thìa canh nước mắm, 1 thìa canh đường, 1/2 thìa cà phê tiêu và 2 củ hành tím băm trong 15 phút.",
+      "Xếp cá vào nồi đất/chảo sâu, thắng nhẹ 1 thìa cà phê nước màu rồi thêm 120ml nước xâm xấp.",
+      "Kho lửa nhỏ 20 phút đến khi cá săn chắc và nước kho sánh sệt."
+    ],
+    "required": [
+      { "anyOf": ["ca-loc"], "amount": "450g" },
+      { "anyOf": ["hanh-tim"], "amount": "2 củ" }
+    ]
+  },
+  {
+    "id": "ca-dieu-hong-chien",
+    "title": "Cá diêu hồng chiên",
+    "minutes": 25,
+    "servings": "3–4 người",
+    "prepMinutes": 10,
+    "cookMinutes": 15,
+    "steps": [
+      "Làm sạch 1 con cá diêu hồng (~700g), khứa chéo 3 đường mỗi bên và thấm thật khô.",
+      "Xoa đều 1/2 thìa cà phê muối và 1/3 thìa cà phê tiêu lên mình cá, để thấm 8 phút.",
+      "Làm nóng 4 thìa canh dầu ăn, chiên cá lửa vừa mỗi mặt 6 phút đến khi da giòn vàng đều.",
+      "Gắp ra đĩa thấm dầu, dọn cùng nước mắm tỏi ớt hoặc chanh tùy thích."
+    ],
+    "required": [
+      { "anyOf": ["ca-dieu-hong"], "amount": "1 con (~700g)" }
+    ]
+  },
+  {
+    "id": "muc-xao-dua-chuot",
+    "title": "Mực xào dưa chuột",
+    "minutes": 20,
+    "servings": "2–3 người",
+    "prepMinutes": 10,
+    "cookMinutes": 10,
+    "steps": [
+      "Làm sạch 300g mực ống, khứa vảy rồng và cắt miếng vừa ăn; 2 quả dưa chuột bỏ bớt ruột, thái lát xéo.",
+      "Làm nóng 1 thìa canh dầu ăn, cho mực vào xào lửa lớn 3 phút đến khi săn lại rồi trút ra.",
+      "Cho dưa chuột vào đảo 3 phút, nêm 1 thìa canh nước mắm và 1/3 thìa cà phê tiêu.",
+      "Trút mực trở lại đảo chung 2 phút cho thấm vị rồi dọn nóng."
+    ],
+    "required": [
+      { "anyOf": ["muc"], "amount": "300g" },
+      { "anyOf": ["dua-chuot"], "amount": "2 quả" }
+    ]
+  },
+  {
+    "id": "ngao-hap-sa",
+    "title": "Ngao hấp sả",
+    "minutes": 15,
+    "servings": "2–3 người",
+    "prepMinutes": 7,
+    "cookMinutes": 8,
+    "steps": [
+      "Ngâm 500g ngao với nước vo gạo hoặc nước sạch 20 phút cho nhả cát rồi rửa kỹ.",
+      "Đập dập 3 cây sả, cắt khúc 5cm; thái vài lát gừng hoặc 1 quả ớt nếu thích cay nhẹ.",
+      "Xếp sả xuống đáy nồi, cho ngao lên trên cùng 100ml nước và 1/3 thìa cà phê muối.",
+      "Đậy nắp hấp lửa lớn 5 phút đến khi ngao mở miệng hết, tắt bếp dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["ngao"], "amount": "500g" },
+      { "anyOf": ["sa"], "amount": "3 cây" }
+    ]
+  },
+  {
+    "id": "mien-xao-thit-bo",
+    "title": "Miến xào thịt bò",
+    "minutes": 25,
+    "servings": "2–3 người",
+    "prepMinutes": 12,
+    "cookMinutes": 13,
+    "steps": [
+      "Ngâm 150g miến khô trong nước ấm 10 phút cho mềm, vớt ra cắt khúc; thái mỏng 200g thịt bò và cắt khúc 200g cải thìa.",
+      "Ướp thịt bò với 1 thìa canh nước tương/nước mắm và 1/3 thìa cà phê tiêu trong 5 phút.",
+      "Xào bò lửa lớn 2 phút cho vừa chín rồi trút ra; xào cải thìa 3 phút với 1 thìa canh dầu ăn.",
+      "Cho miến cùng 2 thìa canh nước và 1.5 thìa canh nước tương vào đảo 4 phút, trút bò vào trộn đều 1 phút."
+    ],
+    "required": [
+      { "anyOf": ["mien"], "amount": "150g" },
+      { "anyOf": ["thit-bo"], "amount": "200g" },
+      { "anyOf": ["cai-thia"], "amount": "200g" }
+    ]
+  },
+  {
+    "id": "bun-kho-xao-rau",
+    "title": "Bún khô xào rau củ",
+    "minutes": 20,
+    "servings": "2 người",
+    "prepMinutes": 10,
+    "cookMinutes": 10,
+    "steps": [
+      "Ngâm 150g bún khô trong nước ấm 8 phút cho vừa mềm, xả nước lạnh và để ráo.",
+      "Bào sợi 1/2 củ cà rốt và thái sợi 150g bắp cải.",
+      "Làm nóng 1.5 thìa canh dầu ăn, xào cà rốt và bắp cải 4 phút đến khi dịu mềm.",
+      "Cho bún vào đảo đều 4 phút cùng 1.5 thìa canh nước tương (hoặc nước mắm) và 1/3 thìa cà phê tiêu."
+    ],
+    "required": [
+      { "anyOf": ["bun-kho"], "amount": "150g" },
+      { "anyOf": ["ca-rot"], "amount": "1/2 củ" },
+      { "anyOf": ["bap-cai"], "amount": "150g" }
+    ]
+  },
+  {
+    "id": "dau-phu-nhoi-thit",
+    "title": "Đậu phụ nhồi thịt sốt cà",
+    "minutes": 35,
+    "servings": "3 người",
+    "prepMinutes": 15,
+    "cookMinutes": 20,
+    "steps": [
+      "Cắt đôi 3 bìa đậu phụ (300g), khoét nhẹ phần ruột giữa để tạo hốc.",
+      "Trộn 150g thịt heo xay với phần ruột đậu, 1/2 thìa canh nước mắm và 1/3 thìa cà phê tiêu rồi nhồi chặt vào đậu.",
+      "Áp chảo mặt nhồi thịt trước 3 phút cho săn, trở đều các mặt thêm 3 phút rồi gắp ra.",
+      "Xào nhuyễn 2 quả cà chua với 80ml nước và 1 thìa canh nước mắm, cho đậu vào om lửa nhỏ 10 phút."
+    ],
+    "required": [
+      { "anyOf": ["dau-phu"], "amount": "3 bìa (300g)" },
+      { "anyOf": ["thit-heo-xay"], "amount": "150g" },
+      { "anyOf": ["ca-chua"], "amount": "2 quả" }
+    ]
+  },
+  {
+    "id": "trung-chien-la-lot",
+    "title": "Trứng chiên lá lốt",
+    "minutes": 15,
+    "servings": "2 người",
+    "prepMinutes": 5,
+    "cookMinutes": 10,
+    "steps": [
+      "Rửa sạch 10 lá lốt (khoảng 30g), để ráo và thái sợi thật nhỏ.",
+      "Đập 3 quả trứng gà vào tô, đánh tan cùng lá lốt, 1/2 thìa canh nước mắm và 1/4 thìa cà phê tiêu.",
+      "Làm nóng 1 thìa canh dầu ăn trên chảo lửa vừa, đổ trứng vào tráng đều.",
+      "Chiên 3 phút đến khi mặt dưới vàng, lật mặt chiên thêm 2 phút cho chín đều rồi cắt miếng."
+    ],
+    "required": [
+      { "anyOf": ["trung-ga"], "amount": "3 quả" },
+      { "anyOf": ["la-lot"], "amount": "10 lá (30g)" }
+    ]
+  },
+  {
+    "id": "canh-muop-nau-nam",
+    "title": "Canh mướp nấu nấm",
+    "minutes": 20,
+    "servings": "2–3 người",
+    "prepMinutes": 8,
+    "cookMinutes": 12,
+    "steps": [
+      "Gọt vỏ 2 quả mướp (~350g), cắt lát xéo; rửa sạch 150g nấm và cắt gốc.",
+      "Đun sôi 650ml nước với 1/2 thìa cà phê muối, cho nấm vào nấu trước 4 phút.",
+      "Thả mướp vào nấu thêm 4 phút trên lửa vừa đến khi mướp vừa chín xanh.",
+      "Nêm lại vừa miệng với 1/2 thìa cà phê hạt nêm, tắt bếp múc ra tô."
+    ],
+    "required": [
+      { "anyOf": ["muop"], "amount": "2 quả (~350g)" },
+      { "anyOf": ["nam"], "amount": "150g" }
+    ]
+  },
+  {
+    "id": "bi-do-ham-dau-xanh",
+    "title": "Bí đỏ hầm đậu xanh",
+    "minutes": 35,
+    "servings": "3–4 người",
+    "prepMinutes": 10,
+    "cookMinutes": 25,
+    "steps": [
+      "Ngâm 80g đậu xanh đãi vỏ trong nước ấm 15 phút; gọt vỏ 350g bí đỏ, cắt khối 3cm.",
+      "Cho đậu xanh vào nồi với 800ml nước, nấu lửa vừa 12 phút đến khi hạt đậu bắt đầu mềm.",
+      "Thêm bí đỏ vào hầm tiếp 10 phút đến khi bí chín bở và nước hơi sánh.",
+      "Nêm 2/3 thìa cà phê muối vừa miệng, tắt bếp dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["bi-do"], "amount": "350g" },
+      { "anyOf": ["dau-xanh"], "amount": "80g" }
+    ]
+  },
+  {
+    "id": "kho-qua-xao-trung",
+    "title": "Khổ qua xào trứng",
+    "minutes": 15,
+    "servings": "2 người",
+    "prepMinutes": 6,
+    "cookMinutes": 9,
+    "steps": [
+      "Bổ đôi 2 quả khổ qua (~250g), cạo sạch ruột trắng và thái lát mỏng; đánh tan 3 quả trứng với 1/2 thìa canh nước mắm.",
+      "Làm nóng 1 thìa canh dầu ăn, xào khổ qua lửa vừa 4 phút với 1/3 thìa cà phê muối cho dịu mềm.",
+      "Đổ trứng đều lên chảo khổ qua, giữ lửa vừa 2 phút cho trứng se mặt.",
+      "Đảo nhẹ thêm 2 phút đến khi trứng chín ráo, rắc chút tiêu rồi dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["kho-qua"], "amount": "2 quả (~250g)" },
+      { "anyOf": ["trung-ga"], "amount": "3 quả" }
+    ]
+  },
+  {
+    "id": "dau-bap-luoc",
+    "title": "Đậu bắp luộc chấm mắm",
+    "minutes": 12,
+    "servings": "2 người",
+    "prepMinutes": 5,
+    "cookMinutes": 7,
+    "steps": [
+      "Rửa sạch 250g đậu bắp, cắt nhẹ phần đầu cuống (không cắt sâu vào thân để giữ độ giòn).",
+      "Đun sôi 600ml nước với 1/2 thìa cà phê muối.",
+      "Cho đậu bắp vào luộc lửa lớn 3 phút đến khi vừa chín xanh, không luộc quá lâu.",
+      "Vớt ra ngâm nhanh nước mát 30 giây hoặc để ráo, dùng cùng chén nước mắm tỏi ớt (hoặc chao)."
+    ],
+    "required": [
+      { "anyOf": ["dau-bap"], "amount": "250g" }
     ]
   }
 ]

@@ -18,4 +18,7 @@ data class PantryItem(
     val ingredientId: String,
     val have: Boolean,
     val markedAt: LocalDate,
+    val compartment: PantryCompartment = PantryCompartment.CHILL,
 )
+
+enum class PantryCompartment { CHILL, FREEZE }

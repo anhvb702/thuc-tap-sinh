@@ -9,6 +9,12 @@ internal val emptyRecommendationCopy = EmptyRecommendationCopy(
     actionLabel = "Xem tủ lạnh",
 )
 
+/** Căn cứ quyết định Q2 (2026-11-16): Gợi ý đổi chế độ ăn khi bộ lọc loại hết mọi món. */
+internal val emptyDietRecommendationCopy = EmptyRecommendationCopy(
+    message = "Chưa có món phù hợp với chế độ ăn hiện tại. Bạn thử điều chỉnh chế độ ăn nhé.",
+    actionLabel = "Điều chỉnh chế độ ăn",
+)
+
 /** Nhãn rút gọn cho thẻ nhỏ (Trang chủ). Rỗng nghĩa là không hiện nhãn. Nhãn đầy đủ ở dưới vẫn dùng cho thẻ nổi bật. */
 internal fun shortReasonLabel(reason: RecommendationReason): String = when (reason) {
     RecommendationReason.USE_SOON -> "Dùng đồ sắp dùng"

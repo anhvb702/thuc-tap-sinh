@@ -8,6 +8,9 @@ internal object CookHistoryCopy {
     const val title = "Đã nấu"
     const val homeSubtitle = "Xem lại các món đã nấu"
     const val cookAgain = "Nấu lại"
+    const val delete = "Xóa"
+    const val restoreAndDelete = "Xóa & trả lại tủ"
+    const val restorePrompt = "Trả các nguyên liệu đã trừ về tủ lạnh rồi xóa dòng này?"
     const val unknownRecipe = "Món đã lưu"
     const val empty = "Chưa có món nào ở đây. Nấu xong, món sẽ nằm gọn trong này nhé"
 

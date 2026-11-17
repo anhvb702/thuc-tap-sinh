@@ -16,9 +16,12 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.PickUnit
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.SaveShelfEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.SaveUnitEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.Tap
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.ToggleCompartment
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect.SaveHave
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect.SaveShelfDays
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.minus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -178,6 +181,62 @@ class PantryGridReducerTest {
         val update = reduce(loaded(listOf(notHave("tom", "2026-10-01"))), Tap("tom"))
         assertEquals(have("tom", "2026-11-05"), update.state.pantry["tom"])
         assertEquals(listOf<PantryGridEffect>(SaveHave("tom", true, today)), update.effects)
+    }
+
+    /**
+     * Căn cứ quyết định Q13b (ngày 2026-11-16):
+     * Món hết rồi có lại: hạn tính từ ngày bấm "Có" lại, xem như vừa mua. Gỡ chặn SW-10.
+     * Món có have = false với markedAt từ 10 ngày trước, khi bấm "Có" thì markedAt
+     * trở thành today và daysLeft = shelfDays (nguyên vẹn hạn dùng mới, không bị quá hạn).
+     */
+    @Test
+    fun tap_restockItemDepletedTenDaysAgo_resetsMarkedAtToTodayAndDaysLeftEqualsShelfDays_q13b() {
+        val tenDaysAgo = today.minus(10, DateTimeUnit.DAY) // 2026-10-26 (trước today 2026-11-05 10 ngày)
+        // cai-ngot defaultShelfDays = 3. Nếu giữ markedAt cũ 10 ngày trước thì daysLeft = -7 (quá hạn).
+        val initialPantry = listOf(PantryItem(ingredientId = "cai-ngot", have = false, markedAt = tenDaysAgo))
+        val stateBefore = loaded(pantry = initialPantry)
+
+        // Trước khi bấm "Có": món đang hết (have = false), ô không hiển thị hạn đếm
+        val cellBefore = cell(stateBefore, "cai-ngot")
+        assertFalse(cellBefore.have)
+        assertNull(cellBefore.daysLeft)
+        assertNull(cellBefore.urgency)
+
+        // Người dùng bấm "Có" vào ngày hôm nay (today = 2026-11-05)
+        val update = reduce(stateBefore, Tap("cai-ngot"))
+
+        // Xác nhận markedAt cập nhật thành today, phát sinh SaveHave với markedAt = today
+        val updatedItem = update.state.pantry.getValue("cai-ngot")
+        assertTrue(updatedItem.have)
+        assertEquals(today, updatedItem.markedAt)
+        assertEquals(listOf<PantryGridEffect>(SaveHave("cai-ngot", true, today)), update.effects)
+
+        // Xác nhận cell hiển thị: daysLeft = shelfDays (nguyên vẹn 3 ngày mới, không bị quá hạn)
+        val cellAfter = cell(update.state, "cai-ngot")
+        assertTrue(cellAfter.have)
+        assertEquals(3, cellAfter.daysLeft)
+        assertEquals(Urgency.OK, cellAfter.urgency)
+    }
+
+    /**
+     * Căn cứ quyết định Q13b (ngày 2026-11-16):
+     * Khi bổ sung lại món đã hết qua AddIngredient, markedAt nhận today và daysLeft nguyên vẹn.
+     */
+    @Test
+    fun addIngredient_restockItemDepletedTenDaysAgo_resetsMarkedAtToTodayAndFullShelfDays_q13b() {
+        val tenDaysAgo = today.minus(10, DateTimeUnit.DAY)
+        val initialPantry = listOf(PantryItem(ingredientId = "ca-rot", have = false, markedAt = tenDaysAgo))
+        val stateBefore = loaded(pantry = initialPantry)
+
+        val update = reduce(stateBefore, AddIngredient("ca-rot", null))
+
+        val updatedItem = update.state.pantry.getValue("ca-rot")
+        assertTrue(updatedItem.have)
+        assertEquals(today, updatedItem.markedAt)
+        val cellAfter = cell(update.state, "ca-rot")
+        assertTrue(cellAfter.have)
+        assertEquals(14, cellAfter.daysLeft) // ca-rot defaultShelfDays = 14
+        assertEquals(Urgency.OK, cellAfter.urgency)
     }
 
     @Test
@@ -497,6 +556,7 @@ class PantryGridReducerTest {
         is PickUnit -> null
         SaveUnitEditor -> null
         CancelUnitEditor -> null
+        is ToggleCompartment -> null
     }
 
     @Test
