@@ -39,7 +39,9 @@ Không có state UI. Đầu vào là mức quan trọng của kênh cũ (`Int?`,
 | --- | --- | --- |
 | Test đỏ trước khi có code | Đạt | `Unresolved reference 'ReminderChannel'` khi chạy `ReminderChannelTest` |
 | `:shared:testDebugUnitTest` | Chưa chạy | Task không đụng `:shared` |
-| `:composeApp:testDebugUnitTest` (uncached) | Đạt | 356 test method, 0 method lỗi (đếm từ XML) |
+| `:composeApp:testDebugUnitTest` (uncached) | Đạt | 356 test method, 0 method lỗi (đếm từ XML); chạy lại sau khi khôi phục mutation và sau khi đổi thứ tự tạo/xóa kênh |
+| Thứ tự thao tác kênh | Đạt | Tạo kênh mới trước, xóa kênh cũ sau (`ReminderReceiver.kt`), để gián đoạn giữa chừng không làm mất lựa chọn im lặng |
+| Lệnh mutation | Ghi nhận | Mỗi mutation: sửa một chuỗi trong `ReminderChannel.kt` bằng PowerShell, chạy `:composeApp:testDebugUnitTest --tests ReminderChannelTest --rerun-tasks`, đếm method đỏ trong XML, rồi ghi lại file gốc |
 | `:composeApp:assembleDebug` | Đạt | BUILD SUCCESSFUL |
 | Mutation 1–5 | Bị bắt | Xem danh sách ở trên; file đã khôi phục (`restored=True`) |
 | Mutation 6 | Sống sót (test yếu) | Chỉ kiểm được trên máy Android 7 |

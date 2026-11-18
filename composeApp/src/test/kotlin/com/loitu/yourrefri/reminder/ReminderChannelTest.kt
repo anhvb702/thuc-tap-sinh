@@ -22,13 +22,13 @@ class ReminderChannelTest {
     }
 
     @Test
-    fun reminderIsSentWhenNoLegacyChannelOrLegacyChannelEnabled() {
+    fun notifyGateAllowsSendingWhenNoLegacyChannelOrLegacyChannelEnabled() {
         assertEquals(true, ReminderChannel.shouldNotify(null))
         assertEquals(true, ReminderChannel.shouldNotify(NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     @Test
-    fun reminderIsNotSentWhenUserBlockedLegacyChannel() {
+    fun notifyGateBlocksSendingWhenUserBlockedLegacyChannel() {
         assertEquals(false, ReminderChannel.shouldNotify(NotificationManager.IMPORTANCE_NONE))
     }
 

@@ -49,8 +49,9 @@ class ReminderReceiver : BroadcastReceiver() {
                 val legacyImportance = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID)?.importance else null
                 if (notice != null && ReminderChannel.shouldNotify(legacyImportance) && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     if (Build.VERSION.SDK_INT >= 26) {
-                        manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
+                        // Tạo kênh mới trước, xóa kênh cũ sau: nếu bị gián đoạn giữa chừng thì kênh cũ vẫn còn và lần sau cho kết quả giống hệt.
                         manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance)))
+                        manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
                     if (prefs.edit().putString("last_sent", today.toString()).commit()) {
                         val openApp = PendingIntent.getActivity(
