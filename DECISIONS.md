@@ -101,8 +101,26 @@ Bốn đề xuất planner (nhắc rã đông, hạn ngăn đông, ẩn đồ ng
 
 | Mục | Đề xuất |
 |---|---|
-| Từ vựng thống nhất | Chọn một cụm "nên dùng trước" cho mọi chỗ (hiện có năm cách gọi: "Cần dùng sớm", "Nên dùng sớm", "Nên dùng trước", "ưu tiên dùng sớm", "Dùng đồ sắp dùng") và một nhãn cho dải ở Trang chủ; coi `CLAUDE.md` mục Văn phong là danh sách từ cấm gốc, các file khác chỉ trỏ tới đó. Cân nhắc "Cần dùng sớm" và "Cần mua thêm" nghe như mệnh lệnh nhẹ, ngược quy tắc "gợi ý không ra lệnh". Cần người dùng chọn trước khi đổi chuỗi trong app. |
+| ~~Từ vựng thống nhất~~ **Đã chốt 2026-11-18 (Q1 a): dùng "Nên dùng trước" cho mọi chỗ. Đổi chuỗi trong app là việc của task riêng, chưa làm.** | Người dùng duyệt trong buổi grill-me 2026-11-18. |
 
 ## Quy ước ghi nhận
 
 Khi người dùng quyết định một mục đang mở, thêm quyết định, ngày và nguồn hội thoại vào đây, đồng thời cập nhật `SPEC.md` hoặc spec task liên quan. Không suy ra người dùng đã xác nhận một con số chỉ vì code đã triển khai. Không ghi trạng thái kiểm thử nếu không có kết quả quan sát được; bằng chứng phiên hiện tại nằm ở đầu `HANDOFF.md`.
+
+
+### Quyết định 2026-11-18 (buổi grill-me, Q1–Q10)
+
+Nguồn chung: người dùng trả lời "theo bạn hết" cho các đề xuất, riêng Q4 và Q10 chọn khác. Ghi chú: đây là quyết định của người dùng; chưa có code tương ứng.
+
+| # | Quyết định |
+|---|---|
+| Q1 | Dùng "Nên dùng trước" cho mọi chỗ, thay các cách gọi khác (xem dòng từ vựng ở trên). |
+| Q2 | R0: chỉ lọc nguyên liệu chính, thêm dòng cảnh báo rằng nước mắm, mắm tôm, dầu hào, bột nêm có thể chứa thành phần người dùng không muốn, và khuyên đọc nhãn nếu dị ứng. Thẻ dị nguyên để sau. Không dùng "an toàn", "không chứa", "đảm bảo". |
+| Q3 | Khối lượng và thể tích: người dùng nhập tay, không trừ tự động. Đơn vị đếm (quả, bó, khay): trừ theo khẩu phần công thức quy đổi sang đơn vị của mục. Cần danh sách khẩu phần mặc định do người dùng duyệt. |
+| Q4 | **Ngoại lệ thử nghiệm:** tải gói nhận dạng tiếng Việt từ hệ thống để thử. Ràng buộc "chạy đầy đủ offline, không phụ thuộc dịch vụ ngoài" tạm không áp dụng cho riêng tính năng giọng nói trong giai đoạn thử. Nếu thử cho kết quả tốt thì giữ có điều kiện; nếu không thì quay về cách ẩn nút khi chưa có gói. Ngoại lệ này chưa đổi `CLAUDE.md`. |
+| Q5 | Chỉ dùng nội bộ (cài APK), chưa phát hành Google Play. Nâng targetSdk, dùng AAB và khóa ký để sau. |
+| Q6 | Số liệu hạn bảo quản, `freezerShelfDays` và công thức mới cần người có kiến thức an toàn thực phẩm hoặc dinh dưỡng duyệt. Nếu chưa có người duyệt thì hoãn R3-02. |
+| Q7 | Làm R0–R2, dừng để người dùng thật thử, rồi quyết định tiếp. Thời gian và số người làm chưa xác định. |
+| Q8 | Mỗi loại nhắc (ngày thường, rã đông, Chủ Nhật) có công tắc riêng; vẫn tối đa 1 thông báo mỗi ngày. |
+| Q9 | Giữ sao lưu JSON không mã hóa; thêm cảnh báo khi xuất file. |
+| Q10 | **Để sau (backlog):** chia sẻ danh sách đi chợ qua Zalo từ điện thoại. Làm khi tủ lạnh và đi chợ đã ổn định và khi có thể gửi trực tiếp từ điện thoại. |

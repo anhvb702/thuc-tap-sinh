@@ -203,3 +203,11 @@ Phần này thay thế các mục SW-03 trở đi ở trên khi có chỗ khác 
 ### Bằng chứng và snapshot
 
 Test count, ảnh runtime, trạng thái emulator và giới hạn kiểm chứng thay đổi theo phiên; xem snapshot mới nhất ở đầu `HANDOFF.md`. Số test/build trong từng task là bằng chứng lịch sử tại thời điểm task chạy, không phải xác nhận trạng thái hiện tại. Release APK unsigned cần khóa ký do chủ dự án quản lý.
+
+
+### Backlog (chưa xếp đợt, theo quyết định 2026-11-18)
+
+- **Chia sẻ danh sách đi chợ qua Zalo** (Q10): để sau, khi tủ lạnh và đi chợ đã ổn định và khi có thể gửi từ điện thoại.
+- **Giọng nói tiếng Việt, tải gói từ hệ thống** (Q4): thử nghiệm có ngoại lệ với ràng buộc offline. Quyết định giữ hay ẩn nút sau khi thử xong.
+- **Thẻ dị nguyên** (Q2 phần sau): để sau R0.
+- **Khẩu phần mặc định cho đơn vị đếm** (Q3): cần người dùng duyệt danh sách trước khi làm.
