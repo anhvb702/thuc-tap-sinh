@@ -153,7 +153,8 @@ fun RecipeDetailScreen(
                 ) {
                     Icon(AppIcons.Clock, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
                     Text(
-                        text = recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ",
+                        text = (recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ") +
+                            " · " + servingsDifficultyLabel(recipe.minutes),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.muted,
                     )
