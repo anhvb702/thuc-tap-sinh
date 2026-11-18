@@ -48,7 +48,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 if (notice != null && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     val manager = context.getSystemService(NotificationManager::class.java)
                     if (Build.VERSION.SDK_INT >= 26) {
-                        manager.createNotificationChannel(NotificationChannel("daily_reminder", "Nhắc nhở YourRefri", NotificationManager.IMPORTANCE_DEFAULT))
+                        manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
+                        manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.IMPORTANCE))
                     }
                     if (prefs.edit().putString("last_sent", today.toString()).commit()) {
                         val openApp = PendingIntent.getActivity(
@@ -63,6 +64,8 @@ class ReminderReceiver : BroadcastReceiver() {
                             .setContentText(notice.body.lineSequence().take(2).joinToString(" · "))
                             .setStyle(android.app.Notification.BigTextStyle().bigText(notice.body))
                             .setContentIntent(openApp)
+                            .setCategory(android.app.Notification.CATEGORY_REMINDER)
+                            .setPriority(android.app.Notification.PRIORITY_HIGH)
                             .setAutoCancel(true).build())
                     }
                 }
@@ -81,7 +84,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
 @Suppress("DEPRECATION")
 private fun notificationBuilder(context: Context): android.app.Notification.Builder =
-    if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, "daily_reminder")
+    if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, ReminderChannel.ID)
     else android.app.Notification.Builder(context)
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
