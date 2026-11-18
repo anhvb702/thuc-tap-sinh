@@ -18,6 +18,7 @@ App Kotlin Multiplatform (Compose Multiplatform), Android trước. Màn chính 
 Ấm, ngắn, gợi ý không ra lệnh, luôn có đường lui.
 - Cấm: "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", điểm số, so sánh, streak, ngôn ngữ gây tội lỗi.
 - Dùng: "ước tính", "khoảng", "nên dùng trước". Đồ quá hạn: "kiểm tra lại xem còn dùng được không".
+- Thuật ngữ miền (nguyên liệu, mục trong tủ, ngăn, hạn ước tính…) ở `CONTEXT.md`: dùng đúng từ, tránh các từ ghi `_Avoid_`.
 - Danh sách từ cấm này là bản gốc; các tài liệu khác chỉ trỏ về đây.
 - `scripts/lint-copy.ps1 -Path <file>` quét từ cấm (file `.kt` chỉ quét chuỗi; dòng trích quy tắc ghi kèm `lint-copy: rule`).
 
@@ -65,6 +66,7 @@ Chạy trong PowerShell ở gốc repo, sau khi đặt `JAVA_HOME` (JDK 21) và 
 - Không tự tạo nhánh, PR, commit/push hoặc merge ngoài phạm vi được yêu cầu. Khi được yêu cầu: mỗi tính năng một nhánh và một PR vào `main` của fork `anhvb702/thuc-tap-sinh`. Hướng dẫn nhánh `ytuong/...` trong `README.md` là quy trình nộp ý tưởng của lớp, không áp dụng cho code app.
 - DoD: `:shared` test xanh, build `:composeApp` xanh, test khớp tiêu chí trong `docs/tests/`, UI có ảnh chụp emulator, thông báo và thời gian có checklist tay.
 - Không xóa hoặc `@Ignore` test cũ.
+- Test/build lỗi: thử tối đa 3 lần rồi khoanh vùng nguyên nhân trước khi sửa tiếp (xem `.agents/rules/test-retry-and-bug-isolation.md`).
 
 ## Môi trường (Windows)
 - Đường dẫn JDK 21 và Android SDK khác nhau theo máy (ví dụ `C:\Setups\JavaJDK\jdk-21.0.9` và `C:\Users\anhvb2\AppData\Local\Android\Sdk`; máy khác dùng `E:\Dev\Java\jdk-21.0.13+9` và `E:\Dev\Android\Sdk`). Kiểm `JAVA_HOME`, `ANDROID_HOME` trước khi build.
@@ -73,3 +75,17 @@ Chạy trong PowerShell ở gốc repo, sau khi đặt `JAVA_HOME` (JDK 21) và 
 - Chỉ build Android cục bộ.
 - File tải về đặt trong `downloads\` (mỗi lần một thư mục con riêng, đã `.gitignore`), hỏi người dùng trước khi tải.
 - Không đọc hay in nội dung `.env*`, keystore, `local.properties`, file service account.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues của `anhvb702/thuc-tap-sinh`, dùng CLI `gh`. Xem `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Dùng nhãn mặc định: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Xem `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` và `docs/adr/` ở gốc repo. Xem `docs/agents/domain.md`.

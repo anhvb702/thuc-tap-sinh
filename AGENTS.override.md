@@ -43,6 +43,16 @@ YourRefri KHÔNG PHẢI là phần mềm quản lý kho hàng thu nhỏ. YourRef
 
 ## Điều phối team agent
 
+### Cập nhật cách làm việc (2026-11-18, chỉ thị mới của người dùng)
+
+Mục này ghi đè các dòng cũ bên dưới khi mâu thuẫn.
+
+- **Vai:** Planner là Claude Opus (lập spec, chia task, quyết định nghiệm thu). Jev (TypeSafe) là bên quyết định điều hướng theo chỉ thị người dùng; nếu Jev lỗi hoặc `confidence` thấp thì Planner quyết. Người dùng tự thiết kế UI và review; không giao thiết kế UI cho agent. Codex viết code và chạy test.
+- **Song song:** không giới hạn số subagent. Việc độc lập, không đụng file chung thì chạy song song; việc lớn bẻ thành task ≤300 dòng diff, mỗi task một owner file. Agent ghi code trên `git worktree` riêng khi cần chạy đồng thời.
+- **Gradle:** vẫn chỉ một tiến trình Gradle tại một thời điểm (theo `CLAUDE.md`). Các agent xếp hàng chạy test.
+- **Codex:** chạy nền hoặc ở terminal riêng bằng `codex exec -s workspace-write -C <repo> "<prompt>"`, ghi log ra file. Sandbox `workspace-write` có thể không truy cập được `~/.gradle` (lỗi lock wrapper), nên lệnh Gradle nên do Claude chạy và kiểm lại.
+- **Chọn model:** rẻ nhất đủ làm. Việc cơ học theo spec: Codex `low`. Debug khó, review, mutation: Codex `high` hoặc Opus. Tra cứu, đọc log: Claude Haiku. Tài liệu: Claude Sonnet. Fable chỉ khi việc thật sự khó.
+
 **Jev (Orchestrator, TypeSafe System One):** nhận yêu cầu đầu vào, gọi `scripts/jev.ps1` (model `jev-latest`) để chọn vai bằng `choice`, chấm mức sẵn sàng bằng `score`, kiểm tra khẳng định bằng `noul`. Jev chỉ phân loại và chấm điểm, không sửa code. Nếu Jev lỗi hoặc `confidence` thấp, Não quyết định theo bảng dưới. Không gửi secret hay dữ liệu cá nhân cho Jev. Định nghĩa vai: `.claude/agents/jev.md`.
 
 Phân vai theo provider (chốt bởi người dùng). Mỗi provider một mảng việc:

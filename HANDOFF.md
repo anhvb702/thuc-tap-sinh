@@ -4,6 +4,49 @@
 > Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — Warm Minimalism, dữ liệu chỉ lưu trên thiết bị.
 > Đọc file này đầu tiên, rồi `DECISIONS.md` (quyết định Q1–Q28) và `PLAN.md` (đợt R0–R6). Đối chiếu `git log origin/main` trước khi tin bất kỳ dòng trạng thái nào.
 
+## Cập nhật lượt 2026-11-18: kiểm tra lại các feature
+
+Lượt này đo trên nhánh `feat/zalo-share-reminder-test-now` (đầu `840d488`, có thay đổi chưa commit), không phải `main`. Các số dưới đây không áp dụng cho `main`.
+
+**Gradle (tuần tự, một tiến trình tại một thời điểm, `--rerun-tasks --max-workers=1`):**
+- `:shared:testDebugUnitTest`: BUILD SUCCESSFUL, 556 test, 0 lỗi, 0 bỏ qua.
+- `:composeApp:testDebugUnitTest`: BUILD SUCCESSFUL, 428 test, 0 lỗi, 0 bỏ qua.
+- `:composeApp:assembleDebug`: BUILD SUCCESSFUL.
+
+**Tiêu chí "ok":** contract trong `docs/tests/` có dòng Đạt và có mutation Bị bắt. Phân loại dưới đây đọc lại từ contract, không chỉ từ PLAN.
+
+**Đạt (có bằng chứng unit):**
+- W2-02, W3-02, UX-02, UX-03, SW-01c-backup, SW-01c-data.
+- W3-04: số test trong biên bản là số lịch sử tại thời điểm task.
+- P12-03: 7 probe bị bắt; chưa kiểm tra chạm trên emulator.
+
+**Đạt nhưng có ghi chú (cần xử lý trước khi coi là hoàn tất):**
+- W1-08: logic và migration đạt; UI chưa có ảnh hoặc kiểm tra runtime.
+- W2-01: `emptyInputs_areEmpty` không bị mutation nào làm đỏ.
+- W2-04: một mutation (lấy ngày theo UTC, giữ `toInstant(tz)`) vẫn xanh, nằm ngoài bảng 6 dòng. Cần thêm ca gần nửa đêm địa phương.
+- W4-01: `emptyPantry_returnsEmpty` không bị mutation nào làm đỏ; thời gian thao tác ≤30 giây và persistence chưa đo.
+- UX-06: sau mutation có sửa wording nhưng không chạy lại mutation.
+
+**Chưa đạt runtime:**
+- W4-03: ở cỡ chữ 1,3, thẻ "Tủ lạnh hiện có" trên Trang chủ bị chèn (nút "Xem tủ" xuống hai dòng và đè chữ). Chưa sửa. TalkBack chưa kiểm tra.
+
+**Có một phần:** UX-04, UX-05 (còn dòng "Chưa chạy"), W2-03 (đổi múi giờ chưa kiểm).
+
+**Chưa chạy:** CR-01, PH3-02, PH3-03, W1-07a, SW-01c-wire.
+
+**Thiếu bằng chứng mutation đủ (có dòng Đạt nhưng không đủ bảng mutation):** W1-04, W1-05, W4-02, W5-01, W5-02A, W5-02B, W6-01, W6-02, SW-01a, SW-01b, UX-01, UX-10, QODO-01, P11-01..04, P12-01, P12-02, P12-02R.
+
+**Không có kết quả trong contract (không tính là xong):** khoảng 25 contract, gồm 4B-*, A-16, W1-01, W1-02, W1-03, W1-06, UX-07, UX-11, UX-12, PH5, SEED-02 và các contract tương tự. Phần lớn task R0–R5 và SW-03 đến SW-14 có code trên nhánh nhưng chưa có contract.
+
+**R6-01a:** phần `:shared` (seam `ReminderSnapshot`) xong, 6 mutation bị bắt; chưa commit. Phần `:composeApp` (loader Android, nối scheduler và receiver, chuyển `AppGraph`) chưa làm. Kiểm tay trên máy chưa làm.
+
+## Cập nhật lượt 2026-11-13: Batch 4B
+
+- Đã triển khai UI Gacha ở Trang chủ, danh sách đi chợ hằng ngày lưu SharedPreferences, đi chợ cuối tuần mở riêng không khóa, xác nhận theo tuần, badge “Đã nấu”, chọn ngăn, sao chép Zalo, chỉnh sửa Lite recipe và phản hồi rung nhẹ. Contracts: `docs/tests/4B-home-gacha.md`, `docs/tests/4B-daily-shopping-recipe.md`, `docs/tests/4B-weekly-shopping.md`.
+- Đã thêm test Compose cho logic Gacha, checklist, biên tập recipe và tuần; shared repository test có round-trip `upsert` cho Lite recipe. `NoEmojiInUiTest` chỉ miễn đúng chuỗi chúc mừng Gacha.
+- **Chưa xác minh test/build:** `:shared:testDebugUnitTest` dừng trước Gradle vì wrapper không tải được Gradle 8.5 (lỗi khởi tạo SSL trust store); đường dẫn JDK trong hướng dẫn không tồn tại trên máy này. JDK khả dụng là `C:\Setups\JavaJDK\jdk-21.0.9`, Android SDK là `C:\Users\anhvb2\AppData\Local\Android\Sdk`. Cần chạy tuần tự shared/compose tests và sáu mutation khi toolchain khả dụng. Runtime reduced-motion, TalkBack, rung và UI shopping cũng chưa được xác minh.
+
+
 ## Đã có trên `main` (đã merge, PR #4–#7)
 
 - **Bốn tab và màn phụ:** Trang chủ, Tủ lạnh, Món ăn, Cài đặt; chi tiết công thức, nấu rảnh tay, hộp "Dùng hết hay còn lại?", màn chúc mừng, lịch sử "Đã nấu" (đợt A: `A-01`–`A-15`; giao diện v2 và chế độ tối: `UI-01`, `UI-02`).
