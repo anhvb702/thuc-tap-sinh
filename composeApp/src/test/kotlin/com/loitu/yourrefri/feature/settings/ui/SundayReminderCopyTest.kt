@@ -21,7 +21,7 @@ class SundayReminderCopyTest {
 
     @Test
     fun weekdayReminderTimeLabel_saysWeekdaysOnly() {
-        assertEquals("Ngày thường lúc 16:00", SettingsPresentation.reminderTime)
+        assertEquals("Ngày thường lúc 17:30", SettingsPresentation.reminderTime)
     }
 
     @Test

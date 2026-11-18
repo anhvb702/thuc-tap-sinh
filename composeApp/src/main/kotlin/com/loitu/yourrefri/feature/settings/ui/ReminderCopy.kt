@@ -3,7 +3,7 @@ package com.loitu.yourrefri.feature.settings.ui
 import kotlinx.datetime.LocalTime
 
 internal object ReminderCopy {
-    const val title = "Bật nhắc lúc 16:00"
+    const val title = "Bật nhắc lúc 17:30"
     const val subtitle = "Tối đa 1 lời nhắc mỗi ngày, hạn là ước tính. Tắt cũng không sao, mở app vẫn thấy đủ."
 
     fun sundayTimeLabel(time: LocalTime): String =

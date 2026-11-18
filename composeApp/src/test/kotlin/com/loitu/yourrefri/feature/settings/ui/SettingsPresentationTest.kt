@@ -59,6 +59,6 @@ class SettingsPresentationTest {
             SettingsPresentation.importTitle, SettingsPresentation.importSubtitle,
         ).joinToString(" ")
         for (word in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")) assertFalse(all.contains(word, ignoreCase = true))
-        assertTrue(SettingsPresentation.reminderTime.contains("16:00"))
+        assertTrue(SettingsPresentation.reminderTime.contains("17:30"))
     }
 }

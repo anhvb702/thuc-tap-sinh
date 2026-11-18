@@ -13,8 +13,8 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
-/** Mặc định ngày thường 16:00 (R0-02, Q5). Màn Cài đặt chỉ được chọn trong khoảng [isWeekdayTimeAllowed]. */
-val WEEKDAY_REMINDER_TIME: LocalTime = LocalTime(16, 0)
+/** Mặc định ngày thường 17:30 cho đến khi màn Cài đặt chỉnh giờ được làm (Q5 đặt 16:00 làm mặc định; chưa bật để tránh đổi giờ ngầm). Màn Cài đặt chỉ được chọn trong khoảng [isWeekdayTimeAllowed]. */
+val WEEKDAY_REMINDER_TIME: LocalTime = LocalTime(17, 30)
 
 private val WEEKDAY_TIME_MIN = LocalTime(14, 0)
 private val WEEKDAY_TIME_MAX = LocalTime(20, 0)
