@@ -155,10 +155,10 @@ fun HomeScreen(
             text = MealCopy.heading(meal),
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             color = colors.text,
-            modifier = Modifier.padding(top = 2.dp, bottom = 10.dp),
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
         )
         // Chọn bữa: bữa trưa ưu tiên món nhanh, bữa tối như cũ; bữa này cũng là bữa ghi vào "Đã nấu".
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
             MealSlot.entries.forEach { option ->
                 PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
             }
@@ -187,7 +187,7 @@ fun HomeScreen(
                 )
             }
         } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(urgentItems, key = { it.ingredientId }) { item ->
                     UrgentCard(
                         ingredientId = item.ingredientId,
@@ -212,7 +212,7 @@ fun HomeScreen(
                 Text(emptyRecommendationCopy.actionLabel)
             }
         } else if (recipeStripScrolls(LocalDensity.current.fontScale)) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(recommendations, key = { it.recipe.id }) { r ->
                     HomeRecipeCard(r.recipe, r.reason, Modifier.width(176.dp)) { onNavigateToRecipe(r.recipe.id) }
                 }
@@ -222,7 +222,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IntrinsicSize.Max),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 recommendations.forEach { r ->
                     HomeRecipeCard(r.recipe, r.reason, Modifier.weight(1f).fillMaxHeight()) { onNavigateToRecipe(r.recipe.id) }
@@ -294,7 +294,7 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
         border = BorderStroke(1.dp, colors.primarySoft),
     ) {
         if (count == 0) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     IconBadge(AppIcons.Fridge, colors.primarySoft, colors.accentText)
                     Column {
@@ -400,9 +400,9 @@ private fun UrgentCard(ingredientId: String, name: String, caption: String, onCl
         border = BorderStroke(1.dp, colors.line),
     ) {
         Column(
-            modifier = Modifier.padding(10.dp),
+            modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FoodThumb(ingredientId = ingredientId, size = 64.dp, shape = RoundedCornerShape(14.dp), urgent = true)
             Text(
@@ -434,7 +434,7 @@ private fun HomeRecipeCard(recipe: Recipe, reason: RecommendationReason, modifie
         color = colors.surface,
         border = BorderStroke(1.dp, colors.line),
     ) {
-        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             RecipeThumb(recipeId = recipe.id, size = 64.dp)
             Text(
                 recipe.title,
