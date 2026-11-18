@@ -1,17 +1,20 @@
 package com.loitu.yourrefri.reminder
 
 /**
- * Ảnh món đóng gói trong app cho popup nhắc ăn uống. Thông báo hiện chưa gắn với một món cụ thể,
- * nên ảnh luân phiên theo ngày; chọn món theo nguyên liệu sắp hết hạn là bước sau.
+ * Ảnh món cho popup nhắc ăn uống. Mỗi ảnh gắn với một công thức thật trong recipes.json,
+ * để bấm vào popup mở đúng món. Thông báo chưa gắn với một món theo nguyên liệu, nên món luân phiên theo ngày.
  */
 object ReminderPicture {
-    val ASSETS: List<String> = listOf(
-        "notify/trung-xao-ca-chua.jpg",
-        "notify/ga-ap-chao.jpg",
-        "notify/canh-cai-dau-phu.jpg",
-        "notify/dau-phu-sot-ca.jpg",
+    data class Entry(val recipeId: String, val assetPath: String)
+
+    val ENTRIES: List<Entry> = listOf(
+        Entry("thit-kho-trung", "notify/thit-kho-trung.jpg"),
+        Entry("canh-rau-ngot-thit-bam", "notify/canh-rau-ngot-thit-bam.jpg"),
+        Entry("dau-phu-sot-ca-chua", "notify/dau-phu-sot-ca-chua.jpg"),
     )
 
-    /** day: số ngày trong năm (1..366); cùng ngày luôn ra cùng ảnh. */
-    fun assetFor(day: Int): String = ASSETS[Math.floorMod(day - 1, ASSETS.size)]
+    /** day: số ngày trong năm (1..366); cùng ngày luôn ra cùng món. */
+    fun entryFor(day: Int): Entry = ENTRIES[Math.floorMod(day - 1, ENTRIES.size)]
+
+    fun assetFor(day: Int): String = entryFor(day).assetPath
 }

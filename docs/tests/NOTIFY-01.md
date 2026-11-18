@@ -56,3 +56,14 @@ Không có state UI. Đầu vào là mức quan trọng của kênh cũ (`Int?`,
 - Test: `ReminderPictureTest` (3 test). Mutation "luôn ảnh đầu" bị bắt (1 method đỏ). `:composeApp:testDebugUnitTest` (uncached): 359 method, 0 lỗi.
 - Hiển thị bằng `BigPictureStyle` khi đọc được ảnh, nếu không dùng `BigTextStyle` như cũ. Việc hiện ảnh trên popup thật chưa kiểm.
 - Chưa làm: nút hành động (ví dụ "Nấu ngay"), và chọn món theo nguyên liệu sắp hết hạn.
+
+## Bổ sung: popup kiểu thẻ, mở món, nút thử ngay
+
+- Popup: `RemoteViews` (`res/layout/notification_reminder.xml`), nền terracotta `#D98C70`, chữ `#343B34` (tương phản tốt hơn chữ trắng trên nền này), ảnh món cắt tròn ở góc dưới phải (216 px), `DecoratedCustomViewStyle`. Không dùng hình con cú của Duolingo.
+- Ảnh món: 3 món có công thức thật trên `main` (`thit-kho-trung`, `canh-rau-ngot-thit-bam`, `dau-phu-sot-ca-chua`), thu nhỏ 720 px JPEG, khoảng 390 KB tổng. Món trong ảnh luân phiên theo ngày (`ReminderPicture.entryFor`).
+- Bấm popup: `PendingIntent` mang `reminder_recipe_id`. `MainActivity` đọc khi tạo mới và trong `onNewIntent` (manifest `singleTop`), ghi vào `ReminderOpenRequest`; `MainScaffold` mở nấu rảnh tay của món đó. Xoay màn hình không mở lại món.
+- Nút "Thử thông báo ngay" (Cài đặt, mục Thông báo): gửi broadcast `ACTION_TEST` tới `ReminderReceiver`. Chạy cả khi nhắc hằng ngày đang tắt, không đụng `last_sent`, vẫn tôn trọng kênh bị chặn và quyền thông báo. Nếu chưa có quyền thì xin quyền trước.
+- Test: `ReminderPictureTest` (4 test, kiểm id công thức có trong `recipes.json` và ảnh có trong APK), `ReminderIntentsTest` (2 test). `:composeApp:testDebugUnitTest` (uncached): 362 method, 0 lỗi. `:composeApp:assembleDebug` thành công.
+- Mutation (đếm method đỏ): chọn ảnh luôn món đầu → 1 đỏ; bỏ kiểm tra rỗng intent → 2 đỏ; id công thức sai chính tả → 2 đỏ. Các file đã khôi phục.
+- Chưa kiểm trên thiết bị: popup thật có thẻ và ảnh, bấm popup mở đúng món, nút thử ngay, và hiển thị trên Android 7 và Android 12 trở lên.
+- Chưa làm: chọn món theo nguyên liệu sắp hết hạn; các món `trung-xao-ca-chua`, `ga-ap-chao`, `canh-cai-dau-phu` chưa có công thức nên chưa dùng.
