@@ -314,6 +314,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         },
         appVersionName = appVersionName,
         cookHistoryState = cookHistoryState,
+        onDeleteCook = { id -> cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(id)) },
         onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
         currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
         sundayTime = sundayTime,
