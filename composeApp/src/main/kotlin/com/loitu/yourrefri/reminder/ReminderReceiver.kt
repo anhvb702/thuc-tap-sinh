@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.app.PendingIntent
+import android.app.Notification
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationManagerCompat
 import com.loitu.yourrefri.MainActivity
@@ -15,6 +17,8 @@ import com.loitu.yourrefri.R
 import com.loitu.yourrefri.feature.notice.logic.DailyNotice
 import com.loitu.yourrefri.feature.notice.logic.planDailyNotice
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.MealSlot
+import com.loitu.yourrefri.feature.recipe.data.MealSlotKey
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
@@ -60,6 +64,9 @@ class ReminderReceiver : BroadcastReceiver() {
                     val manager = context.getSystemService(NotificationManager::class.java)
                     if (Build.VERSION.SDK_INT >= 26) {
                         manager.createNotificationChannel(NotificationChannel("daily_reminder", "Nhắc nhở YourRefri", NotificationManager.IMPORTANCE_DEFAULT))
+                        manager.createNotificationChannel(NotificationChannel(ReminderNotificationChannel.ID, ReminderNotificationChannel.NAME, ReminderNotificationChannel.IMPORTANCE).apply {
+                            setSound(null, null)
+                        })
                     }
                     val shouldNotify = forceTest || prefs.edit().putString(lastSentKey, today.toString()).commit()
                     if (shouldNotify) {
@@ -71,10 +78,23 @@ class ReminderReceiver : BroadcastReceiver() {
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         )
                         val builder = notificationBuilder(context)
+                        val dinnerRecipeId = snapshot.weeklyPlan.firstOrNull {
+                            it.day == today && it.meal == MealSlot.DINNER && MealSlotKey(today, MealSlot.DINNER) !in snapshot.disabledMeals
+                        }?.recipeId
+                        val imageResourceId = dinnerRecipeId?.let { recipeId ->
+                            context.resources.getIdentifier(dishImageResName(recipeId), "drawable", context.packageName).takeIf { it != 0 }
+                        }
+                        val notificationStyle = if (imageResourceId != null) {
+                            val bitmap = BitmapFactory.decodeResource(context.resources, imageResourceId)
+                            builder.setLargeIcon(bitmap)
+                            Notification.BigPictureStyle().bigPicture(bitmap).setSummaryText(notice.body)
+                        } else {
+                            Notification.BigTextStyle().bigText(notice.body)
+                        }
                         manager.notify(notificationId, builder.setSmallIcon(R.drawable.ic_notification_fridge)
                             .setContentTitle(notice.title)
                             .setContentText(notice.body.lineSequence().take(2).joinToString(" · "))
-                            .setStyle(android.app.Notification.BigTextStyle().bigText(notice.body))
+                            .setStyle(notificationStyle)
                             .setContentIntent(openApp)
                             .setAutoCancel(true).build())
                     }
@@ -141,8 +161,14 @@ internal fun forceTestDishSuggestion(
 
 @Suppress("DEPRECATION")
 private fun notificationBuilder(context: Context): android.app.Notification.Builder =
-    if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, "daily_reminder")
-    else android.app.Notification.Builder(context)
+    if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, ReminderNotificationChannel.ID)
+    else android.app.Notification.Builder(context).setPriority(Notification.PRIORITY_HIGH).setSound(null)
+
+internal object ReminderNotificationChannel {
+    const val ID = "daily_reminder_v2"
+    const val NAME = "Nhắc nhở YourRefri"
+    const val IMPORTANCE = NotificationManager.IMPORTANCE_HIGH
+}
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
