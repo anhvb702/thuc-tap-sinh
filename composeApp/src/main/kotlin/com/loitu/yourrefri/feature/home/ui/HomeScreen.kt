@@ -4,7 +4,9 @@ import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -208,6 +210,15 @@ internal fun gachaIngredients(recipe: Recipe, state: PantryGridState): List<Gach
         GachaIngredient(present ?: slot.anyOf.first(), present != null)
     }
 
+/**
+ * Dải quay: [candidates] lặp 3 vòng, rồi món trúng, rồi 3 món đệm bên phải.
+ * Trả về dải và vị trí món trúng (luôn có món đệm ở cả hai bên).
+ */
+internal fun gachaReel(candidates: List<Recipe>, winner: Recipe): Pair<List<Recipe>, Int> {
+    val prefix = List(3) { candidates }.flatten()
+    return (prefix + listOf(winner) + candidates.take(3)) to prefix.size
+}
+
 internal fun pickHomeGacha(recipes: List<Recipe>, state: PantryGridState, previousId: String?, random: Random): RandomPick? =
     pickRandomRecipe(recipes, state, previousId.takeIf { recipes.size > 1 }, random)
 
@@ -297,6 +308,8 @@ fun HomeScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Không biết ăn gì? Đừng lo", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
                 Button(onClick = { showGacha = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Icon(AppIcons.Wheel, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
                     Text("Nấu ngẫu nhiên")
                 }
                 Text("Miễn phí, không mua gì thêm, chỉ chọn món ăn thôi.", style = MaterialTheme.typography.bodySmall, color = colors.muted)
@@ -409,15 +422,17 @@ private fun HomeGachaDialog(
     var landed by remember { mutableStateOf(false) }
     var added by remember { mutableStateOf(false) }
     val position = remember { Animatable(0f) }
-    val reel = remember(recipes, pick, roll) {
+    // Dải quay: món trúng nằm giữa, có thêm món đệm bên phải để không bị trống.
+    val (reel, winnerIndex) = remember(recipes, pick, roll) {
         val candidates = recipes.shuffled(Random(roll)).take(8)
-        if (pick == null) emptyList() else List(3) { candidates }.flatten() + listOf(pick!!.recipe)
+        val winner = pick?.recipe
+        if (winner == null) emptyList<Recipe>() to 0 else gachaReel(candidates, winner)
     }
     LaunchedEffect(roll, pick?.recipe?.id) {
         landed = false
         if (pick != null) {
             position.snapTo(0f)
-            val finalPosition = reel.lastIndex.toFloat()
+            val finalPosition = winnerIndex.toFloat()
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled()) {
                 position.animateTo(finalPosition, tween(durationMillis = 4200, easing = FastOutSlowInEasing))
             } else {
@@ -443,9 +458,14 @@ private fun HomeGachaDialog(
                             Modifier
                                 .wrapContentWidth(unbounded = true, align = Alignment.Start)
                                 .offset(x = left - (position.value * 136).dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            reel.forEach { item ->
+                            reel.forEachIndexed { index, item ->
+                                // Vạch chéo đen tách hai món liền nhau.
+                                if (index > 0) {
+                                    Canvas(Modifier.width(8.dp).height(84.dp)) {
+                                        drawLine(color = Color.Black, start = Offset(0f, size.height), end = Offset(size.width, 0f), strokeWidth = 3f) // guard:allow (vạch đen theo yêu cầu, không theo theme)
+                                    }
+                                }
                                 Surface(Modifier.width(128.dp).height(84.dp), shape = RoundedCornerShape(12.dp), color = colors.surface) {
                                     Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(8.dp)) {
                                         Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis, color = colors.text)
