@@ -68,6 +68,18 @@ Chạy trong PowerShell ở gốc repo, sau khi đặt `JAVA_HOME` (JDK 21) và 
 - Không xóa hoặc `@Ignore` test cũ.
 - Test/build lỗi: thử tối đa 3 lần rồi khoanh vùng nguyên nhân trước khi sửa tiếp (xem `.agents/rules/test-retry-and-bug-isolation.md`).
 
+## Quy trình với skill (yêu cầu của người dùng, áp dụng cho mọi task)
+Thứ tự, mỗi bước dùng đúng skill:
+1. **Ý tưởng / thiết kế:** `superpowers:brainstorming` trước khi làm bất kỳ việc gì mới.
+2. **Lập kế hoạch:** `superpowers:writing-plans` để viết plan từ spec đã chốt.
+3. **Thực hiện:** `superpowers:executing-plans`; nếu chia được việc độc lập thì `superpowers:subagent-driven-development` hoặc `superpowers:dispatching-parallel-agents`. Theo AGENTS.override.md, code do Codex làm và Claude không tự code; Claude điều phối và kiểm tra.
+4. **Test trước:** `superpowers:test-driven-development`. Test phải đỏ trước khi viết code.
+5. **Treo hoặc bug:** dùng một trong `mattpocock-skills:diagnosing-bugs`, `superpowers:systematic-debugging`, `superpowers:diagnosing-superpowers`. Không thử lại mù quáng.
+6. **Review:** `superpowers:requesting-code-review` để xin review; `superpowers:receiving-code-review` để nhận ý kiến và sửa. Quy trình merge chi tiết ở `.agents/rules/feature-ship.md`.
+7. **Kết thúc:** chỉ báo xong khi đã qua `superpowers:verification-before-completion`: có lệnh đã chạy và kết quả thật trong báo cáo.
+
+Quy tắc đi kèm: việc đưa vào `main` cần người dùng nói "ok" sau khi review sạch; không tự merge.
+
 ## Môi trường (Windows)
 - Đường dẫn JDK 21 và Android SDK khác nhau theo máy (ví dụ `C:\Setups\JavaJDK\jdk-21.0.9` và `C:\Users\anhvb2\AppData\Local\Android\Sdk`; máy khác dùng `E:\Dev\Java\jdk-21.0.13+9` và `E:\Dev\Android\Sdk`). Kiểm `JAVA_HOME`, `ANDROID_HOME` trước khi build.
 - Toolchain giữ nguyên theo `DECISIONS.md`: Gradle 8.5, AGP 8.3.2, compile/target SDK 34, minSdk 24, Kotlin 2.2.20, Compose Multiplatform 1.7.3. Không nâng phiên bản.
