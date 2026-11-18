@@ -71,16 +71,20 @@ class ReminderReceiver : BroadcastReceiver() {
                     val shouldNotify = forceTest || prefs.edit().putString(lastSentKey, today.toString()).commit()
                     if (shouldNotify) {
                         if (!forceTest && isContextualNudge) prefs.edit().putString("last_nudge_sent", today.toString()).commit()
-                        val openApp = PendingIntent.getActivity(
-                            context,
-                            notificationId,
-                            Intent(context, MainActivity::class.java),
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                        )
-                        val builder = notificationBuilder(context)
                         val dinnerRecipeId = snapshot.weeklyPlan.firstOrNull {
                             it.day == today && it.meal == MealSlot.DINNER && MealSlotKey(today, MealSlot.DINNER) !in snapshot.disabledMeals
                         }?.recipeId
+                        val requestedRecipeId = notificationRecipeRequest(dinnerRecipeId, snapshot.recipes.map { it.id })
+                        val openIntent = Intent(context, MainActivity::class.java).apply {
+                            requestedRecipeId?.let { putExtra(NOTIFICATION_RECIPE_EXTRA, it) }
+                        }
+                        val openApp = PendingIntent.getActivity(
+                            context,
+                            notificationId,
+                            openIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                        )
+                        val builder = notificationBuilder(context)
                         val imageResourceId = dinnerRecipeId?.let { recipeId ->
                             context.resources.getIdentifier(dishImageResName(recipeId), "drawable", context.packageName).takeIf { it != 0 }
                         }
