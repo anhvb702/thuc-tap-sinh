@@ -57,6 +57,7 @@ internal fun WeeklyMealPlanSection(
     onSwap: (Int) -> Unit,
     onRequestCook: (Recipe) -> Unit,
     updatedRecipeResult: Pair<String, String>?,
+    weekStart: kotlinx.datetime.LocalDate? = null,
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -132,7 +133,8 @@ internal fun WeeklyMealPlanSection(
             Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(dayMealCardHeader(day.dayLabelVi, day.mealTypeVi), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
+                        val dayTitle = weekStart?.let { dayDateLabel(it, day.dayIndex, day.dayLabelVi) } ?: day.dayLabelVi
+                        Text(dayMealCardHeader(dayTitle, day.mealTypeVi),style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
                         val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
                         Text(totalMinutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     }

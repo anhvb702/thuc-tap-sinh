@@ -89,6 +89,8 @@ import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 fun RecipeScreen(
     state: PantryGridState,
     recipes: List<Recipe>,
+    // Ngày bắt đầu tuần thực đơn, để nhãn ngày hiện "Thứ 4 · 18.11"; null thì hiện nhãn cũ.
+    weekStart: kotlinx.datetime.LocalDate? = null,
     initialRecipeId: String? = null,
     onCookRecipe: ((Recipe, List<String>) -> Unit)? = null,
     initialMode: RecipeScreenMode = RecipeScreenMode.DAILY,
@@ -270,6 +272,7 @@ fun RecipeScreen(
         when (mode) {
             RecipeScreenMode.WEEKLY -> WeeklyMealPlanSection(
                 plan = weeklyPlan,
+                weekStart = weekStart,
                 goal = goal,
                 preferences = preferences,
                 onGoal = {

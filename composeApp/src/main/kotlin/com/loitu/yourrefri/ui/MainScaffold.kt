@@ -354,6 +354,7 @@ fun MainScaffold(
                     } else RecipeScreen(
                     state = state,
                     recipes = visibleRecipes,
+                    weekStart = weeklyMealPlanState.weekStart,
                     favoriteIds = favoriteIds,
                     onToggleFavorite = onToggleFavorite,
                     onOpenHandsFree = { handsFreeRecipeId = it },
