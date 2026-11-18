@@ -11,4 +11,10 @@ object ReminderChannel {
     const val LEGACY_ID = "daily_reminder"
     const val NAME = "Nhắc nhở YourRefri"
     const val IMPORTANCE = NotificationManager.IMPORTANCE_HIGH
+
+    /**
+     * Người dùng đã chặn kênh cũ trong Cài đặt Android thì không gửi lại qua kênh mới.
+     * legacyImportance = null nghĩa là chưa có kênh cũ (cài mới hoặc đã xóa).
+     */
+    fun shouldNotify(legacyImportance: Int?): Boolean = legacyImportance != NotificationManager.IMPORTANCE_NONE
 }

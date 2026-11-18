@@ -45,8 +45,9 @@ class ReminderReceiver : BroadcastReceiver() {
                     runBlocking { repository.observe().first() }, base.map { it.copy(userShelfDays = overrides[it.id]) },
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
                 )
-                if (notice != null && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
-                    val manager = context.getSystemService(NotificationManager::class.java)
+                val manager = context.getSystemService(NotificationManager::class.java)
+                val legacyImportance = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID)?.importance else null
+                if (notice != null && ReminderChannel.shouldNotify(legacyImportance) && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     if (Build.VERSION.SDK_INT >= 26) {
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                         manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.IMPORTANCE))
@@ -66,6 +67,7 @@ class ReminderReceiver : BroadcastReceiver() {
                             .setContentIntent(openApp)
                             .setCategory(android.app.Notification.CATEGORY_REMINDER)
                             .setPriority(android.app.Notification.PRIORITY_HIGH)
+                            .apply { if (Build.VERSION.SDK_INT < 26) setDefaults(android.app.Notification.DEFAULT_VIBRATE) }
                             .setAutoCancel(true).build())
                     }
                 }
