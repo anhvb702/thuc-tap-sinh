@@ -251,7 +251,8 @@ fun HomeScreen(
     val zones = pantryZoneCounts(haveItems)
     val urgentEntries = buildUrgentStrip(state, leftovers)
     // Bữa trưa ưu tiên món nhanh; bữa tối giữ nguyên danh sách.
-    val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state).take(homeRecipeLimit)
+    val shownMeal = homeMealChoice(meal)
+    val recommendations = recommendRecipes(recipesForMeal(recipes, shownMeal), state).take(homeRecipeLimit)
     var showGacha by remember { mutableStateOf(false) }
 
     if (showGacha) {
@@ -285,8 +286,8 @@ fun HomeScreen(
         )
         // Chọn bữa: bữa trưa ưu tiên món nhanh, bữa tối như cũ; bữa này cũng là bữa ghi vào "Đã nấu".
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 14.dp)) {
-            MealSlot.entries.forEach { option ->
-                PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
+            homeMealChoices().forEach { option ->
+                PillChip(label = MealCopy.label(option), selected = option == shownMeal, onClick = { onMealChange(option) })
             }
         }
 
