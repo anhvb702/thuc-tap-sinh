@@ -35,8 +35,8 @@ class CookLogMealRepositoryTest {
     fun tearDown() = driver.close()
 
     @Test
-    fun schemaVersionIs7() {
-        assertEquals(7L, YourRefriDatabase.Schema.version)
+    fun schemaVersionIs8() {
+        assertEquals(8L, YourRefriDatabase.Schema.version)
     }
 
     @Test
