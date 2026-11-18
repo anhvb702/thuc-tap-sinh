@@ -42,7 +42,9 @@ import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
+import com.loitu.yourrefri.shared.db.DatabaseTooNewException
 import com.loitu.yourrefri.shared.db.DriverFactory
+import com.loitu.yourrefri.ui.DatabaseTooNewNotice
 import com.loitu.yourrefri.shared.db.createDatabase
 import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -65,7 +67,9 @@ private object AppGraph {
         cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
 
     private fun build(context: android.content.Context): AppDependencies {
-        val driver = DriverFactory(context).create()
+        val factory = DriverFactory(context)
+        factory.ensureOpenable()
+        val driver = factory.create()
         val db = createDatabase(driver)
         val repo = PantryRepositoryImpl(
             db = db,
@@ -94,14 +98,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             var themeMode by remember { mutableStateOf(ThemePrefs.read(context)) }
+            // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
+            val dbTooNew = remember(context) {
+                runCatching { AppGraph.get(context) }.exceptionOrNull() as? DatabaseTooNewException
+            }
             YourRefriTheme(darkTheme = themeMode.isDark(isSystemInDarkTheme())) {
-                App(
-                    themeMode = themeMode,
-                    onThemeModeChange = { mode ->
-                        themeMode = mode
-                        ThemePrefs.write(context, mode)
-                    },
-                )
+                if (dbTooNew != null) {
+                    DatabaseTooNewNotice()
+                } else {
+                    App(
+                        themeMode = themeMode,
+                        onThemeModeChange = { mode ->
+                            themeMode = mode
+                            ThemePrefs.write(context, mode)
+                        },
+                    )
+                }
             }
         }
     }

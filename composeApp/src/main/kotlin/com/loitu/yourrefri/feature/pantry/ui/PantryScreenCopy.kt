@@ -5,6 +5,10 @@ internal object PantryScreenCopy {
     const val addFoodDescription = "Thêm thực phẩm vào tủ"
     const val soonEmpty = "Tủ đang ổn, chưa có món nào cần dùng sớm"
     const val cookFromSoonAction = "Nấu gì từ các món này?"
+    const val eyebrow = "TỦ LẠNH"
+    const val title = "Nhà mình đang có"
+    const val addPrimaryAction = "+ Thêm nguyên liệu"
+    const val voiceAction = "Nói"
 
     fun soonChipLabel(count: Int): String = "Nên dùng sớm · $count"
 }
