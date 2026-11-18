@@ -6,21 +6,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,10 +25,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -143,64 +133,156 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(
-            text = greetingText(state.hourOfDay),
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.muted,
-        )
-        Text(
-            text = MealCopy.heading(meal),
-            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-            color = colors.text,
-            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
-        )
-        // Chọn bữa: bữa trưa ưu tiên món nhanh, bữa tối như cũ; bữa này cũng là bữa ghi vào "Đã nấu".
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
+        // Nhãn nhỏ rồi đến câu hỏi chính, giống bố cục Figma "01 · Trang chủ".
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = "BẾP NHÀ",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = colors.accentText,
+            )
+            Text(
+                text = greetingText(state.hourOfDay),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.muted,
+            )
+            Text(
+                text = MealCopy.heading(meal),
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = colors.text,
+            )
+        }
+
+        // Chọn bữa: bữa này cũng là bữa ghi vào "Đã nấu".
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MealSlot.entries.forEach { option ->
                 PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
             }
         }
 
-        WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
-        Spacer(modifier = Modifier.height(16.dp))
-
         PantrySummaryCard(count = haveItems.size, zones = zones, onOpenPantry = onNavigateToPantry)
 
-        Spacer(modifier = Modifier.height(24.dp))
+        UseSoonSection(items = urgentItems, onOpenPantry = onNavigateToPantry)
 
-        SectionHeader(title = "Cần dùng sớm", action = "Xem tất cả", onAction = onNavigateToPantry)
-        if (urgentItems.isEmpty()) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                color = colors.surface,
-                border = BorderStroke(1.dp, colors.line),
-            ) {
-                Text(
-                    text = "Chưa có món nào cần ưu tiên dùng sớm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.accentText,
-                    modifier = Modifier.padding(16.dp),
-                )
+        RecommendationSection(
+            recommendations = recommendations,
+            onNavigateToRecipe = onNavigateToRecipe,
+            onNavigateToRecipes = onNavigateToRecipes,
+            onNavigateToPantry = onNavigateToPantry,
+        )
+
+        WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
+
+        if (onNavigateToHistory != null) {
+            ShortcutCard(
+                icon = AppIcons.Clock,
+                title = CookHistoryCopy.title,
+                subtitle = CookHistoryCopy.homeSubtitle,
+                onClick = onNavigateToHistory,
+            )
+        }
+
+        Text(
+            text = "Chỉ trên máy bạn · Không cần tài khoản",
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.muted,
+        )
+    }
+}
+
+// Mục "Nên dùng trước": một thẻ cam nhạt gom các món sắp hết hạn ước tính.
+@Composable
+private fun UseSoonSection(items: List<com.loitu.yourrefri.feature.pantry.logic.PantryCell>, onOpenPantry: () -> Unit) {
+    val colors = AppTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Nên dùng trước",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                color = colors.text,
+            )
+            TextButton(onClick = onOpenPantry, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Xem tủ", color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                Icon(AppIcons.Chevron, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(18.dp))
             }
+        }
+        if (items.isEmpty()) {
+            Text(
+                text = "Chưa có món nào cần ưu tiên dùng sớm",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.muted,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
         } else {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(urgentItems, key = { it.ingredientId }) { item ->
-                    UrgentCard(
-                        ingredientId = item.ingredientId,
-                        name = item.nameVi,
-                        caption = urgentCaption(item.daysLeft ?: 0),
-                        onClick = onNavigateToPantry,
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable(role = Role.Button, onClick = onOpenPantry),
+                shape = RoundedCornerShape(20.dp),
+                color = colors.warnSoft,
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Hạn là ước tính",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.warnText,
                     )
+                    items.forEach { item ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            FoodThumb(ingredientId = item.ingredientId, size = 36.dp, shape = CircleShape, urgent = true)
+                            Column {
+                                Text(
+                                    text = item.nameVi,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = colors.text,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = urgentCaption(item.daysLeft ?: 0),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.warnText,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        SectionHeader(title = "Gợi ý bữa cơm hôm nay", action = "Xem thêm", onAction = onNavigateToRecipes)
+// Gợi ý bữa cơm: danh sách hàng (ảnh, tên, thời gian, nhãn), đúng thứ tự Figma.
+@Composable
+private fun RecommendationSection(
+    recommendations: List<com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation>,
+    onNavigateToRecipe: (String) -> Unit,
+    onNavigateToRecipes: () -> Unit,
+    onNavigateToPantry: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Gợi ý bữa cơm hôm nay",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
+                color = colors.text,
+            )
+            TextButton(onClick = onNavigateToRecipes, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Xem thêm", color = colors.accentText, fontWeight = FontWeight.SemiBold)
+            }
+        }
         if (recommendations.isEmpty()) {
             Text(
                 text = emptyRecommendationCopy.message,
@@ -210,74 +292,14 @@ fun HomeScreen(
             TextButton(onClick = onNavigateToPantry, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(emptyRecommendationCopy.actionLabel)
             }
-        } else if (recipeStripScrolls(LocalDensity.current.fontScale)) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(recommendations, key = { it.recipe.id }) { r ->
-                    HomeRecipeCard(r.recipe, r.reason, Modifier.width(176.dp)) { onNavigateToRecipe(r.recipe.id) }
-                }
-            }
         } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Max),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                recommendations.forEach { r ->
-                    HomeRecipeCard(r.recipe, r.reason, Modifier.weight(1f).fillMaxHeight()) { onNavigateToRecipe(r.recipe.id) }
-                }
+            recommendations.forEach { r ->
+                HomeRecipeRow(r.recipe, r.reason) { onNavigateToRecipe(r.recipe.id) }
             }
         }
-
-        if (onNavigateToHistory != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            ShortcutCard(
-                icon = AppIcons.Clock,
-                title = CookHistoryCopy.title,
-                subtitle = CookHistoryCopy.homeSubtitle,
-                onClick = onNavigateToHistory,
-            )
-        }
     }
 }
 
-@Composable
-private fun SectionHeader(title: String, action: String, onAction: () -> Unit) {
-    val colors = AppTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
-            color = colors.text,
-            modifier = Modifier.weight(1f),
-        )
-        TextButton(onClick = onAction, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(action, color = colors.ctaText, fontWeight = FontWeight.SemiBold)
-            Icon(AppIcons.Chevron, contentDescription = null, tint = colors.ctaText, modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
-@Composable
-private fun IconBadge(icon: ImageVector, container: Color, tint: Color, size: Int = 40) {
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(container),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size((size * 0.55f).dp))
-    }
-}
-
-// Thẻ "Trong tủ hiện có": cả thẻ là một nút mở tủ.
 @Composable
 private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry: () -> Unit) {
     val colors = AppTheme.colors
@@ -289,72 +311,63 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
             .semantics(mergeDescendants = true) { contentDescription = pantryCardDescription(count, zones) }
             .clickable(role = Role.Button, onClick = onOpenPantry),
         shape = RoundedCornerShape(20.dp),
-        color = colors.surfaceSoft,
-        border = BorderStroke(1.dp, colors.primarySoft),
+        color = colors.primary,
     ) {
         if (count == 0) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    IconBadge(AppIcons.Fridge, colors.primarySoft, colors.accentText)
-                    Column {
-                        Text(
-                            "Tủ đang trống",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = colors.text,
-                        )
-                        Text(
-                            "Mình thêm vài món quen thuộc nhé",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.accentText,
-                        )
-                    }
-                }
+            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    "Tủ đang trống",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.onPrimary,
+                )
+                Text(
+                    "Mình thêm vài món quen thuộc nhé",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.onPrimary,
+                )
                 ChunkyButton(
                     onClick = onOpenPantry,
-                    container = colors.cta,
-                    edge = colors.ctaEdge,
+                    container = colors.surface,
+                    edge = colors.primaryEdge,
                     minHeight = 52.dp,
                 ) {
-                    Text("Chọn món", color = colors.onCta, fontWeight = FontWeight.Bold)
+                    Text("Chọn món", color = colors.primary, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
             val countBlock: @Composable () -> Unit = {
                 Column {
-                    Text("Trong tủ hiện có", style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Trong tủ hiện có", style = MaterialTheme.typography.bodySmall, color = colors.onPrimary)
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             "$count",
                             style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                            color = colors.text,
+                            color = colors.onPrimary,
                         )
                         Text(
                             "nguyên liệu",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = colors.muted,
-                            modifier = Modifier.padding(bottom = 6.dp),
+                            color = colors.onPrimary,
+                            modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
                 }
             }
             val stats: @Composable () -> Unit = {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ZoneStat(AppIcons.Fridge, zones.fridge, "Ngăn mát")
-                    ZoneStat(AppIcons.Snowflake, zones.freezer, "Ngăn đông")
-                }
+                Text(
+                    "${zones.fridge} Ngăn mát · ${zones.freezer} Ngăn đông",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.onPrimary,
+                )
             }
             if (stacked) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     countBlock()
                     stats()
                 }
             } else {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Box(modifier = Modifier.weight(1f)) { countBlock() }
+                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    countBlock()
                     stats()
                 }
             }
@@ -362,100 +375,49 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
     }
 }
 
+// Hàng gợi ý: ảnh món, tên, thời gian và nhãn; cả hàng là một nút mở công thức.
 @Composable
-private fun ZoneStat(icon: ImageVector, value: Int, label: String) {
-    val colors = AppTheme.colors
-    Surface(shape = RoundedCornerShape(14.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line)) {
-        Column(
-            modifier = Modifier
-                .widthIn(min = 76.dp)
-                .padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(icon, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(18.dp))
-                Text(
-                    "$value",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = colors.text,
-                )
-            }
-            Text(label, style = MaterialTheme.typography.bodySmall, color = colors.muted)
-        }
-    }
-}
-
-@Composable
-private fun UrgentCard(ingredientId: String, name: String, caption: String, onClick: () -> Unit) {
-    val colors = AppTheme.colors
-    Surface(
-        modifier = Modifier
-            .width(112.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        color = colors.surface,
-        border = BorderStroke(1.dp, colors.line),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            FoodThumb(ingredientId = ingredientId, size = 64.dp, shape = RoundedCornerShape(14.dp), urgent = true)
-            Text(
-                name,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                caption,
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                color = colors.warnText,
-            )
-        }
-    }
-}
-
-@Composable
-private fun HomeRecipeCard(recipe: Recipe, reason: RecommendationReason, modifier: Modifier, onClick: () -> Unit) {
+private fun HomeRecipeRow(recipe: Recipe, reason: RecommendationReason, onClick: () -> Unit) {
     val colors = AppTheme.colors
     val (tagBg, tagFg) = reasonColors(reason)
     val time = recipe.minutes?.let { "$it phút" } ?: "Thời gian chưa rõ"
     Surface(
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = colors.surface,
-        border = BorderStroke(1.dp, colors.line),
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            RecipeThumb(recipeId = recipe.id, size = 64.dp)
-            Text(
-                recipe.title,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.text,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                Icon(AppIcons.Clock, contentDescription = null, tint = colors.muted, modifier = Modifier.size(14.dp))
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            RecipeThumb(recipeId = recipe.id, size = 58.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(
+                    recipe.title,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 Text(time, style = MaterialTheme.typography.bodySmall, color = colors.muted)
-            }
-            val tag = shortReasonLabel(reason)
-            if (tag.isNotEmpty()) {
-                Surface(shape = RoundedCornerShape(999.dp), color = tagBg) {
+                val tag = shortReasonLabel(reason)
+                if (tag.isNotEmpty()) {
                     Text(
                         tag,
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = tagFg,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(tagBg)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                     )
                 }
             }
+            Icon(AppIcons.Chevron, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -470,7 +432,7 @@ private fun reasonColors(reason: RecommendationReason): Pair<Color, Color> {
     }
 }
 
-// Nút lớn vào thực đơn cả tuần, đặt ngay dưới phần chào để dễ thấy.
+// Nút lớn vào thực đơn cả tuần, đặt cuối phần chính như Figma.
 @Composable
 private fun WeeklyPlanButton(onClick: () -> Unit) {
     val colors = AppTheme.colors
@@ -479,9 +441,9 @@ private fun WeeklyPlanButton(onClick: () -> Unit) {
         container = colors.primary,
         edge = colors.primaryEdge,
         modifier = Modifier.fillMaxWidth(),
-        minHeight = 68.dp,
+        minHeight = 60.dp,
     ) {
-        Icon(AppIcons.Calendar, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(28.dp))
+        Icon(AppIcons.Calendar, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(24.dp))
         Text(
             text = WEEKLY_BUTTON_LABEL,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
