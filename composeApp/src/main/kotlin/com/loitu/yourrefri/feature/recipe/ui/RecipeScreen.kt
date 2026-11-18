@@ -365,6 +365,13 @@ fun RecipeScreen(
                 } else {
                     // Đổi bộ lọc thì pager quay về thẻ đầu.
                     key(hero.map { it.recipe.id }) {
+                        // Nhãn mục theo Figma 03, lấy theo lý do của thẻ đầu tiên đang hiện.
+                        Text(
+                            text = recipeSectionLabel(hero.first().reason),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.accentText,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
                         val pagerState = rememberPagerState(initialPage = 0) { hero.size }
                         RecipeHeroPager(
                             items = hero,
