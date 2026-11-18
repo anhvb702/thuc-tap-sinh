@@ -8,6 +8,7 @@ internal object PantryScreenCopy {
     const val eyebrow = "TỦ LẠNH"
     const val title = "Nhà mình đang có"
     const val addPrimaryAction = "+ Thêm nguyên liệu"
+    const val voiceAction = "Nói"
 
     fun soonChipLabel(count: Int): String = "Nên dùng sớm · $count"
 }

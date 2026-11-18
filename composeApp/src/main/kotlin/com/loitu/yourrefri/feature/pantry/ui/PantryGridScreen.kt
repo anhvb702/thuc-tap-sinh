@@ -4,8 +4,11 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -319,14 +322,31 @@ fun PantryGridScreen(
             modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
         )
         // Nút thêm nguyên liệu nổi, đặt ngay dưới tiêu đề như Figma "02 · Tủ lạnh".
-        ChunkyButton(
-            onClick = { openAddSheet() },
-            container = colors.primary,
-            edge = colors.primaryEdge,
-            minHeight = 52.dp,
+        // Một chỗ thêm nguyên liệu: nút chính và (nếu máy có) nút Nói cạnh nhau.
+        Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(PantryScreenCopy.addPrimaryAction, color = colors.onPrimary, fontWeight = FontWeight.Bold)
+            ChunkyButton(
+                onClick = { openAddSheet() },
+                container = colors.primary,
+                edge = colors.primaryEdge,
+                minHeight = 52.dp,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(PantryScreenCopy.addPrimaryAction, color = colors.onPrimary, fontWeight = FontWeight.Bold)
+            }
+            if (voiceAvailable) {
+                ChunkyButton(
+                    onClick = { onVoiceClick() },
+                    container = colors.surface,
+                    edge = colors.line,
+                    minHeight = 52.dp,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(PantryScreenCopy.voiceAction, color = colors.primary, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         val allCells = cellsOf(state)
@@ -472,16 +492,20 @@ fun PantryGridScreen(
                     onAction(PantryGridAction.DecreaseQuantity(cell.ingredientId))
                 },
             )
-            LazyColumn(
+            // Lưới theo cỡ chữ: tiêu đề nhóm và nút hành động chiếm cả hàng; mỗi món là một ô.
+            val fullRow: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(pantryGridColumns(LocalDensity.current.fontScale)),
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentPadding = pantryGridContentPadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (isSoonTab) {
                     items(cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
-                    item(key = "cook-from-soon") {
+                    item(key = "cook-from-soon", span = fullRow) {
                         Button(
                             onClick = onCookFromSoon,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
@@ -493,7 +517,7 @@ fun PantryGridScreen(
                     }
                 }
                 groups.forEach { group ->
-                    item(key = "header-${group.key}") { CategoryHeader(group) }
+                    item(key = "header-${group.key}", span = fullRow) { CategoryHeader(group) }
                     items(group.cells, key = { it.ingredientId }) { cell -> FoodCard(cell) }
                 }
             }
@@ -596,16 +620,6 @@ fun PantryGridScreen(
         )
     }
 
-    // Thanh hành động nổi ở đáy: "Thêm thủ công" và (nếu máy hỗ trợ) "Thêm bằng giọng nói".
-    PantryActionBar(
-        voiceAvailable = voiceAvailable,
-        onManual = { openAddSheet() },
-        onVoice = { onVoiceClick() },
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-    )
 
     if (showMicExplain) {
         AlertDialog(
