@@ -10,12 +10,12 @@ import kotlinx.datetime.LocalDate
 
 /** Ảnh chụp dữ liệu cần thiết để tính món cần rã đông. */
 class ReminderSnapshot(
-    private val weeklyPlan: List<WeeklyMealPlanEntry>,
-    private val recipes: List<Recipe>,
-    private val ingredients: List<Ingredient>,
-    private val pantry: List<PantryItem>,
-    private val leftovers: List<LeftoverItem> = emptyList(),
-    private val disabledMeals: List<MealSlotKey> = emptyList(),
+    val weeklyPlan: List<WeeklyMealPlanEntry>,
+    val recipes: List<Recipe>,
+    val ingredients: List<Ingredient>,
+    val pantry: List<PantryItem>,
+    val leftovers: List<LeftoverItem> = emptyList(),
+    val disabledMeals: List<MealSlotKey> = emptyList(),
 ) {
     /** Trả về tên món cần rã đông trong ngày. */
     fun defrostNamesFor(date: LocalDate): List<String> = defrostNamesForDay(

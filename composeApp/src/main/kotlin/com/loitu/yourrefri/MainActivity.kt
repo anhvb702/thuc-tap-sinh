@@ -26,18 +26,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.ViewModelProvider
 import com.loitu.yourrefri.feature.backup.data.BackupCodec
-import com.loitu.yourrefri.feature.backup.data.PantryBackupRepositoryImpl
 import com.loitu.yourrefri.feature.notice.logic.defrostNamesForDay
-import com.loitu.yourrefri.feature.pantry.data.LeftoverRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.Ingredient
-import com.loitu.yourrefri.feature.pantry.data.ShelfTable
-import com.loitu.yourrefri.feature.recipe.data.Recipe
-import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
-import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.ExtraShoppingRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.FavoriteRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
@@ -46,8 +35,6 @@ import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
-import com.loitu.yourrefri.shared.db.DriverFactory
-import com.loitu.yourrefri.shared.db.createDatabase
 import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.theme.ThemeMode
 import com.loitu.yourrefri.ui.theme.ThemePrefs
@@ -60,40 +47,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-
-@OptIn(kotlin.time.ExperimentalTime::class)
-private object AppGraph {
-    @Volatile private var cached: AppDependencies? = null
-
-    fun get(context: android.content.Context): AppDependencies =
-        cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
-
-    private fun build(context: android.content.Context): AppDependencies {
-        val driver = DriverFactory(context).create()
-        val db = createDatabase(driver)
-        val repo = PantryRepositoryImpl(
-            db = db,
-            clock = Clock.System,
-            timeZone = TimeZone.currentSystemDefault(),
-            ioContext = Dispatchers.IO,
-        )
-        val json = context.assets.open("shelf_table.json").bufferedReader().use { it.readText() }
-        val parsedIngredients = ShelfTable.parse(json)
-        val recipeJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
-        return AppDependencies(
-            pantryRepository = repo,
-            ingredients = parsedIngredients,
-            backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
-            recipes = RecipeBundle.parse(recipeJson),
-            customRecipeRepository = CustomRecipeRepositoryImpl(db, Dispatchers.IO),
-            weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
-            favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
-            cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
-            leftoverRepository = LeftoverRepositoryImpl(db, Dispatchers.IO),
-            extraShoppingRepository = ExtraShoppingRepositoryImpl(db, Dispatchers.IO),
-        )
-    }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -113,19 +66,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-private data class AppDependencies(
-    val pantryRepository: PantryRepositoryImpl,
-    val ingredients: List<Ingredient>,
-    val backupRepository: PantryBackupRepositoryImpl,
-    val recipes: List<Recipe>,
-    val customRecipeRepository: CustomRecipeRepositoryImpl,
-    val weeklyMealPlanRepository: WeeklyMealPlanRepositoryImpl,
-    val favoriteRepository: FavoriteRecipeRepositoryImpl,
-    val cookLogRepository: com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl,
-    val leftoverRepository: LeftoverRepositoryImpl,
-    val extraShoppingRepository: ExtraShoppingRepositoryImpl,
-)
 
 @OptIn(ExperimentalTime::class)
 @Composable

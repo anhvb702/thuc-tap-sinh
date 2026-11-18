@@ -13,23 +13,11 @@ import androidx.core.app.NotificationManagerCompat
 import com.loitu.yourrefri.MainActivity
 import com.loitu.yourrefri.R
 import com.loitu.yourrefri.feature.notice.logic.DailyNotice
-import com.loitu.yourrefri.feature.notice.logic.defrostNamesForDay
 import com.loitu.yourrefri.feature.notice.logic.planDailyNotice
-import com.loitu.yourrefri.feature.pantry.data.LeftoverRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.ShelfTable
-import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.Recipe
-import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
-import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
-import com.loitu.yourrefri.shared.db.DriverFactory
-import com.loitu.yourrefri.shared.db.createDatabase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -43,36 +31,21 @@ class ReminderReceiver : BroadcastReceiver() {
         if (!forceTest && !ReminderScheduler.enabled(context)) return
         val pending = goAsync()
         Thread {
-            var driver: app.cash.sqldelight.db.SqlDriver? = null
             var hasFrozenDinnerForDay: ((LocalDate) -> Boolean)? = null
             try {
                 val prefs = context.getSharedPreferences("daily_reminder", 0)
                 val tz = TimeZone.currentSystemDefault()
                 val today = Clock.System.now().toLocalDateTime(tz).date
-                val openedDriver = DriverFactory(context.applicationContext).create()
-                driver = openedDriver
-                val db = createDatabase(openedDriver)
-                val repository = PantryRepositoryImpl(db, Clock.System, tz, Dispatchers.IO)
-                val base = ShelfTable.parse(context.assets.open("shelf_table.json").bufferedReader().use { it.readText() })
-                val overrides = runBlocking { repository.observeShelfOverrides().first() }
-                val pantry = runBlocking { repository.observe().first() }
-                val ingredients = base.map { it.copy(userShelfDays = overrides[it.id]) }
-                val recipesJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
-                val customRecipes = runBlocking { CustomRecipeRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-                val allRecipes = RecipeBundle.parse(recipesJson) + customRecipes
-                val weeklyPlan = runBlocking { WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-                val leftovers = runBlocking { LeftoverRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-                val defrostNames = defrostNamesForDay(today, weeklyPlan, allRecipes, ingredients, pantry, leftovers)
-                hasFrozenDinnerForDay = { date ->
-                    defrostNamesForDay(date, weeklyPlan, allRecipes, ingredients, pantry, leftovers).isNotEmpty()
-                }
+                val snapshot = loadReminderSnapshot(context.applicationContext)
+                val defrostNames = snapshot.defrostNamesFor(today)
+                hasFrozenDinnerForDay = snapshot::hasFrozenDinnerFor
                 val notice = createReminderNotice(
-                    pantry = pantry,
-                    ingredients = ingredients,
+                    pantry = snapshot.pantry,
+                    ingredients = snapshot.ingredients,
                     today = today,
-                    recipes = allRecipes,
+                    recipes = snapshot.recipes,
                     dietRestriction = DietPrefs.read(context),
-                    leftovers = leftovers,
+                    leftovers = snapshot.leftovers,
                     defrostNames = defrostNames,
                     lastSent = if (forceTest) null else prefs.getString("last_sent", null)?.let(LocalDate::parse),
                     lastNudgeSent = if (forceTest) null else prefs.getString("last_nudge_sent", null)?.let(LocalDate::parse),
@@ -110,12 +83,10 @@ class ReminderReceiver : BroadcastReceiver() {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
             } finally {
                 if (hasFrozenDinnerForDay == null) {
-                    driver?.close()
-                    driver = null
                     hasFrozenDinnerForDay = ReminderScheduler.loadFrozenDinnerPredicate(context.applicationContext)
                 }
                 completeReminderWork(
-                    closeDriver = { driver?.close() },
+                    closeDriver = {},
                     scheduleNext = { ReminderScheduler.schedule(context, hasFrozenDinnerForDay) },
                     finish = { pending.finish() },
                 )

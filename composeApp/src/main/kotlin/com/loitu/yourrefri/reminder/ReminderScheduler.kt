@@ -4,23 +4,11 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import com.loitu.yourrefri.feature.notice.logic.defrostNamesForDay
 import com.loitu.yourrefri.feature.notice.logic.nextReminderTrigger
-import com.loitu.yourrefri.feature.pantry.data.LeftoverRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.ShelfTable
-import com.loitu.yourrefri.feature.recipe.data.CustomRecipeRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
-import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.settings.ui.coerceWeekdayTime
 import com.loitu.yourrefri.feature.settings.ui.minutesOf
 import com.loitu.yourrefri.feature.settings.ui.sundayTimeOf
 import com.loitu.yourrefri.feature.settings.ui.weekdayTimeOf
-import com.loitu.yourrefri.shared.db.DriverFactory
-import com.loitu.yourrefri.shared.db.createDatabase
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
@@ -132,36 +120,10 @@ object ReminderScheduler {
         }
     }
 
-    @OptIn(ExperimentalTime::class)
-    internal fun loadFrozenDinnerPredicate(context: Context): (LocalDate) -> Boolean {
-        var driver: app.cash.sqldelight.db.SqlDriver? = null
-        return try {
-            val tz = TimeZone.currentSystemDefault()
-            val openedDriver = DriverFactory(context).create()
-            driver = openedDriver
-            val db = createDatabase(openedDriver)
-            val pantryRepo = PantryRepositoryImpl(db, Clock.System, tz, Dispatchers.IO)
-            val base = ShelfTable.parse(context.assets.open("shelf_table.json").bufferedReader().use { it.readText() })
-            val overrides = runBlocking { pantryRepo.observeShelfOverrides().first() }
-            val pantry = runBlocking { pantryRepo.observe().first() }
-            val ingredients = base.map { it.copy(userShelfDays = overrides[it.id]) }
-            val recipesJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
-            val customRecipes = runBlocking { CustomRecipeRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-            val allRecipes = RecipeBundle.parse(recipesJson) + customRecipes
-            val weeklyPlan = runBlocking { WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-            val leftovers = runBlocking { LeftoverRepositoryImpl(db, Dispatchers.IO).observeAll().first() }
-            val predicate: (LocalDate) -> Boolean = { date ->
-                defrostNamesForDay(date, weeklyPlan, allRecipes, ingredients, pantry, leftovers).isNotEmpty()
-            }
-            predicate
-        } catch (_: Exception) {
-            { false }
-        } finally {
-            try {
-                driver?.close()
-            } catch (_: Exception) {
-            }
-        }
+    internal fun loadFrozenDinnerPredicate(context: Context): (LocalDate) -> Boolean = try {
+        loadReminderSnapshot(context).let { snapshot -> snapshot::hasFrozenDinnerFor }
+    } catch (_: Exception) {
+        { false }
     }
 
     fun cancel(context: Context) {
