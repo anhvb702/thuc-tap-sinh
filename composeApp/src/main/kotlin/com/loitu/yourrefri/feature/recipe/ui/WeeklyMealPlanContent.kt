@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
@@ -194,6 +195,9 @@ internal fun WeeklyShoppingSection(
     val colors = AppTheme.colors
     var result by remember { mutableStateOf<String?>(null) }
     val buyItems = shopping.filter { !it.alreadyInPantry || it.missingQuantity > 0 }
+    // "Đã mua" theo món: chỉ trong bộ nhớ màn hình (ruling: không lưu sau khi rời màn).
+    var bought by remember { mutableStateOf(setOf<String>()) }
+    val buyIds = buyItems.map { it.ingredient.id }.toSet()
     val selectedIds = shoppingIdsToStock(shopping, uncheckedIds)
     val stockListForAction = remember(shopping, uncheckedIds) {
         shopping.filter { (!it.alreadyInPantry || it.missingQuantity > 0) && it.ingredient.id !in uncheckedIds }
@@ -202,6 +206,7 @@ internal fun WeeklyShoppingSection(
     Column(modifier.fillMaxWidth()) {
         Text("Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.padding(top = 14.dp))
         Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = colors.accentText)
+        Text(shoppingProgressLabel(bought = bought.count { it in buyIds }, total = buyItems.size), color = colors.muted, style = MaterialTheme.typography.bodySmall)
         buyItems.forEach { item ->
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
@@ -209,8 +214,13 @@ internal fun WeeklyShoppingSection(
                     onCheckedChange = { onToggleChecked(item.ingredient.id, it) },
                     colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.muted, checkmarkColor = colors.onPrimary),
                 )
-                Column {
-                    Text(item.ingredient.nameVi, color = colors.text, fontWeight = FontWeight.Medium)
+                Column(Modifier.clickable { bought = if (item.ingredient.id in bought) bought - item.ingredient.id else bought + item.ingredient.id }) {
+                    Text(
+                        item.ingredient.nameVi,
+                        color = colors.text,
+                        fontWeight = FontWeight.Medium,
+                        textDecoration = if (item.ingredient.id in bought) TextDecoration.LineThrough else null,
+                    )
                     Text(
                         text = shoppingItemSubtitle(
                             mealCount = item.mealCount,
