@@ -84,6 +84,13 @@ function Resolve-Exe([string]$name) {
     if ($c) { return $c.Source }
     return $null
 }
+function Resolve-Gemini {
+    # Gemini chạy qua agy (Antigravity CLI). Shim WinGet có lúc không nằm trên PATH, nên dò thư mục gói.
+    $e = Resolve-Exe "agy"; if ($e) { return $e }
+    $pkg = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Filter "Google.AntigravityCLI*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pkg -and (Test-Path (Join-Path $pkg.FullName "agy.exe"))) { return (Join-Path $pkg.FullName "agy.exe") }
+    return $null
+}
 function Q([string]$s) { if ($s -eq "" -or $s -match '[\s"]') { return '"' + ($s -replace '"', '\"') + '"' }; return $s }
 
 function Assert-Env {
@@ -241,8 +248,8 @@ function Get-RolePlan([string]$name, [bool]$forceFallback = $false) {
     if (-not $r) { throw "Vai không có trong roster: $name" }
     $p = [string]$r.provider; $m = [string]$r.model; $fb = $false
     # Vai Gemini chỉ dùng model dự phòng khi máy chưa có gemini CLI hoặc lượt gọi Gemini vừa lỗi.
-    if ($p -eq "gemini" -and ($forceFallback -or -not (Resolve-Exe "gemini"))) {
-        if (-not $r.fallback) { throw "Vai $name khai báo gemini, chưa có gemini CLI và roster không có fallback." }
+    if ($p -eq "gemini" -and ($forceFallback -or -not (Resolve-Gemini))) {
+        if (-not $r.fallback) { throw "Vai $name khai báo gemini, chưa có agy (Antigravity CLI) và roster không có fallback." }
         $p = [string]$r.fallback.provider; $m = [string]$r.fallback.model; $fb = $true
         if (@($State.fellBack) -notcontains $name) { Add-State "fellBack" $name }
     }
@@ -304,9 +311,9 @@ function Start-One($spec) {
         if ($plan.Effort) { $a += @("-c", "model_reasoning_effort=$($plan.Effort)") }
         $a += "-"
     } elseif ($plan.Provider -eq "gemini") {
-        # Prompt đi qua stdin; không bật chế độ tự duyệt nên Gemini chỉ đọc. Lượt lỗi sẽ thử lại bằng model dự phòng.
-        $exe = Resolve-Exe "gemini"; if (-not $exe) { throw "Không tìm thấy gemini CLI." }
-        $a = @("-m", $plan.Model)
+        # agy -p nhận prompt dạng đối số (không nhận stdin); --mode plan giữ vai ở chế độ chỉ đọc.
+        $exe = Resolve-Gemini; if (-not $exe) { throw "Không tìm thấy agy (Antigravity CLI)." }
+        $a = @("-p", (Read-Text $pf), "--model", $plan.Model, "--mode", "plan", "--output-format", "text")
     } else { throw "Provider không hỗ trợ: $($plan.Provider)" }
     $argStr = ($a | ForEach-Object { Q ([string]$_) }) -join " "
     $h.Proc = Start-Process -FilePath $exe -ArgumentList $argStr -WorkingDirectory $spec.Cwd -RedirectStandardInput $pf -RedirectStandardOutput $out -RedirectStandardError $err -NoNewWindow -PassThru
