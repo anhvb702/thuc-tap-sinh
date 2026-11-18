@@ -25,8 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -66,6 +64,7 @@ import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
 import com.loitu.yourrefri.feature.recipe.ui.WEEKLY_BUTTON_LABEL
 import com.loitu.yourrefri.feature.recipe.ui.emptyRecommendationCopy
 import com.loitu.yourrefri.feature.recipe.ui.shortReasonLabel
+import com.loitu.yourrefri.ui.components.ChunkyButton
 import com.loitu.yourrefri.ui.components.FoodThumb
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppIcons
@@ -175,7 +174,7 @@ fun HomeScreen(
         if (urgentItems.isEmpty()) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = colors.surface,
                 border = BorderStroke(1.dp, colors.line),
             ) {
@@ -254,7 +253,7 @@ private fun SectionHeader(title: String, action: String, onAction: () -> Unit) {
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold),
             color = colors.text,
             modifier = Modifier.weight(1f),
         )
@@ -286,10 +285,10 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .semantics(mergeDescendants = true) { contentDescription = pantryCardDescription(count, zones) }
             .clickable(role = Role.Button, onClick = onOpenPantry),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = colors.surfaceSoft,
         border = BorderStroke(1.dp, colors.primarySoft),
     ) {
@@ -310,14 +309,13 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
                         )
                     }
                 }
-                Button(
+                ChunkyButton(
                     onClick = onOpenPantry,
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
-                    shape = RoundedCornerShape(14.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    container = colors.cta,
+                    edge = colors.ctaEdge,
+                    minHeight = 52.dp,
                 ) {
-                    Text("Chọn món", fontWeight = FontWeight.SemiBold)
+                    Text("Chọn món", color = colors.onCta, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
@@ -393,9 +391,9 @@ private fun UrgentCard(ingredientId: String, name: String, caption: String, onCl
     Surface(
         modifier = Modifier
             .width(112.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = colors.surface,
         border = BorderStroke(1.dp, colors.line),
     ) {
@@ -428,9 +426,9 @@ private fun HomeRecipeCard(recipe: Recipe, reason: RecommendationReason, modifie
     val time = recipe.minutes?.let { "$it phút" } ?: "Thời gian chưa rõ"
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = colors.surface,
         border = BorderStroke(1.dp, colors.line),
     ) {
@@ -476,29 +474,20 @@ private fun reasonColors(reason: RecommendationReason): Pair<Color, Color> {
 @Composable
 private fun WeeklyPlanButton(onClick: () -> Unit) {
     val colors = AppTheme.colors
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(role = Role.Button, onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = colors.primary,
+    ChunkyButton(
+        onClick = onClick,
+        container = colors.primary,
+        edge = colors.primaryEdge,
+        modifier = Modifier.fillMaxWidth(),
+        minHeight = 68.dp,
     ) {
-        Row(
-            modifier = Modifier
-                .heightIn(min = 64.dp)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(AppIcons.Calendar, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(28.dp))
-            Text(
-                text = WEEKLY_BUTTON_LABEL,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = colors.onPrimary,
-                modifier = Modifier.weight(1f),
-            )
-            Icon(AppIcons.Chevron, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(20.dp))
-        }
+        Icon(AppIcons.Calendar, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(28.dp))
+        Text(
+            text = WEEKLY_BUTTON_LABEL,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = colors.onPrimary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(AppIcons.Chevron, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(20.dp))
     }
 }
