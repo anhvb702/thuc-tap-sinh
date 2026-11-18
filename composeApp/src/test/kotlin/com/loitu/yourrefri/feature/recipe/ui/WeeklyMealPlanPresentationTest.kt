@@ -14,7 +14,7 @@ class WeeklyMealPlanPresentationTest {
     @Test
     fun lunchPrepFeedbackNamesAffectedIngredientsAndDayLabel() {
         assertEquals("Danh sách đi chợ đã tính thêm phần cơm trưa cho 6 nguyên liệu.", lunchPrepSummaryText(6))
-        assertEquals("🍱 + cơm trưa", lunchPrepDayLabel())
+        assertEquals("+ cơm trưa", lunchPrepDayLabel())
     }
 
     @Test fun preferenceToggleAddsAndRemoves() {

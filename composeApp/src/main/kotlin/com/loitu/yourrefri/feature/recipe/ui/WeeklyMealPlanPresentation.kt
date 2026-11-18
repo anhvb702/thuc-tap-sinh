@@ -18,7 +18,7 @@ internal const val LUNCH_MEAL_PREP_ENABLED = false
 internal fun lunchPrepSummaryText(affectedIngredientCount: Int): String =
     "Danh sách đi chợ đã tính thêm phần cơm trưa cho $affectedIngredientCount nguyên liệu."
 
-internal fun lunchPrepDayLabel(): String = "🍱 + cơm trưa"
+internal fun lunchPrepDayLabel(): String = "+ cơm trưa"
 
 internal fun togglePreferenceTag(
     selected: Set<FamilyPreferenceTag>, tag: FamilyPreferenceTag,
