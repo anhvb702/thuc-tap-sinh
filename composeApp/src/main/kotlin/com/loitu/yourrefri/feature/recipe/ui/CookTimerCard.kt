@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,15 +34,15 @@ internal const val COOK_TIMER_TOTAL_SEC = 240
 @Composable
 internal fun CookTimerCard(modifier: Modifier = Modifier) {
     val colors = AppTheme.colors
-    var remaining by remember { mutableIntStateOf(0) }
-    var running by remember { mutableStateOf(false) }
+    var timer by remember { mutableStateOf(TimerState(remaining = 0, running = false)) }
+    val remaining = timer.remaining
+    val running = timer.running
 
     LaunchedEffect(running) {
-        while (running && remaining > 0) {
+        while (timer.running) {
             delay(1000)
-            remaining--
+            timer = tickTimer(timer)
         }
-        if (remaining <= 0) running = false
     }
 
     Surface(
@@ -63,10 +64,7 @@ internal fun CookTimerCard(modifier: Modifier = Modifier) {
                     color = colors.text,
                 )
                 ChunkyButton(
-                    onClick = {
-                        if (remaining == 0) remaining = COOK_TIMER_TOTAL_SEC
-                        running = !running
-                    },
+                    onClick = { timer = toggleTimer(timer, COOK_TIMER_TOTAL_SEC) },
                     container = colors.primary,
                     edge = colors.primaryEdge,
                     minHeight = 48.dp,
@@ -89,6 +87,14 @@ internal fun CookTimerCard(modifier: Modifier = Modifier) {
                 color = colors.primary,
                 trackColor = colors.line,
             )
+            if (remaining > 0 || running) {
+                TextButton(
+                    onClick = { timer = resetTimer() },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text("Đặt lại", color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                }
+            }
         }
     }
 }
