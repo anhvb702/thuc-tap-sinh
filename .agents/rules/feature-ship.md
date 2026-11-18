@@ -14,7 +14,7 @@ trigger: always_on
 
 ## 2. Kiểm tra trước khi commit
 
-- [ ] Diff ≤ 300 dòng, tính cả thay đổi chưa commit: `git diff --stat main...HEAD` cộng `git diff --stat HEAD` (hoặc `git status --short` để xem file chưa commit). Vượt thì tách việc (CLAUDE.md).
+- [ ] Diff ≤ 300 dòng. Đo sau khi stage đúng file của task (gồm file mới chưa track): `git add <file của task>` rồi `git diff --cached --stat`. Vượt thì tách việc (CLAUDE.md).
 - [ ] Nếu có contract trong `docs/tests/<mã>.md` thì test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`.
 - [ ] Môi trường trước khi build: `JAVA_HOME` (JDK 21) và `ANDROID_HOME` đã đặt đúng cho máy. Đường dẫn khác nhau theo máy, kiểm trước khi chạy.
 - [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`).
