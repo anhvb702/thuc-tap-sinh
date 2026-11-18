@@ -15,17 +15,18 @@ trigger: always_on
 ## 2. Kiểm tra trước khi commit
 
 - [ ] Diff ≤ 300 dòng. Đo sau khi stage đúng file của task (gồm file mới chưa track): `git add <file của task>` rồi `git diff --cached --stat`. Vượt thì tách việc (CLAUDE.md).
+- [ ] Task thay đổi code thì luôn chạy `:shared:testDebugUnitTest` (CLAUDE.md DoD), kể cả khi chỉ đụng `:composeApp`.
 - [ ] Task thay đổi code thì phải có contract `docs/tests/<mã>.md` (viết trước code, theo `_TEMPLATE.md`) và test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`. Chỉ task thuần tài liệu mới được ghi "không áp dụng" cho mục này.
 - [ ] Môi trường trước khi build: `JAVA_HOME` (JDK 21) và `ANDROID_HOME` đã đặt đúng cho máy. Đường dẫn khác nhau theo máy, kiểm trước khi chạy.
-- [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`).
+- [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (luôn chạy với task code).
 - [ ] `.\gradlew.bat :composeApp:testDebugUnitTest` xanh (khi đụng `:composeApp`).
 - [ ] `.\gradlew.bat :composeApp:assembleDebug` xanh (khi đụng code Android).
 - [ ] Khi cần chạy lại thật, thêm `--rerun-tasks --no-configuration-cache --max-workers=1`. Kết quả đọc từ `<module>/build/test-results/testDebugUnitTest/*.xml`.
-- [ ] Sáu mutation (ít nhất sáu) đã chạy; biên bản theo `docs/tests/_TEMPLATE.md` (tiêu chí | đạt | bằng chứng) có kết quả thật. Chỉ một tiến trình Gradle tại một thời điểm.
+- [ ] Sáu mutation (ít nhất sáu) đã chạy; biên bản theo `docs/tests/_TEMPLATE.md` (tiêu chí | đạt | bằng chứng) có kết quả thật. Mỗi test mới phải đỏ trên code cố ý hỏng trước khi tin (PB4); mutation không làm test nào đỏ thì ghi "sống sót" và sửa test. Chỉ một tiến trình Gradle tại một thời điểm.
 - [ ] `scripts/lint-copy.ps1 -Path <file>` không báo từ cấm (khi có chuỗi hiển thị).
 - [ ] UI có ảnh chụp emulator; thông báo và thời gian có checklist tay (CLAUDE.md DoD). Nếu chưa làm: ghi "chưa xác minh" và để người dùng quyết (mục 6).
 - [ ] Tài liệu thay đổi: đọc lại; không còn link hỏng (kiểm bằng tìm kiếm); không còn đường dẫn máy cá nhân (`Select-String -Path <file> -Pattern 'C:\\Users'` không ra kết quả).
-- [ ] Nếu test đỏ: sửa theo `.agents/rules/test-retry-and-bug-isolation.md`, tối đa 3 lần thử, rồi dừng và báo người dùng.
+- [ ] Nếu test đỏ, build đỏ (`assembleDebug`) hoặc kiểm tra emulator lỗi: sửa theo `.agents/rules/test-retry-and-bug-isolation.md`, tối đa 3 lần thử cho cùng một lệnh, rồi dừng và báo người dùng.
 
 ## 3. Git và PR
 
@@ -52,10 +53,10 @@ trigger: always_on
 
 ## 6. Merge
 
-- Chỉ merge khi **đủ cả ba**: mục 2 đạt; không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
+- Chỉ merge khi **đủ cả ba**: mục 2 đạt (trừ các mục kiểm tay mà người dùng đã chấp nhận chưa làm, theo bullet dưới); không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
 - Chỉ các mục kiểm tay (ảnh emulator, thông báo, giờ, TalkBack, cỡ chữ) mới có thể được người dùng chấp nhận chưa làm, kèm lý do ghi trong PR. Test tự động (Gradle, mutation, contract, lint) không được miễn (PB6).
 - Khi còn thiếu, dừng và gợi ý cho người dùng chọn: sửa tiếp phần thiếu; người dùng chọn chấp nhận mục chưa làm (người dùng quyết, lý do ghi vào PR); hoặc giữ PR ở trạng thái draft.
-- Lệnh merge chỉ chạy sau khi có "ok": `gh pr merge <số> --squash --delete-branch` (phương thức mặc định là squash).
+- Lệnh merge chỉ chạy sau khi có "ok", và phải ghim đúng commit đã review và đã được duyệt: `gh pr merge <số> --squash --delete-branch --match-head-commit <sha>`, với `<sha>` là đầu PR lúc người dùng nói "ok". Nếu đầu PR đã đổi, dừng và báo người dùng để xem lại.
 - Trước khi hỏi "ok", đưa người dùng link PR và tóm tắt bằng chứng.
 - Không tự merge khi chưa có "ok", kể cả khi mọi mục đã đạt.
 
