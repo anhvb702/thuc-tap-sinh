@@ -8,13 +8,13 @@ trigger: always_on
 
 ## 1. Điều kiện "ok"
 
-- Một việc được coi là ok khi **mọi mục ở mục 2 đạt**, và mỗi mục có bằng chứng thật: lệnh đã chạy và kết quả đã thấy.
+- Một việc được coi là ok khi **mọi mục ở mục 2 đạt hoặc ghi "không áp dụng" kèm lý do**, và mỗi mục có bằng chứng thật: lệnh đã chạy và kết quả đã thấy.
 - Mục chưa làm ghi rõ "chưa xác minh", không ghi "đạt".
 - Không suy đoán kết quả. Lệnh chưa chạy thì nói chưa chạy.
 
 ## 2. Kiểm tra trước khi commit
 
-- [ ] Diff ≤ 300 dòng: `git diff --stat main...HEAD`. Vượt thì tách việc (CLAUDE.md).
+- [ ] Diff ≤ 300 dòng, tính cả thay đổi chưa commit: `git diff --stat main...HEAD` cộng `git diff --stat HEAD` (hoặc `git status --short` để xem file chưa commit). Vượt thì tách việc (CLAUDE.md).
 - [ ] Nếu có contract trong `docs/tests/<mã>.md` thì test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`.
 - [ ] Môi trường trước khi build: `JAVA_HOME` (JDK 21) và `ANDROID_HOME` đã đặt đúng cho máy. Đường dẫn khác nhau theo máy, kiểm trước khi chạy.
 - [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`).
@@ -38,22 +38,22 @@ trigger: always_on
 
 ## 4. Review
 
-1. Sau khi có PR, chạy review trên diff của PR bằng skill người dùng chỉ định (`superpowers:requesting-code-review`). Người review phải khác agent đã viết code (AGENTS.override.md).
+1. Sau khi có PR, reviewer là **Codex** (`gpt-6.1-sol`, reasoning `high`, theo AGENTS.override.md), chạy ở chế độ chỉ đọc, trên diff của PR. Claude không tự review: Claude chỉ là planner. Skill `superpowers:requesting-code-review` không dùng cho bước này.
 2. Phân loại từng phát hiện: **Critical** (sai chức năng, lộ dữ liệu, vi phạm ràng buộc cứng), **Important** (thiếu test, sai quy ước), **Minor** (văn phong, đặt tên).
 3. Critical và Important phải được xử lý trước khi merge. Minor có thể bỏ qua nếu ghi lý do trong PR.
 4. Comment từ Qodo trên PR xử lý theo `.agents/skills/qodo-review-workflow/SKILL.md`.
 
 ## 5. Tiếp nhận ý kiến review
 
-1. Chạy `superpowers:receiving-code-review` trước khi sửa.
-2. Kiểm chứng từng ý kiến. Đúng thì sửa. Sai thì trả lời ngay trong comment PR, kèm bằng chứng.
+1. Người viết code (executor) đọc ý kiến review trước khi sửa. Kiểm chứng từng ý kiến; đúng thì sửa, sai thì trả lời trong comment PR kèm bằng chứng.
+2. Claude (planner) kiểm lại từng sửa đổi trước khi cho PR đi tiếp.
 3. Sửa xong thì push thêm commit và chạy lại toàn bộ mục 2, không chỉ mục liên quan.
 4. Lặp mục 4–5 tối đa 3 vòng. Nếu vẫn còn Critical hoặc Important thì dừng và hỏi người dùng.
 
 ## 6. Merge
 
-- Chỉ merge khi **đủ cả ba**: mục 2 đạt (hoặc người dùng đã chọn bỏ qua mục cụ thể, và lý do ghi trong PR); không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
-- Khi còn thiếu, dừng và gợi ý cho người dùng chọn: sửa tiếp phần thiếu; bỏ qua mục đó (người dùng quyết, ghi vào PR); hoặc giữ PR ở trạng thái draft.
+- Chỉ merge khi **đủ cả ba**: mục 2 đạt (hoặc người dùng đã chấp nhận mục chưa làm cụ thể, lý do ghi trong PR); không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
+- Khi còn thiếu, dừng và gợi ý cho người dùng chọn: sửa tiếp phần thiếu; người dùng chọn chấp nhận mục chưa làm (người dùng quyết, lý do ghi vào PR); hoặc giữ PR ở trạng thái draft.
 - Lệnh merge chỉ chạy sau khi có "ok": `gh pr merge <số> --squash --delete-branch` (phương thức mặc định là squash).
 - Trước khi hỏi "ok", đưa người dùng link PR và tóm tắt bằng chứng.
 - Không tự merge khi chưa có "ok", kể cả khi mọi mục đã đạt.
