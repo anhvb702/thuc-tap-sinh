@@ -63,7 +63,7 @@ Phân vai theo provider (chốt bởi người dùng). Mỗi provider một mả
 | **Planner** | Claude | `claude-opus-5-5` (cao nhất khả dụng) | Phân tích, chia task (≤300 dòng diff), thiết kế contract và 6 mutation, quyết định nghiệm thu. Đây là vai duy nhất của Claude. |
 | **Nghiên cứu thị trường / Phát triển ý tưởng** | Gemini | `gemini-3.8-flash`, dùng grounding/search | Tìm đối thủ, nhu cầu thị trường, phát triển và so sánh ý tưởng; đầu ra là brief, không code. |
 | **Coding (executor)** | Codex | `gpt-6.1-terra`, reasoning `low` | Sửa đúng file được giao theo contract; không sửa hoặc làm yếu test. |
-| **Reviewer / Verifier** | Codex | `gpt-6.1-sol`, reasoning `high` | Review độc lập contract, diff, bằng chứng và mutation; khác model với executor để không tự chấm bài mình. Qodo vẫn review PR; không làm trùng. |
+| **Reviewer / Verifier** | Codex | `gpt-6.2-sol`, reasoning `high` | Review độc lập contract, diff, bằng chứng và mutation; khác model với executor để không tự chấm bài mình. Qodo vẫn review PR; không làm trùng. |
 | **Advisor (trade-off)** | Gemini | `gemini-3.1-pro-preview` (Pro mới nhất có sẵn, còn preview) | Ý kiến độc lập về rủi ro và phương án; chỉ phân tích, không sửa file. |
 | **Brainstormer (chia task UX/logic)** | Gemini | `gemini-3.8-flash` | Phương án và chia task với acceptance, owner, dependency; không code. |
 | **DocBot** | Codex | `gpt-6-luna`, reasoning `low` | Chỉ sửa `HANDOFF.md`, `PLAN.md`, `SPEC.md`, `DECISIONS.md`, `docs/tests/*.md`, bằng chứng thật. |
@@ -131,7 +131,7 @@ Mỗi provider có hạn mức riêng; ưu tiên việc nặng sang Codex và Ge
 | Claude Opus (`claude-opus-5-5`) | Planner: phân tích, chia task, thiết kế contract và mutation, quyết định nghiệm thu. | Có chọn lọc (khoảng 15%) |
 | Claude Fable (`claude-fable-5-2`) | Chỉ khi suy luận khó, việc dài nhiều bước, hoặc kiểm tra độc lập rủi ro cao. | Ít nhất (khoảng 5%) |
 | Gemini (`gemini-3.8-flash` / `gemini-3.1-pro-preview`) | Nghiên cứu thị trường, ý tưởng, advisor, brainstormer, persona khách hàng. | Hạn mức Gemini riêng |
-| Codex (`gpt-6-luna` / `gpt-6.1-terra` / `gpt-6.1-sol`) | Mọi việc code, review diff, DocBot. | Hạn mức Codex riêng |
+| Codex (`gpt-6-luna` / `gpt-6.1-terra` / `gpt-6.2-sol`) | Mọi việc code, review diff, DocBot. | Hạn mức Codex riêng |
 
 Quy tắc:
 - Bắt đầu bằng model rẻ nhất có thể; chỉ nâng khi kết quả không đạt.

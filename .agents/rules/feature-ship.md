@@ -38,7 +38,7 @@ trigger: always_on
 
 ## 4. Review
 
-1. Sau khi có PR, reviewer là **Codex** (`gpt-6.1-sol`, reasoning `high`, theo AGENTS.override.md), chạy ở chế độ chỉ đọc, trên diff của PR. Claude không tự review: Claude chỉ là planner. Skill `superpowers:requesting-code-review` không dùng cho bước này.
+1. Sau khi có PR, reviewer là **Codex** (`gpt-6.2-sol`, reasoning `high`, theo AGENTS.override.md), chạy ở chế độ chỉ đọc, trên diff của PR. Claude không tự review: Claude chỉ là planner. Skill `superpowers:requesting-code-review` không dùng cho bước này.
 2. Phân loại từng phát hiện: **Critical** (sai chức năng, lộ dữ liệu, vi phạm ràng buộc cứng), **Important** (thiếu test, sai quy ước), **Minor** (văn phong, đặt tên).
 3. Critical và Important phải được xử lý trước khi merge. Minor có thể bỏ qua nếu ghi lý do trong PR.
 4. Comment từ Qodo trên PR xử lý theo `.agents/skills/qodo-review-workflow/SKILL.md`.
