@@ -46,11 +46,18 @@ class ReminderReceiver : BroadcastReceiver() {
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
                 )
                 val manager = context.getSystemService(NotificationManager::class.java)
-                val legacyImportance = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID)?.importance else null
+                val legacy = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID) else null
+                val legacyImportance = legacy?.importance
                 if (notice != null && ReminderChannel.shouldNotify(legacyImportance) && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     if (Build.VERSION.SDK_INT >= 26) {
                         // Tạo kênh mới trước, xóa kênh cũ sau: nếu bị gián đoạn giữa chừng thì kênh cũ vẫn còn và lần sau cho kết quả giống hệt.
-                        manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance)))
+                        val channel = NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance))
+                        if (legacy != null) {
+                            // Giữ âm thanh và rung người dùng đã chỉnh; legacy.sound == null nghĩa là đã chọn "Không có âm".
+                            channel.setSound(legacy.sound, legacy.audioAttributes)
+                            channel.enableVibration(legacy.shouldVibrate())
+                        }
+                        manager.createNotificationChannel(channel)
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
                     if (prefs.edit().putString("last_sent", today.toString()).commit()) {

@@ -15,15 +15,15 @@ Không có state UI. Đầu vào là mức quan trọng của kênh cũ (`Int?`,
 | `freshInstallGetsHighImportanceChannelSpec` | `IMPORTANCE`, `importanceFor(null)` | HIGH | đổi IMPORTANCE về DEFAULT |
 | `upgradeKeepsUsersLegacyChoice` | `importanceFor(...)` cho DEFAULT, HIGH, LOW, MIN, NONE | HIGH, HIGH, LOW, LOW, NONE | đổi DEFAULT; bỏ giữ im lặng (LOW→HIGH) |
 | `newChannelUsesNewIdBecauseOldChannelImportanceCannotChange` | `ID`, `LEGACY_ID` | khác nhau | đặt ID trùng LEGACY_ID |
-| `reminderIsSentWhenNoLegacyChannelOrLegacyChannelEnabled` | `shouldNotify(null)`, `shouldNotify(DEFAULT)` | true | đảo `shouldNotify` |
-| `reminderIsNotSentWhenUserBlockedLegacyChannel` | `shouldNotify(NONE)` | false | đảo `shouldNotify`; `shouldNotify` luôn true |
+| `notifyGateAllowsSendingWhenNoLegacyChannelOrLegacyChannelEnabled` | `shouldNotify(null)`, `shouldNotify(DEFAULT)` | true | đảo `shouldNotify` |
+| `notifyGateBlocksSendingWhenUserBlockedLegacyChannel` | `shouldNotify(NONE)` | false | đảo `shouldNotify`; `shouldNotify` luôn true |
 
 ### Biên và rủi ro
 - Người dùng đã chặn kênh cũ: không gửi, không tạo kênh mới.
 - Người dùng đã chọn im lặng: kênh mới im lặng (không popup, không âm).
 - Kênh cũ đang bật hoặc mặc định: kênh mới HIGH; kênh cũ bị xóa; âm thanh/rung đã chỉnh ở kênh cũ sẽ mất.
 - Hãng máy (Xiaomi, Samsung, Oppo) có thể chặn popup; chưa kiểm trên máy thật.
-- Test đơn vị không chạy `ReminderReceiver` (cần thiết bị hoặc Robolectric).
+- Test đơn vị không chạy `ReminderReceiver` (cần thiết bị hoặc Robolectric). Việc copy âm thanh và rung từ kênh cũ (`setSound`, `enableVibration`) chỉ kiểm được trên máy: người dùng đã chọn "Không có âm" ở kênh cũ phải vẫn không có âm ở kênh mới.
 
 ### Sáu mutation
 1. Đổi `IMPORTANCE` về `IMPORTANCE_DEFAULT` — **bị bắt** (2 method đỏ).
@@ -31,7 +31,7 @@ Không có state UI. Đầu vào là mức quan trọng của kênh cũ (`Int?`,
 3. Đảo `shouldNotify` (`==` thay `!=`) — **bị bắt** (2 method đỏ).
 4. `shouldNotify` luôn trả true — **bị bắt** (1 method đỏ).
 5. `importanceFor` bỏ giữ im lặng (LOW → HIGH) — **bị bắt** (1 method đỏ).
-6. Bỏ `setDefaults(DEFAULT_VIBRATE)` cho API < 26 — **sống sót (test yếu)**: không có test đơn vị; chỉ kiểm được trên máy Android 7.
+6. Bỏ `setDefaults(DEFAULT_VIBRATE)` cho API < 26 — **sống sót (test yếu)**: nằm trong `ReminderReceiver.kt` (không phải `ReminderChannel.kt`), không có test đơn vị; chỉ kiểm được trên máy Android 7.
 
 ## Biên bản
 
