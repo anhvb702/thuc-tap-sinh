@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.core.content.ContextCompat
+import com.loitu.yourrefri.ui.components.ChunkyButton
 import com.loitu.yourrefri.ui.components.FoodThumb
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -253,13 +254,18 @@ fun PantryGridScreen(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(AppIcons.Fridge, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(28.dp))
-            Text(
-                text = "Tủ lạnh",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                color = colors.text,
-                modifier = Modifier.weight(1f).padding(start = 8.dp),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = PantryScreenCopy.eyebrow,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.accentText,
+                )
+                Text(
+                    text = PantryScreenCopy.title,
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.text,
+                )
+            }
             IconButton(
                 onClick = {
                     searchOpen = !searchOpen
@@ -312,6 +318,16 @@ fun PantryGridScreen(
             color = colors.muted,
             modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
         )
+        // Nút thêm nguyên liệu nổi, đặt ngay dưới tiêu đề như Figma "02 · Tủ lạnh".
+        ChunkyButton(
+            onClick = { openAddSheet() },
+            container = colors.primary,
+            edge = colors.primaryEdge,
+            minHeight = 52.dp,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+        ) {
+            Text(PantryScreenCopy.addPrimaryAction, color = colors.onPrimary, fontWeight = FontWeight.Bold)
+        }
 
         val allCells = cellsOf(state)
         val presentation = pantryGridPresentation(allCells, filters.storageTab, filters.presentOnly)
