@@ -69,6 +69,7 @@ import kotlinx.coroutines.delay
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanAction
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanState
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForAllRecipes
+import com.loitu.yourrefri.feature.recipe.ui.notificationDetailRequest
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForHomeCard
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreenMode
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -148,14 +149,6 @@ fun MainScaffold(
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
-    // Bấm thông báo nhắc có món: mở thẳng công thức của món đó (id đã được kiểm tra ở App).
-    LaunchedEffect(openRecipe) {
-        openRecipe?.let { (recipeId, _) ->
-            currentTab = NavTab.RECIPES
-            requestedRecipeId = recipeId
-            requestedRecipeMode = RecipeScreenMode.DAILY
-        }
-    }
     // Công thức đang mở ở màn chi tiết. Tạm dùng state cục bộ; khi có Navigation Compose sẽ thành route RecipeDetail.
     var openedRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
     // Công thức đang nấu ở chế độ rảnh tay (màn riêng, tạm dùng state cục bộ như màn chi tiết).
@@ -194,6 +187,19 @@ fun MainScaffold(
         currentTab = NavTab.HOME
     }
     BackHandler(enabled = cookDone != null) { goHomeAfterCook() }
+    // Bấm thông báo nhắc có món: mở thẳng màn chi tiết của món đó, giống đường Trang chủ.
+    // Đóng các màn phụ đang mở để không che mất món (id đã được kiểm tra ở App).
+    LaunchedEffect(openRecipe) {
+        openRecipe?.let { (recipeId, _) ->
+            cookDone = null
+            handsFreeRecipeId = null
+            showHistory = false
+            requestedRecipeId = recipeRequestForHomeCard(recipeId)
+            requestedRecipeMode = RecipeScreenMode.DAILY
+            openedRecipeId = notificationDetailRequest(recipeId)
+            currentTab = NavTab.RECIPES
+        }
+    }
 
     // Căn cứ Q2: Chế độ ăn là bộ lọc cứng (không nới); lọc hết món thì để rỗng và màn tự gợi ý điều chỉnh chế độ ăn.
     val dietTooStrict = remember(recipes, dietRestriction, state.ingredients) {

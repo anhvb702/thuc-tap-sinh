@@ -7,6 +7,9 @@ internal fun resolveInitialRecipeId(
     ?.takeIf { it in recommendationIds }
     ?: recommendationIds.firstOrNull()
 
+/** Id món mở ở màn chi tiết khi bấm thông báo nhắc, cùng quy tắc với thẻ Trang chủ. */
+internal fun notificationDetailRequest(recipeId: String): String = recipeId
+
 internal fun resolveRequestedRecipeId(
     requestedId: String?,
     recommendationIds: List<String>,

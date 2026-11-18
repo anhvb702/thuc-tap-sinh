@@ -75,3 +75,11 @@ class RecipeSelectionTest {
         assertEquals("first", resolveRequestedRecipeId("missing", recommendationIds, listOf("first")))
     }
 }
+
+class NotificationDetailRequestTest {
+    @Test
+    fun notificationOpensDetailOfTheSameRecipeAsHomeCard() {
+        assertEquals("ca-kho", notificationDetailRequest("ca-kho"))
+        assertEquals(recipeRequestForHomeCard("ca-kho"), notificationDetailRequest("ca-kho"))
+    }
+}
