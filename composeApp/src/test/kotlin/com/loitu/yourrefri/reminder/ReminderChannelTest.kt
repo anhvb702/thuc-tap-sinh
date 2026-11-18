@@ -7,8 +7,18 @@ import kotlin.test.assertNotEquals
 
 class ReminderChannelTest {
     @Test
-    fun newChannelIsHighImportanceSoReminderShowsAsPopup() {
+    fun freshInstallGetsHighImportanceChannelSpec() {
         assertEquals(NotificationManager.IMPORTANCE_HIGH, ReminderChannel.IMPORTANCE)
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, ReminderChannel.importanceFor(null))
+    }
+
+    @Test
+    fun upgradeKeepsUsersLegacyChoice() {
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, ReminderChannel.importanceFor(NotificationManager.IMPORTANCE_DEFAULT))
+        assertEquals(NotificationManager.IMPORTANCE_HIGH, ReminderChannel.importanceFor(NotificationManager.IMPORTANCE_HIGH))
+        assertEquals(NotificationManager.IMPORTANCE_LOW, ReminderChannel.importanceFor(NotificationManager.IMPORTANCE_LOW))
+        assertEquals(NotificationManager.IMPORTANCE_LOW, ReminderChannel.importanceFor(NotificationManager.IMPORTANCE_MIN))
+        assertEquals(NotificationManager.IMPORTANCE_NONE, ReminderChannel.importanceFor(NotificationManager.IMPORTANCE_NONE))
     }
 
     @Test

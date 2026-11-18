@@ -16,5 +16,16 @@ object ReminderChannel {
      * Người dùng đã chặn kênh cũ trong Cài đặt Android thì không gửi lại qua kênh mới.
      * legacyImportance = null nghĩa là chưa có kênh cũ (cài mới hoặc đã xóa).
      */
-    fun shouldNotify(legacyImportance: Int?): Boolean = legacyImportance != NotificationManager.IMPORTANCE_NONE
+    fun shouldNotify(legacyImportance: Int?): Boolean = importanceFor(legacyImportance) != NotificationManager.IMPORTANCE_NONE
+
+    /**
+     * Giữ lựa chọn của người dùng ở kênh cũ: đã chặn thì không gửi; đã chọn im lặng thì kênh mới cũng im lặng
+     * (không popup, không âm). Chưa có kênh cũ hoặc kênh cũ là mặc định trở lên thì dùng IMPORTANCE.
+     */
+    fun importanceFor(legacyImportance: Int?): Int = when (legacyImportance) {
+        null -> IMPORTANCE
+        NotificationManager.IMPORTANCE_NONE -> NotificationManager.IMPORTANCE_NONE
+        NotificationManager.IMPORTANCE_MIN, NotificationManager.IMPORTANCE_LOW -> NotificationManager.IMPORTANCE_LOW
+        else -> IMPORTANCE
+    }
 }

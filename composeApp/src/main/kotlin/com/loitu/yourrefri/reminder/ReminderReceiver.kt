@@ -50,7 +50,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 if (notice != null && ReminderChannel.shouldNotify(legacyImportance) && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     if (Build.VERSION.SDK_INT >= 26) {
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
-                        manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.IMPORTANCE))
+                        manager.createNotificationChannel(NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance)))
                     }
                     if (prefs.edit().putString("last_sent", today.toString()).commit()) {
                         val openApp = PendingIntent.getActivity(
