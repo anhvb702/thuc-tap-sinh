@@ -6,7 +6,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ReminderCopyTest {
-    @Test fun title_keeps1730() = assertEquals("Bật nhắc lúc 17:30", ReminderCopy.title)
+    // R0-02 (Q5): giờ mặc định đổi sang 16:00; copy phải khớp giờ thật.
+    @Test fun title_matchesDefault1600() = assertEquals("Bật nhắc lúc 16:00", ReminderCopy.title)
     // A-14 (2026-11-13, người dùng cho phép sửa): rút gọn; Chủ Nhật là lời nhắc đi chợ nên bỏ "nên dùng trước".
     @Test fun subtitle_hasEstimateWording() {
         assertTrue(ReminderCopy.subtitle.contains("hạn là ước tính"))
