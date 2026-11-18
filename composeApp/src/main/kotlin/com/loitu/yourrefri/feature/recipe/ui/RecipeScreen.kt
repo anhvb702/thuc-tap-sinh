@@ -294,6 +294,7 @@ fun RecipeScreen(
                     showCookConfirmation = true
                 },
                 updatedRecipeResult = updatedRecipeResult,
+                onNavigate = { updateMode(it) },
             )
 
             RecipeScreenMode.SHOPPING -> WeeklyShoppingSection(
