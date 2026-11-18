@@ -15,7 +15,7 @@ trigger: always_on
 ## 2. Kiểm tra trước khi commit
 
 - [ ] Diff ≤ 300 dòng. Đo sau khi stage đúng file của task (gồm file mới chưa track): `git add <file của task>` rồi `git diff --cached --stat`. Vượt thì tách việc (CLAUDE.md).
-- [ ] Nếu có contract trong `docs/tests/<mã>.md` thì test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`.
+- [ ] Task thay đổi code thì phải có contract `docs/tests/<mã>.md` (viết trước code, theo `_TEMPLATE.md`) và test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`. Chỉ task thuần tài liệu mới được ghi "không áp dụng" cho mục này.
 - [ ] Môi trường trước khi build: `JAVA_HOME` (JDK 21) và `ANDROID_HOME` đã đặt đúng cho máy. Đường dẫn khác nhau theo máy, kiểm trước khi chạy.
 - [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`).
 - [ ] `.\gradlew.bat :composeApp:testDebugUnitTest` xanh (khi đụng `:composeApp`).
@@ -52,7 +52,8 @@ trigger: always_on
 
 ## 6. Merge
 
-- Chỉ merge khi **đủ cả ba**: mục 2 đạt (hoặc người dùng đã chấp nhận mục chưa làm cụ thể, lý do ghi trong PR); không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
+- Chỉ merge khi **đủ cả ba**: mục 2 đạt; không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
+- Chỉ các mục kiểm tay (ảnh emulator, thông báo, giờ, TalkBack, cỡ chữ) mới có thể được người dùng chấp nhận chưa làm, kèm lý do ghi trong PR. Test tự động (Gradle, mutation, contract, lint) không được miễn (PB6).
 - Khi còn thiếu, dừng và gợi ý cho người dùng chọn: sửa tiếp phần thiếu; người dùng chọn chấp nhận mục chưa làm (người dùng quyết, lý do ghi vào PR); hoặc giữ PR ở trạng thái draft.
 - Lệnh merge chỉ chạy sau khi có "ok": `gh pr merge <số> --squash --delete-branch` (phương thức mặc định là squash).
 - Trước khi hỏi "ok", đưa người dùng link PR và tóm tắt bằng chứng.
