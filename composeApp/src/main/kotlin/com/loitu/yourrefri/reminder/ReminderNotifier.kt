@@ -44,8 +44,13 @@ object ReminderNotifier {
         builder.setSmallIcon(R.drawable.ic_notification_fridge)
             .setContentTitle(title)
             .setContentText(body)
+            // Không dùng DecoratedCustomViewStyle: kiểu đó thêm viền trắng và tiêu đề hệ thống quanh thẻ.
             .setCustomContentView(views)
-            .setStyle(Notification.DecoratedCustomViewStyle())
+            .setCustomHeadsUpContentView(RemoteViews(context.packageName, R.layout.notification_reminder).apply {
+                setTextViewText(R.id.reminder_title, title)
+                setTextViewText(R.id.reminder_body, body)
+                if (picture != null) setImageViewBitmap(R.id.reminder_picture, circle(picture, PICTURE_PX))
+            })
             .setCategory(Notification.CATEGORY_REMINDER)
             .setPriority(Notification.PRIORITY_HIGH)
             .setContentIntent(open)

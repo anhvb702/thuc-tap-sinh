@@ -70,8 +70,9 @@ class ReminderReceiver : BroadcastReceiver() {
                         )
                     }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
+                android.util.Log.w("ReminderReceiver", "Không gửi được nhắc: ${e.javaClass.simpleName} ${e.message}", e)
             } finally {
                 completeReminderWork(
                     closeDriver = { driver?.close() },
