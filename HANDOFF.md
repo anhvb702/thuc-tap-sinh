@@ -4,6 +4,19 @@
 > Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — Warm Minimalism, dữ liệu chỉ lưu trên thiết bị.
 > Đọc file này đầu tiên, rồi `DECISIONS.md` (quyết định Q1–Q28) và `PLAN.md` (đợt R0–R6). Đối chiếu `git log origin/main` trước khi tin bất kỳ dòng trạng thái nào.
 
+## Cập nhật lượt 2026-11-18: pipeline agent (nhánh `chore/agent-pipeline-gates`)
+
+Chi tiết vận hành: `docs/agents/operating-model.md`. Số liệu dưới đây đo trên nhánh hiện tại (từ `main`), không phải nhánh feature.
+
+- **Môi trường Gradle:** `JAVA_HOME` = `C:\Setups\JavaJDK\jdk-21.0.9`, `ANDROID_HOME` = `C:\Users\anhvb2\AppData\Local\Android\Sdk`. Wrapper Gradle 8.5 chạy được, không tái hiện lỗi SSL nên chưa đặt `WINDOWS-ROOT`. `:shared:testDebugUnitTest --rerun-tasks --no-configuration-cache --max-workers=1`: 474 test, 0 lỗi, 0 bỏ qua.
+- **Pipeline `scripts/orchestrate.ps1`:** DryRun đi hết 13 stage, kết luận `READY` (chưa phải bằng chứng thật). Chưa có lần chạy thật nào.
+- **Vai Gemini chạy qua `agy`** (Antigravity CLI 1.5.11, đã cài). Đã kiểm với prompt có ngoặc kép, xuống dòng, tiếng Việt, `--mode plan`. Prompt truyền qua đối số dòng lệnh, giữ dưới khoảng 30.000 ký tự. Model: `gemini-3.8-flash-medium`; advisor `gemini-3.8-flash-high` (thay `gemini-3.1-pro-preview`, không có trong `agy`).
+- **Không còn fallback Claude** ở vai Gemini trong `roster.json`. Thiếu `agy` thì lượt dừng `ERROR`. Claude chỉ làm planner.
+- **Reviewer/mutation/bug hunter** dùng `gpt-6.2-sol` (đã phản hồi qua `codex exec`). `gpt-6.1-terra` và `gpt-6-luna` chưa kiểm trực tiếp.
+- **Chưa mở:** `known_mismatches` trong `roster.json` (4 điểm); Jev không nằm trong pipeline; chưa đo thời gian và số vòng sửa.
+- **PR #16** `docs/feature-ship-rule` (đầu `367699d`): rule ship `.agents/rules/feature-ship.md`. Codex review 3 vòng, vòng 3 đã sửa (`8d6df03`) nhưng chưa kiểm lại. Chưa merge, chờ người dùng nói "ok".
+- **Nhánh `chore/agent-pipeline-gates`** (`f748b0f`, chồng lên PR #16): `orchestrate.ps1` (agy), `roster.json`, `operating-model.md`. Chưa có PR.
+
 ## Cập nhật lượt 2026-11-18: kiểm tra lại các feature
 
 Lượt này đo trên nhánh `feat/zalo-share-reminder-test-now` (đầu `840d488`, có thay đổi chưa commit), không phải `main`. Các số dưới đây không áp dụng cho `main`.
