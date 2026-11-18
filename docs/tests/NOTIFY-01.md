@@ -48,3 +48,11 @@ Không có state UI. Đầu vào là mức quan trọng của kênh cũ (`Int?`,
 | Popup thật trên emulator hoặc máy | Chưa xác minh | Cần gửi thử thông báo và chụp ảnh |
 | Lint `scripts/lint-copy.ps1` | Đạt | LINT: PASS |
 | Commit `90ada42` có subject 75 ký tự, vượt PB9 (72) | Ghi nhận | Không sửa bằng force-push; commit sau đã đúng quy định |
+
+## Bổ sung: ảnh món trong popup
+
+- Ảnh: 4 món từ `image/` (thư mục worktree `home-ui-mockups`), thu nhỏ 720 px, JPEG chất lượng 85, đóng gói tại `composeApp/src/main/assets/notify/` (tổng khoảng 500 KB). APK debug kiểm tra có đủ 4 file.
+- Chọn ảnh theo ngày trong năm (`ReminderPicture.assetFor`), vì thông báo chưa gắn với một món cụ thể.
+- Test: `ReminderPictureTest` (3 test). Mutation "luôn ảnh đầu" bị bắt (1 method đỏ). `:composeApp:testDebugUnitTest` (uncached): 359 method, 0 lỗi.
+- Hiển thị bằng `BigPictureStyle` khi đọc được ảnh, nếu không dùng `BigTextStyle` như cũ. Việc hiện ảnh trên popup thật chưa kiểm.
+- Chưa làm: nút hành động (ví dụ "Nấu ngay"), và chọn món theo nguyên liệu sắp hết hạn.

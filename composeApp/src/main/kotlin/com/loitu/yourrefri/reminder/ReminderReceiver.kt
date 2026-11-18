@@ -67,11 +67,15 @@ class ReminderReceiver : BroadcastReceiver() {
                             Intent(context, MainActivity::class.java),
                             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                         )
+                        val picture = runCatching {
+                            context.assets.open(ReminderPicture.assetFor(today.dayOfYear)).use { android.graphics.BitmapFactory.decodeStream(it) }
+                        }.getOrNull()
                         val builder = notificationBuilder(context)
                         manager.notify(1730, builder.setSmallIcon(R.drawable.ic_notification_fridge)
                             .setContentTitle(notice.title)
                             .setContentText(notice.body.lineSequence().take(2).joinToString(" · "))
-                            .setStyle(android.app.Notification.BigTextStyle().bigText(notice.body))
+                            .setStyle(picture?.let { android.app.Notification.BigPictureStyle().bigPicture(it).setSummaryText(notice.body) }
+                                ?: android.app.Notification.BigTextStyle().bigText(notice.body))
                             .setContentIntent(openApp)
                             .setCategory(android.app.Notification.CATEGORY_REMINDER)
                             .setPriority(android.app.Notification.PRIORITY_HIGH)
