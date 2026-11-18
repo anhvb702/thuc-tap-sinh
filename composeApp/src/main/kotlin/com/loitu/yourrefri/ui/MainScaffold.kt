@@ -142,11 +142,20 @@ fun MainScaffold(
     currentHour: (() -> Int)? = null,
     onDeleteCookLog: (Long) -> Unit = {},
     cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
+    openRecipe: Pair<String, Long>? = null,
     modifier: Modifier = Modifier,
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
+    // Bấm thông báo nhắc có món: mở thẳng công thức của món đó (id đã được kiểm tra ở App).
+    LaunchedEffect(openRecipe) {
+        openRecipe?.let { (recipeId, _) ->
+            currentTab = NavTab.RECIPES
+            requestedRecipeId = recipeId
+            requestedRecipeMode = RecipeScreenMode.DAILY
+        }
+    }
     // Công thức đang mở ở màn chi tiết. Tạm dùng state cục bộ; khi có Navigation Compose sẽ thành route RecipeDetail.
     var openedRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
     // Công thức đang nấu ở chế độ rảnh tay (màn riêng, tạm dùng state cục bộ như màn chi tiết).

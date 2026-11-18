@@ -64,4 +64,14 @@ class RecipeSelectionTest {
         assertEquals(false, shouldBringRecipeIntoView("third", "third", "second"))
         assertEquals(false, shouldBringRecipeIntoView("unknown", "first", "first"))
     }
+
+    @Test
+    fun knownRequestedIdOutsideRecommendations_isSelected() {
+        assertEquals("ga-om", resolveRequestedRecipeId("ga-om", recommendationIds, listOf("first", "ga-om")))
+    }
+
+    @Test
+    fun unknownRequestedIdOutsideRecommendations_fallsBackToFirstRecommendation() {
+        assertEquals("first", resolveRequestedRecipeId("missing", recommendationIds, listOf("first")))
+    }
 }

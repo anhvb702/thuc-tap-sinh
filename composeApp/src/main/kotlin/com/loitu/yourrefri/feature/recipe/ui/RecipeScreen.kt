@@ -282,7 +282,8 @@ fun RecipeScreen(
     }
     val recommendations = recommendRecipes(recipes, state)
     val recommendationIds = recommendations.map { it.recipe.id }
-    val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
+    val knownRecipeIds = (recipes + customRecipes).map { it.id }
+    val resolvedInitialRecipeId = resolveRequestedRecipeId(initialRecipeId, recommendationIds, knownRecipeIds)
     // Có onOpenRecipe thì chạm thẻ mở màn chi tiết; không có thì bung cách nấu ngay dưới thẻ nổi bật.
     val expandInPlace = onOpenRecipe == null
     var selectedRecipeId by remember(recommendationIds, initialRecipeId) {

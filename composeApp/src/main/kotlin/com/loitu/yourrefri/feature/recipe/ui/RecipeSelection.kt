@@ -7,6 +7,14 @@ internal fun resolveInitialRecipeId(
     ?.takeIf { it in recommendationIds }
     ?: recommendationIds.firstOrNull()
 
+internal fun resolveRequestedRecipeId(
+    requestedId: String?,
+    recommendationIds: List<String>,
+    knownRecipeIds: Collection<String>,
+): String? = requestedId
+    ?.takeIf { it in knownRecipeIds }
+    ?: resolveInitialRecipeId(requestedId, recommendationIds)
+
 internal fun recipeRequestForHomeCard(recipeId: String): String = recipeId
 
 internal fun recipeRequestForAllRecipes(): String? = null

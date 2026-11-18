@@ -3,7 +3,10 @@ package com.loitu.yourrefri
 import android.os.Bundle
 import android.Manifest
 import android.os.Build
+import android.content.Intent
 import android.content.pm.PackageManager
+import com.loitu.yourrefri.reminder.NOTIFICATION_RECIPE_EXTRA
+import com.loitu.yourrefri.reminder.notificationRecipeRequest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -49,8 +52,13 @@ import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 
 class MainActivity : ComponentActivity() {
+    // Yêu cầu mở công thức từ thông báo: (id món, số thứ tự). Số thứ tự để bấm lại cùng món vẫn mở lại.
+    private var openRecipeRequest by mutableStateOf<Pair<String, Long>?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Chỉ đọc extra khi Activity mới được tạo, để xoay màn hình không mở lại công thức.
+        if (savedInstanceState == null) readOpenRecipeRequest(intent)
         setContent {
             val context = LocalContext.current
             var themeMode by remember { mutableStateOf(ThemePrefs.read(context)) }
@@ -61,15 +69,32 @@ class MainActivity : ComponentActivity() {
                         themeMode = mode
                         ThemePrefs.write(context, mode)
                     },
+                    openRecipeRequest = openRecipeRequest,
                 )
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        readOpenRecipeRequest(intent)
+    }
+
+    private fun readOpenRecipeRequest(intent: Intent?) {
+        intent?.getStringExtra(NOTIFICATION_RECIPE_EXTRA)?.let { id ->
+            openRecipeRequest = id to System.nanoTime()
         }
     }
 }
 
 @OptIn(ExperimentalTime::class)
 @Composable
-private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
+private fun App(
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
+    openRecipeRequest: Pair<String, Long>? = null,
+) {
     val context = LocalContext.current
     var reminderEnabled by remember { mutableStateOf(ReminderScheduler.enabled(context)) }
     var sundayTime by remember { mutableStateOf(ReminderScheduler.sundayTime(context)) }
@@ -288,6 +313,9 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
 
     MainScaffold(
         state = state,
+        openRecipe = openRecipeRequest?.let { (id, order) ->
+            notificationRecipeRequest(id, allRecipes.map { it.id })?.let { it to order }
+        },
         weeklyMealPlanState = weeklyMealPlanState,
         onWeeklyMealPlanAction = weeklyMealPlanViewModel::dispatch,
         leftovers = leftovers,
