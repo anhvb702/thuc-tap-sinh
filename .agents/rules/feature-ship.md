@@ -2,63 +2,64 @@
 trigger: always_on
 ---
 
-# Quy Tắc Ship Tính Năng: Commit → Push → PR → Merge
+# Quy Tắc Ship Tính Năng: Commit → Push → PR → Review → Merge
 
-Áp dụng khi người dùng yêu cầu đưa một việc vào `main`. Không áp dụng cho việc chỉ đọc, phân tích hay thử nghiệm không commit.
+Áp dụng khi người dùng yêu cầu đưa một việc vào `main`. Không áp dụng cho việc chỉ đọc, phân tích hay thử nghiệm không commit. Commit, push, tạo PR và merge chỉ chạy khi người dùng đã yêu cầu rõ trong việc đó.
 
 ## 1. Điều kiện "ok"
 
-- Một việc chỉ được coi là ok khi **mọi mục checklist ở mục 2 đạt**, và mỗi mục có bằng chứng thật: lệnh đã chạy và kết quả đã thấy.
-- Mục nào chưa làm thì ghi rõ "chưa xác minh", không ghi "đạt".
+- Một việc được coi là ok khi **mọi mục ở mục 2 đạt**, và mỗi mục có bằng chứng thật: lệnh đã chạy và kết quả đã thấy.
+- Mục chưa làm ghi rõ "chưa xác minh", không ghi "đạt".
 - Không suy đoán kết quả. Lệnh chưa chạy thì nói chưa chạy.
 
-## 2. Checklist kiểm thử bắt buộc
+## 2. Kiểm tra trước khi commit
 
-Đánh dấu từng mục khi đã chạy. Mục không áp dụng cho thay đổi thì ghi "không áp dụng" kèm lý do.
+- [ ] Diff ≤ 300 dòng: `git diff --stat main...HEAD`. Vượt thì tách việc (CLAUDE.md).
+- [ ] Nếu có contract trong `docs/tests/<mã>.md` thì test khớp contract; không sửa, xóa, `@Ignore` hay làm yếu test cũ. `<mã>` là mã của task trong `PLAN.md`.
+- [ ] Môi trường trước khi build: `JAVA_HOME` (JDK 21) và `ANDROID_HOME` đã đặt đúng cho máy. Đường dẫn khác nhau theo máy, kiểm trước khi chạy.
+- [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`).
+- [ ] `.\gradlew.bat :composeApp:testDebugUnitTest` xanh (khi đụng `:composeApp`).
+- [ ] `.\gradlew.bat :composeApp:assembleDebug` xanh (khi đụng code Android).
+- [ ] Khi cần chạy lại thật, thêm `--rerun-tasks --no-configuration-cache --max-workers=1`. Kết quả đọc từ `<module>/build/test-results/testDebugUnitTest/*.xml`.
+- [ ] Sáu mutation (ít nhất sáu) đã chạy; biên bản theo `docs/tests/_TEMPLATE.md` (tiêu chí | đạt | bằng chứng) có kết quả thật. Chỉ một tiến trình Gradle tại một thời điểm.
+- [ ] `scripts/lint-copy.ps1 -Path <file>` không báo từ cấm (khi có chuỗi hiển thị).
+- [ ] UI có ảnh chụp emulator; thông báo và thời gian có checklist tay (CLAUDE.md DoD). Nếu chưa làm: ghi "chưa xác minh" và để người dùng quyết (mục 6).
+- [ ] Tài liệu thay đổi: đọc lại; không còn link hỏng (kiểm bằng tìm kiếm); không còn đường dẫn máy cá nhân (`Select-String -Path <file> -Pattern 'C:\\Users'` không ra kết quả).
+- [ ] Nếu test đỏ: sửa theo `.agents/rules/test-retry-and-bug-isolation.md`, tối đa 3 lần thử, rồi dừng và báo người dùng.
 
-- [ ] `.\gradlew.bat :shared:testDebugUnitTest` xanh (khi đụng `:shared`)
-- [ ] `.\gradlew.bat :composeApp:testDebugUnitTest` xanh (khi đụng `:composeApp`)
-- [ ] `.\gradlew.bat :composeApp:assembleDebug` xanh (khi đụng code Android)
-- [ ] Test khớp tiêu chí trong `docs/tests/<mã>.md` (nếu có contract); không sửa, xóa, `@Ignore` hay làm yếu test cũ
-- [ ] Sáu mutation đã chạy và biên bản đã điền kết quả thật (nếu có contract)
-- [ ] `scripts/lint-copy.ps1 -Path <file>` không báo từ cấm (khi có chuỗi hiển thị)
-- [ ] Checklist tay (thông báo, giờ, ảnh chụp emulator, TalkBack, cỡ chữ lớn) đã làm, hoặc ghi rõ "chưa xác minh"
-- [ ] Tài liệu thay đổi: đọc lại, không còn link hỏng, không còn đường dẫn máy cá nhân
+## 3. Git và PR
 
-Lệnh Gradle chỉ chạy lại khi có thay đổi mã. Chỉ một tiến trình Gradle tại một thời điểm.
+1. Nhánh mới tách từ `main`, đặt tên `feat/...`, `fix/...` hoặc `docs/...`. Không commit thẳng `main`.
+2. Chỉ stage file thuộc task. Không gộp file đang sửa dở của việc khác.
+3. Commit theo PB9: `type(scope): subject`, tối đa 72 ký tự; thêm `[id]` nếu có. Phần thân (nếu có) tối đa ba câu, chỉ khi có lý do không hiển nhiên. Dòng trailer (`Co-Authored-By`) đặt cuối.
+4. Không dùng `--no-verify`. Không force-push. Không sửa lịch sử của `main`.
+5. `git push -u origin <nhánh>`, rồi `gh pr create --repo anhvb702/thuc-tap-sinh --base main --head <nhánh>`.
+6. Nội dung PR: mục đích; file thay đổi; checklist mục 2 với bằng chứng; mục nào "chưa xác minh"; kết quả review. Kết thúc bằng dòng `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 
-## 3. Review
+## 4. Review
 
-1. Chạy `superpowers:requesting-code-review` trên diff của nhánh.
-2. Ghi lại từng phát hiện: file, dòng, mức độ, lý do.
-3. Không merge khi còn phát hiện mở.
+1. Sau khi có PR, chạy review trên diff của PR bằng skill người dùng chỉ định (`superpowers:requesting-code-review`). Người review phải khác agent đã viết code (AGENTS.override.md).
+2. Phân loại từng phát hiện: **Critical** (sai chức năng, lộ dữ liệu, vi phạm ràng buộc cứng), **Important** (thiếu test, sai quy ước), **Minor** (văn phong, đặt tên).
+3. Critical và Important phải được xử lý trước khi merge. Minor có thể bỏ qua nếu ghi lý do trong PR.
+4. Comment từ Qodo trên PR xử lý theo `.agents/skills/qodo-review-workflow/SKILL.md`.
 
-## 4. Tiếp nhận ý kiến review
+## 5. Tiếp nhận ý kiến review
 
 1. Chạy `superpowers:receiving-code-review` trước khi sửa.
-2. Kiểm chứng từng ý kiến: đúng thì sửa, sai thì ghi lý do kèm bằng chứng.
-3. Sửa xong thì chạy lại toàn bộ checklist mục 2, không chỉ mục liên quan.
-4. Lặp lại mục 3 cho đến khi không còn phát hiện mở.
-
-## 5. Git
-
-- Nhánh mới tách từ `main`, đặt tên `feat/...`, `fix/...` hoặc `docs/...`. Không commit thẳng `main`.
-- Chỉ commit file thuộc task. Không gộp file đang sửa dở của việc khác.
-- Commit message theo PB9: `type(scope): subject`, tối đa 72 ký tự, phần thân chỉ khi có lý do không hiển nhiên.
-- Không dùng `--no-verify`. Không force-push. Không sửa lịch sử của `main`.
-- Push lên `origin`, tạo PR vào `main` của `anhvb702/thuc-tap-sinh`. Mô tả PR gồm: mục đích, file thay đổi, checklist mục 2 với bằng chứng, kết quả review.
+2. Kiểm chứng từng ý kiến. Đúng thì sửa. Sai thì trả lời ngay trong comment PR, kèm bằng chứng.
+3. Sửa xong thì push thêm commit và chạy lại toàn bộ mục 2, không chỉ mục liên quan.
+4. Lặp mục 4–5 tối đa 3 vòng. Nếu vẫn còn Critical hoặc Important thì dừng và hỏi người dùng.
 
 ## 6. Merge
 
-- Chỉ merge khi **đủ cả ba**: checklist mục 2 đạt (hoặc các mục chưa làm đã được người dùng chấp nhận rõ ràng), review không còn mục mở, và người dùng nói "ok" trong tin nhắn.
-- Nếu còn thiếu mục nào, dừng và gợi ý cho người dùng chọn một trong các hướng:
-  - sửa tiếp phần thiếu;
-  - bỏ qua mục đó với lý do ghi trong PR;
-  - hoãn merge và giữ PR ở trạng thái draft.
-- Không tự merge khi chưa có "ok" từ người dùng, kể cả khi mọi mục đã đạt.
+- Chỉ merge khi **đủ cả ba**: mục 2 đạt (hoặc người dùng đã chọn bỏ qua mục cụ thể, và lý do ghi trong PR); không còn Critical hay Important; và người dùng nói "ok" trong tin nhắn.
+- Khi còn thiếu, dừng và gợi ý cho người dùng chọn: sửa tiếp phần thiếu; bỏ qua mục đó (người dùng quyết, ghi vào PR); hoặc giữ PR ở trạng thái draft.
+- Lệnh merge chỉ chạy sau khi có "ok": `gh pr merge <số> --squash --delete-branch` (phương thức mặc định là squash).
+- Trước khi hỏi "ok", đưa người dùng link PR và tóm tắt bằng chứng.
+- Không tự merge khi chưa có "ok", kể cả khi mọi mục đã đạt.
 
 ## 7. Phạm vi
 
 - Không đụng file đang thay đổi dở của người khác hoặc không thuộc task (ví dụ `gradle.properties` có thay đổi chưa commit).
-- Không đổi `CLAUDE.md`, `AGENTS.override.md` hay `DECISIONS.md` trong việc ship, trừ khi việc đó chính là nội dung được yêu cầu.
+- Không đổi `CLAUDE.md`, `AGENTS.override.md` hay `DECISIONS.md` trong việc ship, trừ khi chính việc đó là nội dung được yêu cầu.
 - Không tạo file ngoài danh sách cần thiết nếu chưa hỏi người dùng.
