@@ -48,4 +48,16 @@ class AddFoodSheetTest {
         assertEquals("Thêm 3 món vào tủ", quickAddConfirmLabel(3))
         assertTrue(quickAddConfirmLabel(0).isNotBlank())
     }
+
+    @Test
+    fun haiNutThemTachRiengVaSheetKhacCoChuRieng() {
+        // Thêm nguyên liệu (danh mục) và Khác / Thêm món (món ngoài danh mục) là hai nút riêng.
+        assertEquals("Thêm nguyên liệu", PantryActionCopy.ingredient)
+        assertEquals("Khác / Thêm món", PantryActionCopy.customDish)
+        assertEquals("Thêm món khác", AddFoodSheetCopy.customTitle)
+        assertTrue(AddFoodSheetCopy.customPlaceholder.isNotBlank())
+        val custom = listOf(AddFoodSheetCopy.customTitle, AddFoodSheetCopy.customSubtitle, AddFoodSheetCopy.customPlaceholder)
+            .joinToString(" ").lowercase()
+        listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { assertFalse(custom.contains(it), it) }
+    }
 }

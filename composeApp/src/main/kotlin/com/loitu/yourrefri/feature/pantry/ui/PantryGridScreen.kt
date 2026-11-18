@@ -154,6 +154,8 @@ fun PantryGridScreen(
     var addFoodAlreadyPresent by remember { mutableStateOf(false) }
     var selectedGroup by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    // true: bảng "Khác / Thêm món" (chỉ nhập tên món ngoài danh mục); false: "Thêm nguyên liệu".
+    var addSheetCustom by remember { mutableStateOf(false) }
     // "Mình nghe được: ..." chỉ hiện trong bảng thêm món khi mở từ giọng nói.
     var voiceHeard by remember { mutableStateOf<String?>(null) }
     var voicePhase by remember { mutableStateOf(VoicePhase.IDLE) }
@@ -182,9 +184,10 @@ fun PantryGridScreen(
         selectedGroup = null
         selectedIds = emptySet()
         voiceHeard = null
+        addSheetCustom = false
     }
 
-    fun openAddSheet(prefill: String = "", preselected: Set<String> = emptySet(), heard: String? = null) {
+    fun openAddSheet(prefill: String = "", preselected: Set<String> = emptySet(), heard: String? = null, custom: Boolean = false) {
         newFoodName = prefill
         newFoodDays = null
         addFoodError = false
@@ -192,6 +195,7 @@ fun PantryGridScreen(
         selectedGroup = null
         selectedIds = preselected
         voiceHeard = heard
+        addSheetCustom = custom
         showAddDialog = true
     }
 
@@ -846,6 +850,7 @@ fun PantryGridScreen(
     PantryActionBar(
         voiceAvailable = voiceAvailable,
         onManual = { openAddSheet() },
+        onCustomDish = { openAddSheet(custom = true) },
         onVoice = { onVoiceClick() },
         modifier = Modifier
             .align(Alignment.BottomCenter)
@@ -915,12 +920,12 @@ fun PantryGridScreen(
                         .padding(horizontal = 20.dp),
                 ) {
                     Text(
-                        AddFoodSheetCopy.title,
+                        if (addSheetCustom) AddFoodSheetCopy.customTitle else AddFoodSheetCopy.title,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = colors.text,
                     )
                     Text(
-                        AddFoodSheetCopy.subtitle,
+                        if (addSheetCustom) AddFoodSheetCopy.customSubtitle else AddFoodSheetCopy.subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.muted,
                         modifier = Modifier.padding(top = 2.dp, bottom = 12.dp),
@@ -938,7 +943,7 @@ fun PantryGridScreen(
                                 .padding(12.dp),
                         )
                     }
-                    Row(
+                    if (!addSheetCustom) Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -979,7 +984,7 @@ fun PantryGridScreen(
                             addFoodError = false
                             addFoodAlreadyPresent = false
                         },
-                        placeholder = { Text(AddFoodSheetCopy.searchPlaceholder) },
+                        placeholder = { Text(if (addSheetCustom) AddFoodSheetCopy.customPlaceholder else AddFoodSheetCopy.searchPlaceholder) },
                         singleLine = true,
                         shape = RoundedCornerShape(16.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -1011,7 +1016,7 @@ fun PantryGridScreen(
                         )
                     }
                     Spacer(Modifier.height(12.dp))
-                    val suggestions = quickAddSuggestions(
+                    val suggestions = if (addSheetCustom) emptyList() else quickAddSuggestions(
                         state = state,
                         query = newFoodName,
                         limit = Int.MAX_VALUE,
@@ -1335,19 +1340,30 @@ private fun categoryIconFor(key: String) = when (key) {
 private fun PantryActionBar(
     voiceAvailable: Boolean,
     onManual: () -> Unit,
+    onCustomDish: () -> Unit,
     onVoice: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
-    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionPill(
-            label = PantryActionCopy.manual,
+            label = PantryActionCopy.ingredient,
             icon = AppIcons.Keyboard,
             container = colors.surfaceSoft,
             content = colors.text,
             borderColor = colors.line,
             description = PantryScreenCopy.addFoodDescription,
             onClick = onManual,
+            modifier = Modifier.weight(1f),
+        )
+        ActionPill(
+            label = PantryActionCopy.customDish,
+            icon = AppIcons.Pot,
+            container = colors.surfaceSoft,
+            content = colors.text,
+            borderColor = colors.line,
+            description = AddFoodSheetCopy.customTitle,
+            onClick = onCustomDish,
             modifier = Modifier.weight(1f),
         )
         if (voiceAvailable) {
@@ -1867,7 +1883,9 @@ internal object PantrySearchCopy {
 }
 
 internal object PantryActionCopy {
-    const val manual = "Khác · thêm món"
+    // Hai nút tách hẳn: nguyên liệu có sẵn trong danh mục, và món ngoài danh mục.
+    const val ingredient = "Thêm nguyên liệu"
+    const val customDish = "Khác / Thêm món"
     const val voice = "Thêm bằng giọng nói"
     const val voiceDescription = "Thêm thực phẩm bằng giọng nói"
 }

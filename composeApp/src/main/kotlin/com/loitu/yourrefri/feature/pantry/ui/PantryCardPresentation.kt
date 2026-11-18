@@ -47,6 +47,10 @@ internal object AddFoodSheetCopy {
     const val closeLabel = "Đóng"
     const val fabLabel = "Thêm món"
     const val searchPlaceholder = "Tìm món, ví dụ: thịt bò"
+    // Sheet "Khác / Thêm món": chỉ nhập tên món ngoài danh mục.
+    const val customTitle = "Thêm món khác"
+    const val customSubtitle = "Món chưa có trong danh sách: ghi tên và hạn ước tính."
+    const val customPlaceholder = "Tên món, ví dụ: canh chua"
     const val alreadyPresent = "Món này đã có trong tủ rồi."
     const val alreadyPresentWithIncrease = "Món này đã có trong tủ. Bấm bên dưới nếu vừa mua thêm 1."
 }
