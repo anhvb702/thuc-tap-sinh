@@ -168,8 +168,8 @@ class PantryGridPresentationTest {
 
     @Test
     fun q25_frozenExpiredStatus_returnsGentleRecheckLabel() {
-        assertEquals("kiểm tra lại xem còn dùng được không", pantryRowStatus(-1, PantryCompartment.FREEZE))
-        assertEquals("Kiểm tra lại xem còn dùng được không", pantryRowStatus(-1, PantryCompartment.CHILL))
+        assertEquals("Đã qua 1 ngày (ước tính)", pantryRowStatus(-1, PantryCompartment.FREEZE))
+        assertEquals("Đã qua 1 ngày (ước tính)", pantryRowStatus(-1, PantryCompartment.CHILL))
     }
 
     private fun cell(id: String, have: Boolean) = PantryCell(

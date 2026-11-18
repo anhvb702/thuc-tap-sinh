@@ -81,9 +81,9 @@ class HomeDefrostAndLeftoverTest {
         val strip = buildUrgentStrip(state, leftovers)
         assertEquals(listOf("Cá kho cũ", "Thịt kho", "Cà chua"), strip.map { it.name })
         assertTrue(strip[0].isLeftover)
-        assertEquals("kiểm tra lại xem còn dùng được không", strip[0].caption)
+        assertEquals("Đã qua 2 ngày (ước tính)", strip[0].caption)
         assertTrue(strip[1].isLeftover)
-        assertEquals("Ước tính còn 1 ngày", strip[1].caption)
+        assertEquals("Còn 1 ngày (ước tính)", strip[1].caption)
         assertFalse(strip[2].isLeftover)
     }
 
@@ -124,7 +124,7 @@ class HomeDefrostAndLeftoverTest {
         val strip = buildUrgentStrip(state, emptyList())
         assertEquals(1, strip.size)
         assertEquals("Thịt bò", strip[0].name)
-        assertEquals("kiểm tra lại xem còn dùng được không", strip[0].caption)
+        assertEquals("Đã qua 2 ngày (ước tính)", strip[0].caption)
     }
 
     @Test

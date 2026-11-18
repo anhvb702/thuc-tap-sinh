@@ -65,6 +65,7 @@ import com.loitu.yourrefri.feature.pantry.logic.ExpiringItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
+import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.pantry.ui.isLeftoverUrgent
 import com.loitu.yourrefri.feature.pantry.data.LeftoverItem
 import com.loitu.yourrefri.feature.pantry.data.PantryCompartment
@@ -110,11 +111,7 @@ internal fun summaryButtonBelowText(fontScale: Float): Boolean = fontScale >= 1.
 internal fun greetingText(hour: Int): String = homeGreeting(hour).replace(" 🌿", "") // guard:allow (chuỗi dùng chung ở :shared còn ký hiệu, chỉ cắt khi hiển thị)
 
 // Bản ngắn của statusText cho thẻ hẹp; tiêu đề mục đã ghi "Hạn là ước tính".
-internal fun shortEstimateText(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại giúp mình"
-    daysLeft == 0 -> "Nên dùng hôm nay"
-    else -> "Khoảng còn $daysLeft ngày"
-}
+internal fun shortEstimateText(daysLeft: Int): String = estimateDaysText(daysLeft)
 
 // Số món đang có theo khu vực bảo quản (ngăn mát / ngăn đông).
 internal data class PantryZoneCounts(val fridge: Int, val freezer: Int)
@@ -125,15 +122,10 @@ internal fun pantryZoneCounts(haveItems: List<PantryCell>): PantryZoneCounts {
 }
 
 // Dòng chữ dưới tên món cần dùng sớm; luôn là ước tính, không khẳng định an toàn.
-internal fun urgentCaption(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại giúp mình"
-    daysLeft == 0 -> "Nên dùng hôm nay (ước tính)"
-    else -> "Ước tính còn $daysLeft ngày"
-}
+internal fun urgentCaption(daysLeft: Int): String = estimateDaysText(daysLeft)
 
-// Q25: Đồ ngăn đông quá hạn ước tính hiển thị nhãn nhẹ nhàng hơn.
-internal fun urgentCaption(daysLeft: Int, isExpiredFrozen: Boolean): String =
-    if (isExpiredFrozen) "kiểm tra lại xem còn dùng được không" else urgentCaption(daysLeft)
+// Q25: ngăn đông quá hạn ghi số ngày như các ngăn khác (cùng estimateDaysText).
+internal fun urgentCaption(daysLeft: Int, isExpiredFrozen: Boolean): String = urgentCaption(daysLeft)
 
 internal sealed interface UrgentStripEntry {
     val key: String

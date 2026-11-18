@@ -312,14 +312,16 @@ internal fun WeeklyMealPlanSection(
                 }
             }
             Button(
-                onClick = { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onConfirmWeek() },
+                // Một nút: xác nhận thực đơn rồi mở đi chợ cuối tuần luôn.
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (!confirmed) onConfirmWeek()
+                    onOpenWeekendShopping()
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
                 modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
             ) {
-                Text(if (confirmed) "Đã xác nhận thực đơn tuần" else "Xác nhận thực đơn tuần")
-            }
-            TextButton(onClick = onOpenWeekendShopping, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Đi chợ cuối tuần", color = colors.accentText)
+                Text(if (confirmed) "Đi chợ cuối tuần" else "Xác nhận và đi chợ cuối tuần")
             }
         }
     }

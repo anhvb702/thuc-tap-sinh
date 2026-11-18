@@ -96,16 +96,18 @@ internal const val URGENT_DAYS = 2
 internal fun pantryRowUrgent(have: Boolean, daysLeft: Int?): Boolean =
     have && daysLeft != null && daysLeft <= URGENT_DAYS
 
-/** Dòng trạng thái dưới tên món; luôn là ước tính và không dùng lời nặng nề. */
-internal fun pantryRowStatus(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại xem còn dùng được không"
-    daysLeft == 0 -> "Nên dùng hôm nay"
-    daysLeft <= URGENT_DAYS -> "Ước tính còn $daysLeft ngày"
-    else -> "Còn khoảng $daysLeft ngày"
+/**
+ * Chữ số ngày dùng chung cho dòng tủ và thẻ Trang chủ: luôn ghi số ngày và là ước tính.
+ * Âm = đã qua bao nhiêu ngày; không bảo người dùng tự kiểm tra.
+ */
+internal fun estimateDaysText(daysLeft: Int): String = when {
+    daysLeft < 0 -> "Đã qua ${-daysLeft} ngày (ước tính)"
+    daysLeft == 0 -> "Nên dùng hôm nay (ước tính)"
+    else -> "Còn $daysLeft ngày (ước tính)"
 }
 
-/** Q25: Đồ ngăn đông quá hạn ước tính hiển thị nhãn nhẹ nhàng hơn. */
-internal fun pantryRowStatus(daysLeft: Int, compartment: PantryCompartment): String = when {
-    daysLeft < 0 && compartment == PantryCompartment.FREEZE -> "kiểm tra lại xem còn dùng được không"
-    else -> pantryRowStatus(daysLeft)
-}
+/** Dòng trạng thái dưới tên món. */
+internal fun pantryRowStatus(daysLeft: Int): String = estimateDaysText(daysLeft)
+
+/** Q25: ngăn đông quá hạn dùng cùng cách ghi số ngày như các ngăn khác. */
+internal fun pantryRowStatus(daysLeft: Int, compartment: PantryCompartment): String = pantryRowStatus(daysLeft)
