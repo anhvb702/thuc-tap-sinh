@@ -342,14 +342,13 @@ fun RecipeScreen(
                         )
                     }
                 }
-                if (randomShown) {
-                    RandomRecipeCard(
-                        pick = randomPick,
-                        outsideDiet = randomPick?.let { isOutsideDiet(it.recipe, dietRestriction, state.ingredients) } == true,
-                        onOpen = { randomPick?.let { onOpenRecipe?.invoke(it.recipe.id) } },
-                        onTryAnother = { rollRandom() },
-                        onBack = { randomShown = false; randomPick = null },
-                        modifier = Modifier.padding(top = 12.dp),
+                if (randomShown && randomPick != null) {
+                    RandomWheelDialog(
+                        pool = randomPool.orEmpty(),
+                        pick = randomPick!!,
+                        onSpinAgain = { rollRandom() },
+                        onOpenRecipe = { onOpenRecipe?.invoke(it.id) },
+                        onDismiss = { randomShown = false },
                     )
                 }
 
