@@ -841,6 +841,14 @@ fun PantryGridScreen(
                             repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
+                    if (notFoundSectionVisible(newFoodName, suggestions.size)) {
+                        Text(
+                            text = PantrySearchCopy.notFoundSectionTitle,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     AddFoodEstimateSection(
                         state = state,
@@ -879,7 +887,14 @@ fun PantryGridScreen(
                             contentColor = colors.onPrimary,
                         ),
                     ) {
-                        Text(if (isOther) "Thêm vào tủ" else quickAddConfirmLabelFor(confirmActions.size, increasesExisting), fontWeight = FontWeight.Bold)
+                        Text(
+                            when {
+                                isOther -> "Thêm vào tủ"
+                                increasesExisting -> quickAddConfirmLabelFor(confirmActions.size, true)
+                                else -> addSelectionLabel(confirmActions.size)
+                            },
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                     TextButton(
                         onClick = { dismissAddFoodDialog() },
@@ -1359,16 +1374,21 @@ private fun QuickAddTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = if (selected) AppIcons.Check else foodIconFor(iconId),
-                    contentDescription = null,
-                    tint = colors.accentText,
-                    modifier = Modifier.size(22.dp),
-                )
+            if (selected) {
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = colors.accentText,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            } else {
+                // Ảnh món hoặc icon riêng (FoodThumb); chưa có thì icon nhóm.
+                FoodThumb(ingredientId = iconId, size = 36.dp, shape = CircleShape)
             }
             Text(
                 text = name,
@@ -1469,6 +1489,7 @@ internal object PantrySearchCopy {
     const val placeholder = "Tìm món, ví dụ: cà chua"
     const val notFound = "Chưa thấy món này, mình thêm vào tủ nhé?"
     const val addAction = "Thêm vào tủ"
+    const val notFoundSectionTitle = "Không thấy món bạn cần?"
 }
 
 internal object PantryActionCopy {

@@ -7,7 +7,7 @@ internal object ReminderCopy {
     const val subtitle = "Tối đa 1 lời nhắc mỗi ngày, hạn là ước tính. Tắt cũng không sao, mở app vẫn thấy đủ."
 
     fun sundayTimeLabel(time: LocalTime): String =
-        "Chủ Nhật nhắc đi chợ lúc ${time.hour.toString().padStart(2, '0')}:${time.minute.toString().padStart(2, '0')}"
+        "Chủ Nhật nhắc đi chợ lúc ${reminderTimeLabel(time.hour, time.minute)}"
 }
 
 private const val DEFAULT_SUNDAY_MINUTES = 8 * 60

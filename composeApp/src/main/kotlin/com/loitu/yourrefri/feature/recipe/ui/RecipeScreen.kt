@@ -52,6 +52,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -89,6 +91,8 @@ import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 fun RecipeScreen(
     state: PantryGridState,
     recipes: List<Recipe>,
+    // Ngày bắt đầu tuần thực đơn, để nhãn ngày hiện "Thứ 4 · 18.11"; null thì hiện nhãn cũ.
+    weekStart: kotlinx.datetime.LocalDate? = null,
     initialRecipeId: String? = null,
     onCookRecipe: ((Recipe, List<String>) -> Unit)? = null,
     initialMode: RecipeScreenMode = RecipeScreenMode.DAILY,
@@ -253,11 +257,13 @@ fun RecipeScreen(
     val todayIndex = todayIndexOverride
         ?: remember { todayDayIndex(Clock.System.now(), TimeZone.currentSystemDefault()) }
 
+    val pageScroll = rememberScrollState()
+    val scrollScope = rememberCoroutineScope()
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(pageScroll)
             .padding(16.dp)
     ) {
         RecipeScreenTitle()
@@ -270,6 +276,7 @@ fun RecipeScreen(
         when (mode) {
             RecipeScreenMode.WEEKLY -> WeeklyMealPlanSection(
                 plan = weeklyPlan,
+                weekStart = weekStart,
                 goal = goal,
                 preferences = preferences,
                 onGoal = {
@@ -294,6 +301,11 @@ fun RecipeScreen(
                     showCookConfirmation = true
                 },
                 updatedRecipeResult = updatedRecipeResult,
+                onNavigate = {
+                    updateMode(it)
+                    // Mở từ nút xác nhận ở cuối trang: đưa danh sách về đầu để thấy tiêu đề.
+                    scrollScope.launch { pageScroll.scrollTo(0) }
+                },
             )
 
             RecipeScreenMode.SHOPPING -> WeeklyShoppingSection(
