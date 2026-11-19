@@ -55,6 +55,36 @@ class ShippedRecipeBundleTest {
             required = setOf(setOf("ca-hoi"), setOf("xa-lach", "cai-ngot")),
             optional = setOf(setOf("ca-chua")),
         ),
+        "trung-xao-ca-chua" to RecipeContract(
+            title = "Trứng xào cà chua",
+            minutes = 12,
+            required = setOf(setOf("trung-ga"), setOf("ca-chua")),
+            optional = setOf(setOf("hanh-la")),
+        ),
+        "canh-cai-dau-phu" to RecipeContract(
+            title = "Canh cải đậu phụ",
+            minutes = 15,
+            required = setOf(setOf("cai-ngot"), setOf("dau-phu")),
+            optional = emptySet(),
+        ),
+        "ga-ap-chao" to RecipeContract(
+            title = "Thịt gà áp chảo",
+            minutes = 20,
+            required = setOf(setOf("thit-ga")),
+            optional = setOf(setOf("hanh-la")),
+        ),
+        "canh-bi-thit-bam" to RecipeContract(
+            title = "Canh bí xanh nấu thịt bằm",
+            minutes = 20,
+            required = setOf(setOf("bi-xanh"), setOf("thit-heo-xay", "thit-heo")),
+            optional = setOf(setOf("hanh-la")),
+        ),
+        "rau-muong-xao-toi" to RecipeContract(
+            title = "Rau muống xào tỏi",
+            minutes = 10,
+            required = setOf(setOf("rau-muong"), setOf("toi")),
+            optional = emptySet(),
+        ),
     )
 
     private val cookingIngredientIds = setOf(
@@ -66,10 +96,11 @@ class ShippedRecipeBundleTest {
     )
 
     @Test
-    fun shippedBundleKeepsThreeOriginalRecipesAndAddsSevenSpecifiedRecipes() {
+    fun shippedBundleKeepsThreeOriginalRecipesAndAddsTwelveSpecifiedRecipes() {
         val recipes = shippedRecipes()
 
-        assertEquals(10, recipes.size)
+        // Đổi từ 10 sang 15 có chủ đích: người dùng yêu cầu thêm 5 món mới (có ảnh và nguyên liệu sẵn trong danh mục).
+        assertEquals(15, recipes.size)
         assertEquals(originalRecipeIds + newRecipeContracts.keys, recipes.map { it.id }.toSet())
     }
 
@@ -101,7 +132,7 @@ class ShippedRecipeBundleTest {
     }
 
     @Test
-    fun sevenNewRecipesMatchTheirSpecifiedTitlesDurationsAndSlots() {
+    fun twelveNewRecipesMatchTheirSpecifiedTitlesDurationsAndSlots() {
         val recipesById = shippedRecipes().associateBy { it.id }
 
         newRecipeContracts.forEach { (id, contract) ->
