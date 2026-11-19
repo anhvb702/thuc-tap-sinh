@@ -51,6 +51,7 @@ object AppIcons {
     val Clock by lazy { strokeIcon("Clock", "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z", "M12 7v5l3 2") }
     val Check by lazy { strokeIcon("Check", "M5 12l5 5 9-10") }
     val Back by lazy { strokeIcon("Back", "M15 5l-7 7 7 7") }
+    val ArrowRight by lazy { strokeIcon("ArrowRight", "M5 12h14", "M13 6l6 6-6 6") }
     val Chevron by lazy { strokeIcon("Chevron", "M9 5l7 7-7 7") }
     val Bell by lazy { strokeIcon("Bell", "M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z", "M10 21h4") }
     val Lock by lazy {
