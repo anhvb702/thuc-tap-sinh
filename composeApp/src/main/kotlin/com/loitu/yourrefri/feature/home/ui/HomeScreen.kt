@@ -41,6 +41,7 @@ import com.loitu.yourrefri.feature.home.logic.homeGreeting
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
+import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
@@ -73,11 +74,7 @@ internal fun summaryButtonBelowText(fontScale: Float): Boolean = fontScale >= 1.
 internal fun greetingText(hour: Int): String = homeGreeting(hour).replace(" 🌿", "") // guard:allow (chuỗi dùng chung ở :shared còn ký hiệu, chỉ cắt khi hiển thị)
 
 // Bản ngắn của statusText cho thẻ hẹp; tiêu đề mục đã ghi "Hạn là ước tính".
-internal fun shortEstimateText(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại giúp mình"
-    daysLeft == 0 -> "Nên dùng hôm nay"
-    else -> "Khoảng còn $daysLeft ngày"
-}
+internal fun shortEstimateText(daysLeft: Int): String = estimateDaysText(daysLeft)
 
 // Số món đang có theo khu vực bảo quản (ngăn mát / ngăn đông).
 internal data class PantryZoneCounts(val fridge: Int, val freezer: Int)
@@ -88,11 +85,7 @@ internal fun pantryZoneCounts(haveIds: List<String>): PantryZoneCounts {
 }
 
 // Dòng chữ dưới tên món cần dùng sớm; luôn là ước tính, không khẳng định an toàn.
-internal fun urgentCaption(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại giúp mình"
-    daysLeft == 0 -> "Nên dùng hôm nay (ước tính)"
-    else -> "Ước tính còn $daysLeft ngày"
-}
+internal fun urgentCaption(daysLeft: Int): String = estimateDaysText(daysLeft)
 
 // Chữ lớn từ 1.3 thì dải gợi ý món cuộn ngang để tên món không bị cắt.
 internal fun recipeStripScrolls(fontScale: Float): Boolean = fontScale >= 1.3f

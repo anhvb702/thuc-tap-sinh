@@ -338,7 +338,7 @@ fun RecipeScreen(
                             label = RandomRecipeCopy.button,
                             selected = randomShown,
                             onClick = { rollRandom() },
-                            icon = AppIcons.ChefHat,
+                            icon = AppIcons.Wheel,
                         )
                     }
                 }
