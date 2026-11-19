@@ -97,13 +97,43 @@ class ShippedRecipeBundleTest {
             required = setOf(setOf("rau-muong"), setOf("toi")),
             optional = emptySet(),
         ),
+        "suon-xao-chua-ngot" to RecipeContract(
+            title = "Sườn xào chua ngọt",
+            minutes = 30,
+            required = setOf(setOf("suon-heo"), setOf("ca-chua")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam"), setOf("dau-an")),
+        ),
+        "muc-xao-can-toi" to RecipeContract(
+            title = "Mực xào dưa leo",
+            minutes = 15,
+            required = setOf(setOf("muc"), setOf("dua-leo")),
+            optional = setOf(setOf("hanh-tay"), setOf("toi"), setOf("dau-an")),
+        ),
+        "cai-thia-xao-nam" to RecipeContract(
+            title = "Cải thìa xào nấm",
+            minutes = 12,
+            required = setOf(setOf("cai-thia"), setOf("nam")),
+            optional = setOf(setOf("toi"), setOf("dau-an")),
+        ),
+        "canh-suon-bi-xanh" to RecipeContract(
+            title = "Canh sườn bí xanh",
+            minutes = 30,
+            required = setOf(setOf("suon-heo"), setOf("bi-xanh")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam")),
+        ),
+        "trung-chien-hanh-la" to RecipeContract(
+            title = "Trứng chiên hành lá",
+            minutes = 10,
+            required = setOf(setOf("trung-ga"), setOf("hanh-la")),
+            optional = setOf(setOf("nuoc-mam"), setOf("dau-an")),
+        ),
     )
 
     private val cookingIngredientIds = setOf(
-        "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga",
-        "ca-basa", "ca-hoi", "tom",
-        "rau-muong", "cai-ngot", "xa-lach", "rau-ngot", "hanh-la",
-        "ca-rot", "khoai-tay", "ca-chua", "bi-xanh", "hanh-tay",
+        "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo",
+        "ca-basa", "ca-hoi", "tom", "muc",
+        "rau-muong", "cai-ngot", "xa-lach", "rau-ngot", "hanh-la", "cai-thia",
+        "ca-rot", "khoai-tay", "ca-chua", "bi-xanh", "hanh-tay", "dua-leo",
         "trung-ga", "dau-phu", "nam",
     )
 
@@ -111,8 +141,8 @@ class ShippedRecipeBundleTest {
     fun shippedBundleKeepsThreeOriginalRecipesAndAddsTwelveSpecifiedRecipes() {
         val recipes = shippedRecipes()
 
-        // Đổi từ 10 sang 15 có chủ đích: người dùng yêu cầu thêm 5 món mới (có ảnh và nguyên liệu sẵn trong danh mục).
-        assertEquals(15, recipes.size)
+        // Đổi từ 15 sang 20 có chủ đích: người dùng yêu cầu thêm 6 nguyên liệu và 5 món mới kèm ảnh.
+        assertEquals(20, recipes.size)
         assertEquals(originalRecipeIds + newRecipeContracts.keys, recipes.map { it.id }.toSet())
     }
 

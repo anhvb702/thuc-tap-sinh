@@ -261,5 +261,107 @@
       { "anyOf": ["rau-muong"] },
       { "anyOf": ["toi"] }
     ]
+  },
+  {
+    "id": "suon-xao-chua-ngot",
+    "title": "Sườn xào chua ngọt",
+    "minutes": 30,
+    "stepMinutes": [null, 15, 10, null],
+    "steps": [
+      "Sườn heo rửa sạch, chặt miếng vừa ăn, chần sơ qua nước sôi cho thơm; cà chua bổ múi cau.",
+      "Đun sườn với ít nước và chút nước mắm trên lửa vừa khoảng 15 phút cho sườn mềm.",
+      "Chiên vàng nhẹ sườn rồi rim cùng cà chua và sốt chua ngọt khoảng 10 phút đến khi sánh bóng.",
+      "Rắc hành lá nếu có, múc ra đĩa và dùng nóng với cơm trắng."
+    ],
+    "required": [
+      { "anyOf": ["suon-heo"] },
+      { "anyOf": ["ca-chua"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "muc-xao-can-toi",
+    "title": "Mực xào dưa leo",
+    "minutes": 15,
+    "stepMinutes": [null, 4, 5, null],
+    "steps": [
+      "Mực tươi làm sạch, khía vảy rồng và cắt miếng vừa ăn; dưa leo rửa sạch, bỏ ruột và thái lát xéo.",
+      "Phi thơm tỏi với chút dầu, xào nhanh mực trên lửa lớn khoảng 4 phút rồi trút riêng ra đĩa.",
+      "Xào dưa leo và hành tây vừa chín tới, cho mực trở lại đảo đều tay thêm 5 phút.",
+      "Nêm vừa ăn rồi dọn ra đĩa, dùng nóng cho giòn ngọt."
+    ],
+    "required": [
+      { "anyOf": ["muc"] },
+      { "anyOf": ["dua-leo"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tay"] },
+      { "anyOf": ["toi"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "cai-thia-xao-nam",
+    "title": "Cải thìa xào nấm",
+    "minutes": 12,
+    "stepMinutes": [null, 3, 4, null],
+    "steps": [
+      "Cải thìa tách bẹ rửa sạch; nấm tươi cắt gốc, rửa nhẹ và thái miếng vừa ăn.",
+      "Phi thơm tỏi với ít dầu ăn, cho nấm vào đảo nhanh khoảng 3 phút.",
+      "Thêm cải thìa vào xào trên lửa lớn khoảng 4 phút cho rau xanh mướt vừa chín tới.",
+      "Nêm nhạt vừa miệng, bày ra đĩa và dùng nóng với cơm."
+    ],
+    "required": [
+      { "anyOf": ["cai-thia"] },
+      { "anyOf": ["nam"] }
+    ],
+    "optional": [
+      { "anyOf": ["toi"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "canh-suon-bi-xanh",
+    "title": "Canh sườn bí xanh",
+    "minutes": 30,
+    "stepMinutes": [null, 20, 8, null],
+    "steps": [
+      "Sườn heo rửa sạch, chần sơ nước sôi; bí xanh gọt vỏ, bỏ ruột và cắt khúc vừa ăn.",
+      "Cho sườn vào nồi nước, ninh lửa nhỏ khoảng 20 phút và hớt bọt cho nước trong.",
+      "Thả bí xanh vào nấu thêm khoảng 8 phút đến khi bí mềm ngọt, nêm chút nước mắm vừa ăn.",
+      "Rắc hành lá nếu có, múc canh ra tô dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["suon-heo"] },
+      { "anyOf": ["bi-xanh"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] }
+    ]
+  },
+  {
+    "id": "trung-chien-hanh-la",
+    "title": "Trứng chiên hành lá",
+    "minutes": 10,
+    "stepMinutes": [null, 4, 3, null],
+    "steps": [
+      "Đập trứng gà vào bát, thêm hành lá thái nhỏ và chút nước mắm rồi đánh đều tay.",
+      "Làm nóng chảo với ít dầu ăn, đổ trứng vào chiên lửa vừa khoảng 4 phút cho mặt dưới vàng thơm.",
+      "Trở mặt trứng và chiên thêm khoảng 3 phút cho chín đều, phồng nhẹ.",
+      "Cắt trứng thành miếng vừa ăn, dọn ra đĩa dùng cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["trung-ga"] },
+      { "anyOf": ["hanh-la"] }
+    ],
+    "optional": [
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["dau-an"] }
+    ]
   }
 ]
