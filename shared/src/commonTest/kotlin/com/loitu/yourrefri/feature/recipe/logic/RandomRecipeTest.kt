@@ -9,8 +9,6 @@ import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -25,66 +23,52 @@ class RandomRecipeTest {
         pantry = have.associateWith { PantryItem(it, have = true, markedAt = today) },
     )
 
-    private val cookable1 = recipe("a", "trung")
-    private val cookable2 = recipe("b", "trung", "hanh")
-    private val missing = recipe("c", "thit-bo")
-
     @Test
-    fun prefersCookableRecipes() {
-        val state = stateWith("trung", "hanh")
-        repeat(30) { seed ->
-            val pick = pickRandomRecipe(listOf(cookable1, missing, cookable2), state, null, Random(seed))
-            assertNotNull(pick)
-            assertTrue(pick.canCookNow)
-            assertNotEquals("c", pick.recipe.id)
-        }
+    fun emptyReturnsNull() {
+        assertNull(pickRandomRecipe(emptyList(), stateWith(), null, Random(0)))
     }
 
     @Test
-    fun reachesEveryCookableRecipeAcrossSeeds() {
-        val state = stateWith("trung", "hanh")
-        val seen = (0 until 60).map { pickRandomRecipe(listOf(cookable1, cookable2), state, null, Random(it))!!.recipe.id }.toSet()
-        assertEquals(setOf("a", "b"), seen)
-    }
-
-    @Test
-    fun fallsBackToAllWhenNoneCookable_marksNotCookable() {
-        val state = stateWith("ca")
-        val pick = pickRandomRecipe(listOf(cookable1, missing), state, null, Random(1))
-        assertNotNull(pick)
-        assertFalse(pick.canCookNow)
-    }
-
-    @Test
-    fun neverReturnsExcludedId() {
-        val state = stateWith("trung", "hanh")
+    fun excludesPreviousWhenMultipleRecipesExist() {
+        val recipes = listOf(recipe("a", "trung"), recipe("b", "ca"))
         repeat(40) { seed ->
-            val pick = pickRandomRecipe(listOf(cookable1, cookable2), state, "a", Random(seed))
-            assertEquals("b", pick?.recipe?.id)
+            assertEquals("b", pickRandomRecipe(recipes, stateWith(), "a", Random(seed))?.recipe?.id)
         }
     }
 
     @Test
-    fun excludedCookableFallsThroughToNonCookable() {
-        val state = stateWith("trung")
-        val pick = pickRandomRecipe(listOf(cookable1, missing), state, "a", Random(3))
-        assertEquals("c", pick?.recipe?.id)
-        assertFalse(pick!!.canCookNow)
+    fun repeatsSingleRecipeEvenWhenItIsExcluded() {
+        val only = recipe("a", "trung")
+        repeat(20) {
+            assertEquals(only, pickRandomRecipe(listOf(only), stateWith(), "a", Random(it))?.recipe)
+        }
     }
 
     @Test
-    fun returnsNullWhenOnlyExcludedLeft() {
-        assertNull(pickRandomRecipe(listOf(cookable1), stateWith("trung"), "a", Random(0)))
+    fun marksCanCookNowCorrectly() {
+        val cookable = recipe("a", "trung")
+        val missing = recipe("b", "thit-bo")
+        assertTrue(pickRandomRecipe(listOf(cookable), stateWith("trung"), null, Random(0))!!.canCookNow)
+        assertFalse(pickRandomRecipe(listOf(missing), stateWith("trung"), null, Random(0))!!.canCookNow)
     }
 
     @Test
-    fun returnsNullForEmptyList() {
-        assertNull(pickRandomRecipe(emptyList(), stateWith("trung"), null, Random(0)))
-    }
-
-    @Test
-    fun ignoresDietByConstruction_acceptsAnyRecipeGiven() {
-        val pick = pickRandomRecipe(listOf(missing), stateWith(), null, Random(0))
-        assertEquals("c", pick?.recipe?.id)
+    fun samplesEveryRecipeWithUniformFrequency() {
+        val recipes = listOf(
+            recipe("cookable", "trung"),
+            recipe("missing-1", "ca"),
+            recipe("missing-2", "thit-bo"),
+            recipe("missing-3", "dau"),
+        )
+        val counts = recipes.associate { it.id to 0 }.toMutableMap()
+        repeat(15_000) { seed ->
+            val id = pickRandomRecipe(recipes, stateWith("trung"), null, Random(seed))!!.recipe.id
+            counts[id] = counts.getValue(id) + 1
+        }
+        val expected = 15_000 / recipes.size
+        val margin = expected * 0.15
+        counts.values.forEach { count ->
+            assertTrue(count in (expected - margin).toInt()..(expected + margin).toInt(), "count=$count")
+        }
     }
 }

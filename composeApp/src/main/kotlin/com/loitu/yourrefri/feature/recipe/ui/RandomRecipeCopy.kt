@@ -23,6 +23,7 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.RandomPick
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
+import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppTheme
 
 internal object RandomRecipeCopy {
@@ -61,11 +62,14 @@ internal fun RandomRecipeCard(
         if (pick == null) {
             Text(RandomRecipeCopy.noOther, style = MaterialTheme.typography.bodyLarge, color = colors.ctaText)
         } else {
-            Text(
-                pick.recipe.title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = colors.ctaText,
-            )
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RecipeThumb(recipeId = pick.recipe.id, size = 72.dp)
+                Text(
+                    pick.recipe.title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.ctaText,
+                )
+            }
             if (!pick.canCookNow) Text(RandomRecipeCopy.needMore, style = MaterialTheme.typography.bodyMedium, color = colors.ctaText)
             if (outsideDiet) Text(RandomRecipeCopy.outsideDiet, style = MaterialTheme.typography.bodyMedium, color = colors.ctaText)
             Button(
