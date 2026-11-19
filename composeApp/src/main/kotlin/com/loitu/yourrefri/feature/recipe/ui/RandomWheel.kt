@@ -2,8 +2,11 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import android.animation.ValueAnimator
 import android.os.Build
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,11 +30,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RandomRecipePick
@@ -63,36 +71,46 @@ internal fun RandomWheelDialog(
     onDismiss: () -> Unit,
 ) {
     val colors = AppTheme.colors
-    val (reel, winnerIndex) = remember(pool, pick.recipe.id) { wheelReel(pool, pick.recipe) }
+    var spinTrigger by remember { mutableIntStateOf(0) }
+    val (reel, winnerIndex) = remember(pool, pick.recipe.id, spinTrigger) {
+        wheelReel(pool, pick.recipe, loops = 1, tail = 3)
+    }
     val listState = rememberLazyListState()
+    val cardWidth = 132.dp
+    val cardSpacing = 10.dp
+    val itemStridePx = with(LocalDensity.current) { (cardWidth + cardSpacing).toPx() }
 
-    LaunchedEffect(reel, winnerIndex) {
+    LaunchedEffect(reel, winnerIndex, spinTrigger) {
         if (reel.isNotEmpty()) {
+            listState.scrollToItem(0)
             if (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()) {
-                listState.animateScrollToItem(winnerIndex)
-            } else {
-                listState.scrollToItem(winnerIndex)
+                listState.animateScrollBy(
+                    value = winnerIndex * itemStridePx,
+                    animationSpec = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
+                )
             }
+            listState.scrollToItem(winnerIndex)
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = colors.surface,
         title = { Text("Hôm nay mình nấu gì nhỉ?", color = colors.text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Món được chọn", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                    val cardWidth = 132.dp
                     val sidePadding = ((maxWidth - cardWidth) / 2).coerceAtLeast(0.dp)
                     Box {
                         LazyRow(
                             state = listState,
+                            userScrollEnabled = false,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = sidePadding),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(cardSpacing),
                             modifier = Modifier.fillMaxWidth().height(150.dp),
                         ) {
-                            itemsIndexed(reel) { index, item ->
+                            itemsIndexed(reel, key = { idx, item -> "$idx-${item.id}" }) { index, item ->
                                 val selected = index == winnerIndex
                                 Card(
                                     modifier = Modifier
@@ -100,7 +118,7 @@ internal fun RandomWheelDialog(
                                         .height(138.dp)
                                         .then(if (selected) Modifier.border(BorderStroke(2.dp, colors.primary), RoundedCornerShape(16.dp)) else Modifier),
                                     shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = if (selected) colors.primarySoft else colors.surface),
+                                    colors = CardDefaults.cardColors(containerColor = if (selected) colors.primarySoft else colors.surfaceSoft),
                                 ) {
                                     Column(
                                         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -113,6 +131,7 @@ internal fun RandomWheelDialog(
                                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
                                             color = colors.text,
                                             maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
                                             textAlign = TextAlign.Center,
                                         )
                                     }
@@ -134,9 +153,18 @@ internal fun RandomWheelDialog(
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                TextButton(onClick = onSpinAgain, modifier = Modifier.heightIn(min = 48.dp)) { Text("Quay lại") }
-                TextButton(onClick = { onOpenRecipe(pick.recipe) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Xem cách nấu") }
-                TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text("Đóng") }
+                TextButton(
+                    onClick = { spinTrigger++; onSpinAgain() },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text("Quay lại", color = colors.accentText) }
+                TextButton(
+                    onClick = { onOpenRecipe(pick.recipe) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text("Xem cách nấu", color = colors.accentText, fontWeight = FontWeight.Bold) }
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text("Đóng", color = colors.muted) }
             }
         },
     )

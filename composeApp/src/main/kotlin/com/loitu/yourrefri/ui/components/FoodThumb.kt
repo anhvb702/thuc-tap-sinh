@@ -2,6 +2,7 @@ package com.loitu.yourrefri.ui.components
 
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -43,11 +44,18 @@ private fun assetCandidates(folder: String, id: String): List<String> {
     return listOf("webp", "jpg", "png").map { "$folder/$id.$it" }
 }
 
+private val assetBitmapCache = LruCache<String, ImageBitmap>(64)
+
 private fun loadAsset(context: Context, candidates: List<String>): ImageBitmap? {
     for (path in candidates) {
+        assetBitmapCache.get(path)?.let { return it }
         try {
+            val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
             context.assets.open(path).use { stream ->
-                BitmapFactory.decodeStream(stream)?.let { return it.asImageBitmap() }
+                BitmapFactory.decodeStream(stream, null, opts)?.asImageBitmap()?.let { bmp ->
+                    assetBitmapCache.put(path, bmp)
+                    return bmp
+                }
             }
         } catch (_: Exception) {
             // Không có ảnh này: thử định dạng kế tiếp.
