@@ -124,6 +124,25 @@ class RecipeRecommendationTest {
     }
 
     @Test
+    fun tasteProfilePrefersMatchingRecipeAndExcludesAvoidedIngredient() {
+        val candidates = listOf(
+            Recipe("plain", "Cơm", listOf("Nấu"), listOf(Slot(listOf("rice")))),
+            Recipe("soup", "Canh rau", listOf("Nấu"), listOf(Slot(listOf("tomato")))),
+            Recipe("unsafe", "Canh đậu phộng", listOf("Nấu"), listOf(Slot(listOf("peanut")))),
+        )
+        val profile = FamilyTasteProfile(
+            flavors = setOf(TasteFlavor.LIGHT),
+            dishStyles = setOf(DishStyle.SOUP),
+            avoidIngredientIds = setOf("peanut"),
+        )
+
+        val result = recommendRecipes(candidates, PantryGridState(today = today), tasteProfile = profile)
+
+        assertEquals("soup", result.first().recipe.id)
+        assertEquals(false, result.any { it.recipe.id == "unsafe" })
+    }
+
+    @Test
     fun recipeBundleParsesAndValidatesOptionalMinutes() {
         val row = """{"id":"dish","title":"Món","steps":["Nấu"],"required":[{"anyOf":["egg"]}],"minutes":12}"""
         assertEquals(12, RecipeBundle.parse("[$row]").single().minutes)

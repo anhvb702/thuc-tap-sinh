@@ -70,9 +70,15 @@ private fun FamilyPreferenceTag.ingredientIds(): Set<String> = when (this) {
 fun buildWeeklyMealPlan(
     recipes: List<Recipe>, state: PantryGridState, goal: DietGoal = DietGoal.BALANCED,
     preferences: Set<FamilyPreferenceTag> = emptySet(), swappedOffsets: Map<Int, Int> = emptyMap(),
+    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
 ): List<PlannedDayMeal> {
     val unique = recipes.distinctBy { it.id }
     if (unique.isEmpty()) return emptyList()
+    val tasteFiltered = if (!tasteProfile.isEmpty) {
+        unique.filterNot { isAvoidedByTaste(it, tasteProfile) }.ifEmpty { unique }
+    } else {
+        unique
+    }
     val cells = cellsOf(state).associateBy { it.ingredientId }
     val available = cells.values.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
     val urgent = cells.values.filter { it.have && it.daysLeft in 0..2 }.mapTo(HashSet()) { it.ingredientId }
@@ -93,11 +99,15 @@ fun buildWeeklyMealPlan(
     }
     fun rankedFrom(pool: List<Recipe>, day: Int, excluded: Set<String>) = pool.withIndex()
         .filter { it.value.id !in excluded }
-        .sortedWith(compareByDescending<IndexedValue<Recipe>> { score(it.value, day) }.thenBy { it.index })
+        .sortedWith(
+            compareByDescending<IndexedValue<Recipe>> { score(it.value, day) }
+                .thenByDescending { tasteAffinityScore(it.value, tasteProfile) }
+                .thenBy { it.index },
+        )
         .map { it.value }
 
-    val mainPool = unique.filterNot { it.isSoupOrVeggieSide() }.ifEmpty { unique }
-    val sidePool = unique.filter { it.isSoupOrVeggieSide() }
+    val mainPool = tasteFiltered.filterNot { it.isSoupOrVeggieSide() }.ifEmpty { tasteFiltered }
+    val sidePool = tasteFiltered.filter { it.isSoupOrVeggieSide() }
     val hasTwoCourseCatalog = mainPool.size >= 2 && sidePool.isNotEmpty() && mainPool.any { main -> sidePool.any { it.id != main.id } }
 
     fun pickSeries(pool: List<Recipe>): MutableList<Recipe> {
@@ -126,7 +136,7 @@ fun buildWeeklyMealPlan(
         return picks
     }
 
-    val mainPicks = pickSeries(if (hasTwoCourseCatalog) mainPool else unique)
+    val mainPicks = pickSeries(if (hasTwoCourseCatalog) mainPool else tasteFiltered)
     val sidePicks = if (hasTwoCourseCatalog) {
         val sides = mutableListOf<Recipe?>()
         repeat(mainPicks.size) { day ->
