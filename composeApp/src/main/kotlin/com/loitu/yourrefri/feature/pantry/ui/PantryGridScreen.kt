@@ -450,7 +450,7 @@ fun PantryGridScreen(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 Button(
-                    onClick = { openAddSheet(prefill = searchQuery.trim()) },
+                    onClick = { openAddSheet(prefill = searchQuery.trim(), choice = searchToAddChoice()) },
                     modifier = Modifier.padding(top = 12.dp).heightIn(min = 52.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
@@ -807,11 +807,13 @@ fun PantryGridScreen(
                         )
                     }
                     Spacer(Modifier.height(12.dp))
-                    val suggestions = quickAddSuggestions(
-                        state = state,
-                        query = newFoodName,
-                        limit = Int.MAX_VALUE,
-                        selectedGroup = selectedGroup,
+                    val suggestions = ingredientOnlySuggestions(
+                        quickAddSuggestions(
+                            state = state,
+                            query = newFoodName,
+                            limit = Int.MAX_VALUE,
+                            selectedGroup = selectedGroup,
+                        ),
                     ).takeUnless { isOther }.orEmpty()
                     suggestions.chunked(columns).forEach { rowItems ->
                         Row(

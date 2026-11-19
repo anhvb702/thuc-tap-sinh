@@ -4,6 +4,7 @@ import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.feature.pantry.logic.customFoodId
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -43,6 +44,20 @@ class AddChoicePresentationTest {
 
     @Test fun ingredientPathRejectsUnmatchedName() {
         assertEquals(emptyList(), ingredientOnlyConfirmActions(state, emptySet(), "Bún chả", null))
+    }
+
+    @Test fun searchToAddUsesOtherPathSoNewNameIsKept() {
+        val choice = searchToAddChoice()
+        assertEquals(AddChoice.ADD_OTHER, choice)
+        // Đường "Khác" cho phép tên mới chưa có trong tủ.
+        assertTrue(canAddOther("Bún chả", state.ingredients.map { it.nameVi }.toSet()))
+    }
+
+    @Test fun ingredientSuggestionsHideCustomDishes() {
+        val customId = customFoodId("Bún chả")!!
+        val egg = state.ingredients.first()
+        val custom = Ingredient(customId, "Bún chả", "khac", 3)
+        assertEquals(listOf(egg), ingredientOnlySuggestions(listOf(custom, egg)))
     }
 
     @Test fun ingredientPathStillAddsCatalogItem() {

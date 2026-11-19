@@ -1,5 +1,6 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
+import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.customFoodName
@@ -11,6 +12,13 @@ internal fun addChoiceLabel(choice: AddChoice): String = when (choice) {
     AddChoice.ADD_INGREDIENT -> "Thêm nguyên liệu"
     AddChoice.ADD_OTHER -> "Khác / Thêm món"
 }
+
+/** Tìm không thấy rồi bấm "Thêm vào tủ": tên đã điền sẵn là món mới, đi đường "Khác". */
+internal fun searchToAddChoice(): AddChoice = AddChoice.ADD_OTHER
+
+/** Đường nguyên liệu không gợi ý món tự thêm, vì chọn rồi cũng không lưu được. */
+internal fun ingredientOnlySuggestions(list: List<Ingredient>): List<Ingredient> =
+    list.filter { customFoodName(it.id) == null }
 
 internal fun ingredientOnlyConfirmActions(
     state: PantryGridState,
