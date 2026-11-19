@@ -68,6 +68,8 @@ internal fun foodTint(glyph: FoodGlyph): Pair<Color, Color> {
         FoodGlyph.MILK -> if (dark) Color(0xFF2A3340) to Color(0xFFB4C4DC) else Color(0xFFE6ECF4) to Color(0xFF55688A)
         FoodGlyph.LEAF -> if (dark) Color(0xFF2E3C2B) to Color(0xFF9DBB9C) else Color(0xFFDDE8D9) to Color(0xFF3F6B3E)
         FoodGlyph.TOFU -> if (dark) Color(0xFF3A3322) to Color(0xFFE8D8B9) else Color(0xFFF1E8D2) to Color(0xFF7A6330)
+        FoodGlyph.SPICE -> if (dark) Color(0xFF3A3322) to Color(0xFFE8D8B9) else Color(0xFFF1E8D2) to Color(0xFF7A6330)
+        FoodGlyph.BOWL -> if (dark) Color(0xFF2E3C2B) to Color(0xFF9DBB9C) else Color(0xFFDDE8D9) to Color(0xFF3F6B3E)
     }
 }
 
@@ -78,6 +80,7 @@ fun FoodThumb(
     size: Dp = 48.dp,
     shape: Shape = CircleShape,
     urgent: Boolean = false,
+    group: String? = null,
 ) {
     val context = LocalContext.current
     val photo = remember(ingredientId) { loadAsset(context, foodAssetCandidates(ingredientId)) }
@@ -93,13 +96,14 @@ fun FoodThumb(
         return
     }
     val colors = AppTheme.colors
-    val (tintBg, tintFg) = foodTint(foodGlyphFor(ingredientId))
+    val glyph = foodGlyphFor(ingredientId, group)
+    val (tintBg, tintFg) = foodTint(glyph)
     Box(
         modifier = frame.background(if (urgent) colors.warnSoft else tintBg),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = foodIconFor(ingredientId),
+            imageVector = foodIconFor(ingredientId, group),
             contentDescription = null,
             tint = if (urgent) colors.warnText else tintFg,
             modifier = Modifier.size(size * 0.5f),

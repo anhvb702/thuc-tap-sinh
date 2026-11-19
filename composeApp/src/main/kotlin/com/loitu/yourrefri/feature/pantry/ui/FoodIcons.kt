@@ -34,19 +34,28 @@ fun foodEmojiFor(ingredientId: String): String = when (ingredientId) {
 }
 
 /** Nhóm biểu tượng nét dùng thay emoji trong giao diện mới. */
-enum class FoodGlyph { TOMATO, EGG, MEAT, FISH, MILK, LEAF, TOFU }
+enum class FoodGlyph { TOMATO, EGG, MEAT, FISH, MILK, LEAF, TOFU, SPICE, BOWL }
 
-fun foodGlyphFor(ingredientId: String): FoodGlyph = when (ingredientId) {
+fun foodGlyphFor(ingredientId: String, group: String? = null): FoodGlyph = when (ingredientId) {
     "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga" -> FoodGlyph.MEAT
     "ca-basa", "ca-hoi", "tom" -> FoodGlyph.FISH
     "ca-chua", "ca-rot", "khoai-tay", "bi-xanh", "hanh-tay", "chuoi", "tao", "cam" -> FoodGlyph.TOMATO
     "trung-ga" -> FoodGlyph.EGG
     "sua-tuoi", "sua-chua" -> FoodGlyph.MILK
     "dau-phu" -> FoodGlyph.TOFU
-    else -> FoodGlyph.LEAF
+    else -> when (group) {
+        "rau-la", "rau-cu" -> FoodGlyph.LEAF
+        "thit" -> FoodGlyph.MEAT
+        "ca" -> FoodGlyph.FISH
+        "trai-cay" -> FoodGlyph.TOMATO
+        "sua-trung" -> FoodGlyph.MILK
+        "gia-vi" -> FoodGlyph.SPICE
+        "khac" -> FoodGlyph.BOWL
+        else -> FoodGlyph.LEAF
+    }
 }
 
-fun foodIconFor(ingredientId: String): ImageVector = when (foodGlyphFor(ingredientId)) {
+fun foodIconFor(ingredientId: String, group: String? = null): ImageVector = when (foodGlyphFor(ingredientId, group)) {
     FoodGlyph.TOMATO -> AppIcons.Tomato
     FoodGlyph.EGG -> AppIcons.Egg
     FoodGlyph.MEAT -> AppIcons.Meat
@@ -54,6 +63,8 @@ fun foodIconFor(ingredientId: String): ImageVector = when (foodGlyphFor(ingredie
     FoodGlyph.MILK -> AppIcons.Milk
     FoodGlyph.LEAF -> AppIcons.Leaf
     FoodGlyph.TOFU -> AppIcons.Tofu
+    FoodGlyph.SPICE -> AppIcons.Spice
+    FoodGlyph.BOWL -> AppIcons.Bowl
 }
 
 /**
