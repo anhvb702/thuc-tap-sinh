@@ -41,7 +41,15 @@ class AppColors(
     val onCta: Color,
     val ctaSoft: Color,
     val ctaText: Color,
+    // Cạnh dưới của nút nổi: tối hơn màu nền nút, để nút trông như có độ dày khi nhấn.
+    val primaryEdge: Color,
+    val ctaEdge: Color,
 )
+
+private val LightPrimaryEdge = Color(0xFF3B4F3C)
+private val LightCtaEdge = Color(0xFF8A3D27)
+private val DarkPrimaryEdge = Color(0xFF5E7A5D)
+private val DarkCtaEdge = Color(0xFF9A6A58)
 
 internal val LightAppColors = AppColors(
     isDark = false,
@@ -68,6 +76,8 @@ internal val LightAppColors = AppColors(
     onCta = Color.White,
     ctaSoft = TerracottaSoft,
     ctaText = TerracottaText,
+    primaryEdge = LightPrimaryEdge,
+    ctaEdge = LightCtaEdge,
 )
 
 internal val DarkAppColors = AppColors(
@@ -95,6 +105,8 @@ internal val DarkAppColors = AppColors(
     onCta = DarkWarnSoft,
     ctaSoft = DarkWarnSoft,
     ctaText = DarkWarnText,
+    primaryEdge = DarkPrimaryEdge,
+    ctaEdge = DarkCtaEdge,
 )
 
 fun appColorsFor(dark: Boolean): AppColors = if (dark) DarkAppColors else LightAppColors

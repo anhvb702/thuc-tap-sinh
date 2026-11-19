@@ -110,6 +110,8 @@ fun HandsFreeCookScreen(
             trackColor = colors.line,
         )
 
+        CookTimerCard(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
+
         val stepText = recipe.steps[state.stepIndex]
         // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn, không cắt chữ.
         Box(

@@ -117,6 +117,7 @@ fun MainScaffold(
     onRecordCook: (recipeId: String, savedIngredientIds: List<String>, meal: com.loitu.yourrefri.feature.recipe.data.MealSlot, onResult: (Long?) -> Unit) -> Unit = { _, _, _, done -> done(null) },
     currentHour: (() -> Int)? = null,
     cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
+    onDeleteCook: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
@@ -302,6 +303,7 @@ fun MainScaffold(
                 com.loitu.yourrefri.feature.cooklog.ui.CookHistoryScreen(
                     state = cookHistoryState,
                     recipes = recipes,
+                    onDelete = onDeleteCook,
                     onOpenRecipe = { recipeId ->
                         // Mở lại công thức ở tab Món ăn; dùng danh sách chưa lọc nên món cũ ngoài chế độ ăn vẫn mở được.
                         requestedRecipeId = recipeRequestForHomeCard(recipeId)
@@ -365,6 +367,7 @@ fun MainScaffold(
                     } else RecipeScreen(
                     state = state,
                     recipes = visibleRecipes,
+                    weekStart = weeklyMealPlanState.weekStart,
                     favoriteIds = favoriteIds,
                     onToggleFavorite = onToggleFavorite,
                     onOpenHandsFree = { handsFreeRecipeId = it },

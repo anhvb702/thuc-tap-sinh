@@ -89,6 +89,8 @@ import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 fun RecipeScreen(
     state: PantryGridState,
     recipes: List<Recipe>,
+    // Ngày bắt đầu tuần thực đơn, để nhãn ngày hiện "Thứ 4 · 18.11"; null thì hiện nhãn cũ.
+    weekStart: kotlinx.datetime.LocalDate? = null,
     initialRecipeId: String? = null,
     onCookRecipe: ((Recipe, List<String>) -> Unit)? = null,
     initialMode: RecipeScreenMode = RecipeScreenMode.DAILY,
@@ -270,6 +272,7 @@ fun RecipeScreen(
         when (mode) {
             RecipeScreenMode.WEEKLY -> WeeklyMealPlanSection(
                 plan = weeklyPlan,
+                weekStart = weekStart,
                 goal = goal,
                 preferences = preferences,
                 onGoal = {
@@ -365,6 +368,13 @@ fun RecipeScreen(
                 } else {
                     // Đổi bộ lọc thì pager quay về thẻ đầu.
                     key(hero.map { it.recipe.id }) {
+                        // Nhãn mục theo Figma 03, lấy theo lý do của thẻ đầu tiên đang hiện.
+                        Text(
+                            text = recipeSectionLabel(hero.first().reason),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = colors.accentText,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
                         val pagerState = rememberPagerState(initialPage = 0) { hero.size }
                         RecipeHeroPager(
                             items = hero,

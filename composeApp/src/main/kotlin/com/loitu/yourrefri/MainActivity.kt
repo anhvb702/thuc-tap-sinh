@@ -42,7 +42,9 @@ import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
+import com.loitu.yourrefri.shared.db.DatabaseTooNewException
 import com.loitu.yourrefri.shared.db.DriverFactory
+import com.loitu.yourrefri.ui.DatabaseTooNewNotice
 import com.loitu.yourrefri.shared.db.createDatabase
 import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -68,6 +70,7 @@ private object AppGraph {
         cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
 
     private fun build(context: android.content.Context): AppDependencies {
+        // create() tự kiểm tra DB mới hơn app (ném DatabaseTooNewException) trước khi mở.
         val driver = DriverFactory(context).create()
         val db = createDatabase(driver)
         val repo = PantryRepositoryImpl(
@@ -105,14 +108,22 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
             var themeMode by remember { mutableStateOf(ThemePrefs.read(context)) }
+            // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
+            val dbTooNew = remember(context) {
+                runCatching { AppGraph.get(context) }.exceptionOrNull() as? DatabaseTooNewException
+            }
             YourRefriTheme(darkTheme = themeMode.isDark(isSystemInDarkTheme())) {
-                App(
-                    themeMode = themeMode,
-                    onThemeModeChange = { mode ->
-                        themeMode = mode
-                        ThemePrefs.write(context, mode)
-                    },
-                )
+                if (dbTooNew != null) {
+                    DatabaseTooNewNotice()
+                } else {
+                    App(
+                        themeMode = themeMode,
+                        onThemeModeChange = { mode ->
+                            themeMode = mode
+                            ThemePrefs.write(context, mode)
+                        },
+                    )
+                }
             }
         }
     }
@@ -320,6 +331,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         },
         appVersionName = appVersionName,
         cookHistoryState = cookHistoryState,
+        onDeleteCook = { id -> cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(id)) },
         onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
         currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
         sundayTime = sundayTime,

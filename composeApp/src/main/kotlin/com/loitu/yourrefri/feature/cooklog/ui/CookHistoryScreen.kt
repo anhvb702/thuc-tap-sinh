@@ -41,6 +41,7 @@ fun CookHistoryScreen(
     recipes: List<Recipe>,
     onOpenRecipe: (String) -> Unit,
     onBack: () -> Unit,
+    onDelete: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -75,7 +76,12 @@ fun CookHistoryScreen(
                         )
                     }
                     items(week.entries, key = { it.id }) { log ->
-                        CookHistoryRow(log, titles[log.recipeId], onOpen = { onOpenRecipe(log.recipeId) })
+                        CookHistoryRow(
+                            log,
+                            titles[log.recipeId],
+                            onOpen = { onOpenRecipe(log.recipeId) },
+                            onDelete = { onDelete(log.id) },
+                        )
                     }
                 }
             }
@@ -84,7 +90,7 @@ fun CookHistoryScreen(
 }
 
 @Composable
-private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit) {
+private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit, onDelete: () -> Unit) {
     val colors = AppTheme.colors
     val shape = RoundedCornerShape(16.dp)
     val shown = log.savedIngredientIds.take(MAX_INGREDIENT_ICONS)
@@ -118,8 +124,13 @@ private fun CookHistoryRow(log: CookLog, title: String?, onOpen: () -> Unit) {
                 }
             }
         }
-        TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(CookHistoryCopy.cookAgain, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+        Column(horizontalAlignment = Alignment.End) {
+            TextButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(CookHistoryCopy.cookAgain, color = colors.accentText, fontWeight = FontWeight.SemiBold)
+            }
+            TextButton(onClick = onDelete, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(CookHistoryCopy.deleteEntry, color = colors.warnText, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

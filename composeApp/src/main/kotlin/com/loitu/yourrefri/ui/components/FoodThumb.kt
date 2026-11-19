@@ -36,6 +36,8 @@ internal fun foodAssetCandidates(ingredientId: String): List<String> = assetCand
 
 internal fun recipeAssetCandidates(recipeId: String): List<String> = assetCandidates("recipes", recipeId)
 
+internal fun iconAssetCandidates(ingredientId: String): List<String> = assetCandidates("icons", ingredientId)
+
 private fun assetCandidates(folder: String, id: String): List<String> {
     if (id.isBlank() || '/' in id || '\\' in id || ".." in id) return emptyList()
     return listOf("webp", "jpg", "png").map { "$folder/$id.$it" }
@@ -82,6 +84,12 @@ fun FoodThumb(
     val frame = modifier.size(size).clip(shape)
     if (photo != null) {
         Image(bitmap = photo, contentDescription = null, contentScale = ContentScale.Crop, modifier = frame)
+        return
+    }
+    // Chưa có ảnh thì dùng icon riêng của món (icons/<id>), rồi mới đến icon nhóm.
+    val icon = remember(ingredientId) { loadAsset(context, iconAssetCandidates(ingredientId)) }
+    if (icon != null) {
+        Image(bitmap = icon, contentDescription = null, contentScale = ContentScale.Crop, modifier = frame)
         return
     }
     val colors = AppTheme.colors
