@@ -120,6 +120,7 @@ fun RecipeScreen(
     // Nút "Nấu ngẫu nhiên": null thì ẩn. Truyền công thức CHƯA lọc chế độ ăn để nút bỏ qua khẩu vị.
     randomPool: List<Recipe>? = null,
     dietRestriction: DietRestriction = DietRestriction.NONE,
+    onBackHome: () -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val randomSource = remember { kotlin.random.Random.Default }
@@ -321,27 +322,34 @@ fun RecipeScreen(
             )
 
             RecipeScreenMode.DAILY -> {
-                // Bộ lọc thời gian gọn, cuộn ngang được khi chữ lớn.
-                Row(
+                if (isPantryEmpty(state)) {
+                    EmptyFridgeGate(
+                        onGoShopping = { updateMode(RecipeScreenMode.SHOPPING) },
+                        onBackHome = onBackHome,
+                        modifier = Modifier.padding(top = 12.dp),
+                    )
+                } else {
+                    // Bộ lọc thời gian gọn, cuộn ngang được khi chữ lớn.
+                    Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    recipeDurationFilterOptions().forEach { option ->
-                        PillChip(
-                            label = option.label,
-                            selected = selectedDuration == option.threshold,
-                            onClick = { selectedDuration = option.threshold },
-                        )
+                    ) {
+                        recipeDurationFilterOptions().forEach { option ->
+                            PillChip(
+                                label = option.label,
+                                selected = selectedDuration == option.threshold,
+                                onClick = { selectedDuration = option.threshold },
+                            )
+                        }
+                        if (randomPool != null) {
+                            PillChip(
+                                label = RandomRecipeCopy.button,
+                                selected = randomShown,
+                                onClick = { rollRandom() },
+                                icon = AppIcons.Wheel,
+                            )
+                        }
                     }
-                    if (randomPool != null) {
-                        PillChip(
-                            label = RandomRecipeCopy.button,
-                            selected = randomShown,
-                            onClick = { rollRandom() },
-                            icon = AppIcons.Wheel,
-                        )
-                    }
-                }
                 if (randomShown && randomPick != null) {
                     RandomWheelDialog(
                         pool = randomPool.orEmpty(),
@@ -420,6 +428,7 @@ fun RecipeScreen(
                 if (recommendations.isEmpty() || visibleRecipes.isEmpty()) {
                     DailyShortcuts(weeklyPlan, todayIndex, shopping, { updateMode(it) }, null, null)
                 }
+                    }
             }
         }
     }
