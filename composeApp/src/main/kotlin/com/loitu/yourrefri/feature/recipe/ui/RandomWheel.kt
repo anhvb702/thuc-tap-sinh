@@ -80,13 +80,13 @@ internal fun RandomWheelDialog(
     var spinTrigger by remember { mutableIntStateOf(0) }
     var landed by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
     val (reel, winnerIndex) = remember(pool, pick.recipe.id, spinTrigger) {
-        wheelReel(pool, pick.recipe, loops = 2, tail = 3)
+        wheelReel(pool, pick.recipe, loops = 3, tail = 3)
     }
     val listState = rememberLazyListState()
     val cardWidth = 132.dp
     val cardSpacing = 10.dp
     val itemStridePx = with(LocalDensity.current) { (cardWidth + cardSpacing).toPx() }
-    val spinEasing = remember { CubicBezierEasing(0.05f, 0.92f, 0.15f, 1.0f) }
+    val spinEasing = remember { CubicBezierEasing(0.12f, 0.65f, 0.25f, 1.0f) }
 
     LaunchedEffect(reel, winnerIndex, spinTrigger) {
         if (reel.isNotEmpty()) {
@@ -95,7 +95,7 @@ internal fun RandomWheelDialog(
             if (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()) {
                 listState.animateScrollBy(
                     value = winnerIndex * itemStridePx,
-                    animationSpec = tween(durationMillis = 2200, easing = spinEasing),
+                    animationSpec = tween(durationMillis = 3600, easing = spinEasing),
                 )
             }
             listState.scrollToItem(winnerIndex)
