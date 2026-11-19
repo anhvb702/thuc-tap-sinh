@@ -45,6 +45,10 @@ android {
         versionName = "1.0"
     }
     buildTypes {
+        debug {
+            // -PdebugAppIdSuffix=.nhanh: mỗi nhánh có database riêng, không ghi đè nhau trên cùng máy.
+            applicationIdSuffix = (project.findProperty("debugAppIdSuffix") as? String) ?: ""
+        }
         release {
             isMinifyEnabled = false
         }
