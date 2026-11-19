@@ -54,6 +54,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -421,8 +423,14 @@ fun PantryGridScreen(
             }
         }
 
+        PantryCategoryDropbar(
+            selected = filters.pantryCategory,
+            onSelect = { filters = filters.copy(pantryCategory = it) },
+        )
+
         val filteredByLocation = presentation.visibleCells
-        val cells = if (searchOpen) filterCellsBySearch(filteredByLocation, searchQuery) else filteredByLocation
+        val categoryCells = filterByCategory(filteredByLocation, filters.pantryCategory)
+        val cells = if (searchOpen) filterCellsBySearch(categoryCells, searchQuery) else categoryCells
         val searching = searchOpen && searchQuery.isNotBlank()
 
         voiceNote?.let { note ->
@@ -957,6 +965,43 @@ private fun StorageSegmentedControl(
                     text = label,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = contentColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PantryCategoryDropbar(
+    selected: PantryCategory,
+    onSelect: (PantryCategory) -> Unit,
+) {
+    val colors = AppTheme.colors
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(16.dp),
+            color = colors.surface,
+            border = BorderStroke(1.dp, colors.line),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(selected.labelVi, color = colors.text, modifier = Modifier.weight(1f))
+                Icon(AppIcons.ChevronDown, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            PantryCategory.entries.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.labelVi, color = colors.text) },
+                    onClick = { onSelect(category); expanded = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
                 )
             }
         }

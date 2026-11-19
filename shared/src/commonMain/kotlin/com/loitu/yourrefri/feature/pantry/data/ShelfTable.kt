@@ -18,6 +18,7 @@ object ShelfTable {
         val nameVi: String,
         val group: String,
         val defaultShelfDays: Int,
+        val kind: String = "fresh",
     )
 
     // SerializationException là lớp con của IllegalArgumentException, nên JSON hỏng cũng ra đúng loại lỗi.
@@ -39,6 +40,7 @@ object ShelfTable {
                 group = row.group,
                 defaultShelfDays = row.defaultShelfDays,
                 userShelfDays = null,
+                kind = row.kind,
             )
         }
     }
