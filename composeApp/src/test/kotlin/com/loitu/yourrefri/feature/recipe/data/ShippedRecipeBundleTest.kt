@@ -127,13 +127,73 @@ class ShippedRecipeBundleTest {
             required = setOf(setOf("trung-ga"), setOf("hanh-la")),
             optional = setOf(setOf("nuoc-mam"), setOf("dau-an")),
         ),
+        "thit-ba-chi-rang-chay-canh" to RecipeContract(
+            title = "Thịt ba chỉ rang cháy cạnh",
+            minutes = 20,
+            required = setOf(setOf("ba-chi")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam")),
+        ),
+        "ca-thu-sot-ca-chua" to RecipeContract(
+            title = "Cá thu sốt cà chua",
+            minutes = 25,
+            required = setOf(setOf("ca-thu"), setOf("ca-chua")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam"), setOf("dau-an")),
+        ),
+        "ga-kho-gung" to RecipeContract(
+            title = "Gà kho gừng",
+            minutes = 30,
+            required = setOf(setOf("thit-ga"), setOf("gung")),
+            optional = setOf(setOf("nuoc-mam"), setOf("dau-an")),
+        ),
+        "bo-xao-bong-cai" to RecipeContract(
+            title = "Thịt bò xào bông cải xanh",
+            minutes = 15,
+            required = setOf(setOf("thit-bo"), setOf("bong-cai")),
+            optional = setOf(setOf("toi"), setOf("nuoc-tuong"), setOf("dau-an")),
+        ),
+        "dau-que-xao-thit-bo" to RecipeContract(
+            title = "Đậu que xào thịt bò",
+            minutes = 15,
+            required = setOf(setOf("dau-que"), setOf("thit-bo")),
+            optional = setOf(setOf("toi"), setOf("nuoc-tuong"), setOf("dau-an")),
+        ),
+        "canh-muop-nau-tom" to RecipeContract(
+            title = "Canh mướp nấu tôm",
+            minutes = 15,
+            required = setOf(setOf("muop"), setOf("tom")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam")),
+        ),
+        "gia-do-xao-dau-phu" to RecipeContract(
+            title = "Giá đỗ xào đậu phụ",
+            minutes = 12,
+            required = setOf(setOf("gia-do"), setOf("dau-phu")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-tuong"), setOf("dau-an")),
+        ),
+        "cha-lua-kho-tieu" to RecipeContract(
+            title = "Chả lụa kho tiêu",
+            minutes = 15,
+            required = setOf(setOf("cha-lua")),
+            optional = setOf(setOf("nuoc-mam"), setOf("nuoc-tuong"), setOf("hanh-la")),
+        ),
+        "tom-rim-thit-ba-chi" to RecipeContract(
+            title = "Tôm rim thịt ba chỉ",
+            minutes = 25,
+            required = setOf(setOf("tom"), setOf("ba-chi")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam")),
+        ),
+        "canh-ca-chua-trung" to RecipeContract(
+            title = "Canh cà chua trứng",
+            minutes = 10,
+            required = setOf(setOf("ca-chua"), setOf("trung-ga")),
+            optional = setOf(setOf("hanh-la"), setOf("nuoc-mam"), setOf("chanh")),
+        ),
     )
 
     private val cookingIngredientIds = setOf(
-        "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo",
-        "ca-basa", "ca-hoi", "tom", "muc",
-        "rau-muong", "cai-ngot", "xa-lach", "rau-ngot", "hanh-la", "cai-thia",
-        "ca-rot", "khoai-tay", "ca-chua", "bi-xanh", "hanh-tay", "dua-leo",
+        "thit-heo", "thit-heo-xay", "thit-bo", "thit-ga", "suon-heo", "ba-chi", "cha-lua",
+        "ca-basa", "ca-hoi", "tom", "muc", "ca-thu",
+        "rau-muong", "cai-ngot", "xa-lach", "rau-ngot", "hanh-la", "cai-thia", "gia-do",
+        "ca-rot", "khoai-tay", "ca-chua", "bi-xanh", "hanh-tay", "dua-leo", "bong-cai", "dau-que", "muop", "gung",
         "trung-ga", "dau-phu", "nam",
     )
 
@@ -141,8 +201,8 @@ class ShippedRecipeBundleTest {
     fun shippedBundleKeepsThreeOriginalRecipesAndAddsTwelveSpecifiedRecipes() {
         val recipes = shippedRecipes()
 
-        // Đổi từ 15 sang 20 có chủ đích: người dùng yêu cầu thêm 6 nguyên liệu và 5 món mới kèm ảnh.
-        assertEquals(20, recipes.size)
+        // Đổi từ 20 sang 30 có chủ đích: người dùng yêu cầu mở rộng kho nguyên liệu và món ăn kèm ảnh đồng bộ.
+        assertEquals(30, recipes.size)
         assertEquals(originalRecipeIds + newRecipeContracts.keys, recipes.map { it.id }.toSet())
     }
 

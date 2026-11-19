@@ -210,7 +210,8 @@ class ShelfTableTest {
 
     @Test
     fun bundle_hasBetween25And40Items() {
-        assertTrue(bundle.size in 25..40, "Bảng hạn có ${bundle.size} món, cần 25..40")
+        // Nới trần từ 40 lên 60 có chủ đích theo yêu cầu mở rộng kho nguyên liệu của người dùng (hiện 42 mục).
+        assertTrue(bundle.size in 25..60, "Bảng hạn có ${bundle.size} món, cần 25..60")
     }
 
     @Test

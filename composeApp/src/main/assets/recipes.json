@@ -363,5 +363,209 @@
       { "anyOf": ["nuoc-mam"] },
       { "anyOf": ["dau-an"] }
     ]
+  },
+  {
+    "id": "thit-ba-chi-rang-chay-canh",
+    "title": "Thịt ba chỉ rang cháy cạnh",
+    "minutes": 20,
+    "stepMinutes": [null, 10, 5, null],
+    "steps": [
+      "Thịt ba chỉ rửa sạch, thấm khô và thái miếng vừa ăn; hành lá cắt khúc.",
+      "Đảo thịt trên chảo nóng lửa vừa khoảng 10 phút cho ra bớt mỡ và xém vàng cạnh.",
+      "Thêm chút nước mắm, đường và tiêu đảo đều khoảng 5 phút cho thịt bóng đẹp, đậm đà.",
+      "Rắc hành lá vào đảo nhanh rồi múc ra đĩa dùng nóng với cơm trắng."
+    ],
+    "required": [
+      { "anyOf": ["ba-chi"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] }
+    ]
+  },
+  {
+    "id": "ca-thu-sot-ca-chua",
+    "title": "Cá thu sốt cà chua",
+    "minutes": 25,
+    "stepMinutes": [null, 8, 10, null],
+    "steps": [
+      "Cá thu rửa sạch, thấm khô; cà chua thái hạt lựu, hành lá cắt nhỏ.",
+      "Chiên áp chảo cá thu với chút dầu ăn khoảng 8 phút cho hai mặt vàng đều.",
+      "Xào nhuyễn cà chua với nước mắm, cho cá vào rim lửa nhỏ khoảng 10 phút cho thấm sốt.",
+      "Rắc hành lá và chút tiêu, dọn ra đĩa dùng nóng với cơm."
+    ],
+    "required": [
+      { "anyOf": ["ca-thu"] },
+      { "anyOf": ["ca-chua"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "ga-kho-gung",
+    "title": "Gà kho gừng",
+    "minutes": 30,
+    "stepMinutes": [null, 5, 18, null],
+    "steps": [
+      "Thịt gà rửa sạch, chặt miếng vừa ăn; gừng tươi cạo vỏ, thái sợi mỏng.",
+      "Phi thơm một nửa gừng với dầu ăn, cho thịt gà vào đảo săn khoảng 5 phút.",
+      "Nêm nước mắm, chút đường và nước ấm, kho lửa nhỏ khoảng 18 phút đến khi sốt sánh lại.",
+      "Thêm phần gừng sợi còn lại cho thơm, múc ra tô dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["thit-ga"] },
+      { "anyOf": ["gung"] }
+    ],
+    "optional": [
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "bo-xao-bong-cai",
+    "title": "Thịt bò xào bông cải xanh",
+    "minutes": 15,
+    "stepMinutes": [null, 4, 4, null],
+    "steps": [
+      "Thịt bò thái lát mỏng, ướp nhẹ với tỏi băm và nước tương; bông cải xanh tách nhánh rửa sạch.",
+      "Phi thơm tỏi, xào thịt bò lửa lớn khoảng 4 phút cho vừa chín tái rồi trút ra đĩa.",
+      "Xào bông cải xanh với chút nước cho giòn ngọt khoảng 4 phút, sau đó cho thịt bò vào đảo đều.",
+      "Tắt bếp, dọn ra đĩa dùng nóng cùng cơm trắng."
+    ],
+    "required": [
+      { "anyOf": ["thit-bo"] },
+      { "anyOf": ["bong-cai"] }
+    ],
+    "optional": [
+      { "anyOf": ["toi"] },
+      { "anyOf": ["nuoc-tuong"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "dau-que-xao-thit-bo",
+    "title": "Đậu que xào thịt bò",
+    "minutes": 15,
+    "stepMinutes": [null, 4, 5, null],
+    "steps": [
+      "Đậu que tước xơ, rửa sạch và cắt khúc vừa ăn; thịt bò thái mỏng ướp chút nước tương.",
+      "Xào nhanh thịt bò với tỏi trên lửa lớn khoảng 4 phút rồi để riêng.",
+      "Cho đậu que vào xào khoảng 5 phút cho xanh giòn, trút thịt bò trở lại đảo đều tay.",
+      "Nêm vừa miệng, bày ra đĩa dùng nóng với cơm."
+    ],
+    "required": [
+      { "anyOf": ["dau-que"] },
+      { "anyOf": ["thit-bo"] }
+    ],
+    "optional": [
+      { "anyOf": ["toi"] },
+      { "anyOf": ["nuoc-tuong"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "canh-muop-nau-tom",
+    "title": "Canh mướp nấu tôm",
+    "minutes": 15,
+    "stepMinutes": [null, 4, 6, null],
+    "steps": [
+      "Mướp hương gọt vỏ, rửa sạch và cắt miếng vát; tôm bóc vỏ, băm sơ hoặc để nguyên con.",
+      "Xào sơ tôm với chút dầu ăn và nước mắm khoảng 4 phút cho thơm.",
+      "Đổ nước đun sôi, thả mướp hương vào nấu thêm khoảng 6 phút đến khi mướp vừa mềm ngọt.",
+      "Nêm nhẹ vừa ăn, rắc hành lá và múc canh ra tô."
+    ],
+    "required": [
+      { "anyOf": ["muop"] },
+      { "anyOf": ["tom"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] }
+    ]
+  },
+  {
+    "id": "gia-do-xao-dau-phu",
+    "title": "Giá đỗ xào đậu phụ",
+    "minutes": 12,
+    "stepMinutes": [null, 5, 3, null],
+    "steps": [
+      "Đậu phụ cắt miếng vuông vừa ăn; giá đỗ rửa nhẹ và để ráo; hành lá cắt khúc.",
+      "Chiên vàng nhẹ các mặt đậu phụ với chút dầu ăn khoảng 5 phút.",
+      "Cho giá đỗ và hành lá vào đảo nhanh trên lửa lớn khoảng 3 phút, nêm chút nước tương.",
+      "Tắt bếp ngay để giá giữ độ giòn, dọn ra đĩa dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["gia-do"] },
+      { "anyOf": ["dau-phu"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-tuong"] },
+      { "anyOf": ["dau-an"] }
+    ]
+  },
+  {
+    "id": "cha-lua-kho-tieu",
+    "title": "Chả lụa kho tiêu",
+    "minutes": 15,
+    "stepMinutes": [null, 3, 8, null],
+    "steps": [
+      "Chả lụa cắt miếng tam giác hoặc miếng vuông dày vừa ăn; hành lá thái nhỏ.",
+      "Thắng chút đường với dầu ăn khoảng 3 phút cho lên màu cánh gián đẹp mắt.",
+      "Cho chả lụa, nước mắm, nước tương và ít nước ấm vào kho lửa nhỏ khoảng 8 phút cho thấm.",
+      "Rắc tiêu và hành lá, múc ra đĩa ăn cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["cha-lua"] }
+    ],
+    "optional": [
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["nuoc-tuong"] },
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "tom-rim-thit-ba-chi",
+    "title": "Tôm rim thịt ba chỉ",
+    "minutes": 25,
+    "stepMinutes": [null, 8, 10, null],
+    "steps": [
+      "Tôm cắt râu rửa sạch; thịt ba chỉ thái miếng nhỏ vừa ăn.",
+      "Đảo thịt ba chỉ trên chảo khoảng 8 phút cho hơi xém cạnh và ra bớt mỡ.",
+      "Cho tôm, nước mắm và chút đường vào rim lửa vừa khoảng 10 phút đến khi sốt sánh óng.",
+      "Rắc hành lá, múc ra đĩa dùng nóng với cơm trắng."
+    ],
+    "required": [
+      { "anyOf": ["tom"] },
+      { "anyOf": ["ba-chi"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] }
+    ]
+  },
+  {
+    "id": "canh-ca-chua-trung",
+    "title": "Canh cà chua trứng",
+    "minutes": 10,
+    "stepMinutes": [null, 3, 4, null],
+    "steps": [
+      "Cà chua rửa sạch bổ múi cau; trứng gà đánh tan nhẹ trong bát; hành lá cắt nhỏ.",
+      "Xào cà chua với chút dầu ăn và nước mắm khoảng 3 phút cho ra màu đỏ đẹp.",
+      "Thêm nước đun sôi khoảng 4 phút, đổ từ từ trứng vào khuấy nhẹ tạo vân mây mềm.",
+      "Nêm vừa ăn, rắc hành lá và múc canh ra tô dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["ca-chua"] },
+      { "anyOf": ["trung-ga"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] },
+      { "anyOf": ["nuoc-mam"] },
+      { "anyOf": ["chanh"] }
+    ]
   }
 ]
