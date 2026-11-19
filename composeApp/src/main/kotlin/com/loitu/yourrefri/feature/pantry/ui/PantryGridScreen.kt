@@ -89,6 +89,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
@@ -1202,110 +1203,101 @@ private fun WarmFoodCard(
     val colors = AppTheme.colors
     val cardCopy = pantryCardCopy(cell.have, quantity)
     val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
-    // Chữ lớn: bộ đếm xuống dòng riêng để tên món không bị bóp hẹp.
-    val stacked = LocalDensity.current.fontScale >= 1.15f
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         color = if (cell.have) colors.surface else Color.Transparent,
         border = BorderStroke(1.dp, if (cell.have) colors.line else colors.primarySoft),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onTap)
+                    .semantics {
+                        contentDescription = if (cell.have) {
+                            "Đánh dấu hết ${cell.nameVi}"
+                        } else {
+                            "Đánh dấu có ${cell.nameVi}"
+                        }
+                    },
             ) {
                 FoodThumb(
                     ingredientId = cell.ingredientId,
-                    size = 48.dp,
-                    shape = RoundedCornerShape(12.dp),
+                    size = 36.dp,
+                    shape = RoundedCornerShape(10.dp),
                     urgent = urgent,
                     modifier = Modifier.alpha(if (cell.have) 1f else 0.55f),
                 )
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 48.dp)
-                        .clickable(onClick = onTap)
-                        .semantics {
-                            contentDescription = if (cell.have) {
-                                "Đánh dấu hết ${cell.nameVi}"
-                            } else {
-                                "Đánh dấu có ${cell.nameVi}"
-                            }
-                        },
-                    verticalArrangement = Arrangement.Center,
-                ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                     Text(
                         text = cell.nameVi,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = if (cell.have) colors.text else colors.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (cardCopy.showEstimatedStatus) {
                         cell.daysLeft?.let { days ->
                             Text(
                                 text = pantryRowStatus(days),
-                                style = MaterialTheme.typography.bodySmall.copy(
+                                style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
                                 ),
                                 color = if (urgent) colors.ctaText else colors.accentText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     } else {
                         Text(
-                            text = listOfNotNull(cardCopy.statusLabel, cardCopy.absentHint).joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
+                            text = cardCopy.statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
                             color = colors.muted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                }
-                if (cell.have && !stacked) {
-                    QuantityStepper(cell.nameVi, quantity, cell.unit, onDecreaseQty, onIncreaseQty)
                 }
             }
 
             if (cell.have) {
-                if (stacked) {
-                    QuantityStepper(
-                        name = cell.nameVi,
-                        quantity = quantity,
-                        unit = cell.unit,
-                        onDecrease = onDecreaseQty,
-                        onIncrease = onIncreaseQty,
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    )
-                }
-                cardCopy.quantityHint?.let { hint ->
+                QuantityStepper(
+                    name = cell.nameVi,
+                    quantity = quantity,
+                    unit = cell.unit,
+                    onDecrease = onDecreaseQty,
+                    onIncrease = onIncreaseQty,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
-                        text = hint,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.muted,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-                    )
-                }
-                Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                    TextButton(
-                        onClick = onEditShelf,
+                        text = "Sửa hạn",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.accentText,
                         modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
+                            .clickable(onClick = onEditShelf)
+                            .padding(vertical = 2.dp)
                             .semantics { contentDescription = "Sửa hạn ước tính cho ${cell.nameVi}" },
-                    ) {
-                        Text("Sửa hạn", color = colors.accentText, fontWeight = FontWeight.Medium)
-                    }
-                    TextButton(
-                        onClick = onEditUnit,
+                    )
+                    Text(
+                        text = cell.unit,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.muted,
                         modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
+                            .clickable(onClick = onEditUnit)
+                            .padding(vertical = 2.dp)
                             .semantics {
                                 contentDescription = "Đổi đơn vị số lượng ${cell.nameVi}, hiện là ${cell.unit}"
                             },
-                    ) {
-                        Text("Đổi đơn vị · ${cell.unit}", color = colors.accentText, fontWeight = FontWeight.Medium)
-                    }
+                    )
                 }
             }
         }
@@ -1329,7 +1321,7 @@ private fun QuantityStepper(
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(32.dp)
                 .clip(CircleShape)
                 .background(colors.primarySoft)
                 .clickable(role = Role.Button, onClick = onDecrease)
@@ -1338,25 +1330,27 @@ private fun QuantityStepper(
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Minus, contentDescription = null, tint = colors.text, modifier = Modifier.size(22.dp))
+            Icon(AppIcons.Minus, contentDescription = null, tint = colors.text, modifier = Modifier.size(16.dp))
         }
         Text(
             text = "$quantity $unit",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = colors.text,
-            modifier = Modifier.widthIn(min = 56.dp).padding(horizontal = 4.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(32.dp)
                 .clip(CircleShape)
                 .background(colors.primarySoft)
                 .clickable(role = Role.Button, onClick = onIncrease)
                 .semantics { contentDescription = "Tăng số lượng $name" },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Plus, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(22.dp))
+            Icon(AppIcons.Plus, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
         }
     }
 }

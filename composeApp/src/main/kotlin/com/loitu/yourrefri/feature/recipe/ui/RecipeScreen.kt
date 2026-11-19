@@ -331,24 +331,31 @@ fun RecipeScreen(
                         modifier = Modifier.padding(top = 12.dp),
                     )
                 } else {
+                    if (randomPool != null) {
+                        Button(
+                            onClick = { rollRandom() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = colors.primarySoft,
+                                contentColor = colors.accentText,
+                            ),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).heightIn(min = 48.dp),
+                        ) {
+                            Icon(AppIcons.Wheel, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text(RandomRecipeCopy.button, fontWeight = FontWeight.Bold)
+                        }
+                    }
                     // Bộ lọc thời gian gọn, cuộn ngang được khi chữ lớn.
                     Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         recipeDurationFilterOptions().forEach { option ->
                             PillChip(
                                 label = option.label,
                                 selected = selectedDuration == option.threshold,
                                 onClick = { selectedDuration = option.threshold },
-                            )
-                        }
-                        if (randomPool != null) {
-                            PillChip(
-                                label = RandomRecipeCopy.button,
-                                selected = randomShown,
-                                onClick = { rollRandom() },
-                                icon = AppIcons.Wheel,
                             )
                         }
                     }

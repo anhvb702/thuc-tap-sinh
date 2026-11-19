@@ -25,6 +25,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,8 +54,12 @@ import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
 import com.loitu.yourrefri.feature.recipe.logic.recipesForMeal
+import com.loitu.yourrefri.feature.recipe.logic.RandomRecipePick
+import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
 import com.loitu.yourrefri.feature.recipe.ui.MealCopy
 import com.loitu.yourrefri.feature.recipe.ui.PillChip
+import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
+import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
 import com.loitu.yourrefri.feature.recipe.ui.WEEKLY_BUTTON_LABEL
 import com.loitu.yourrefri.feature.recipe.ui.emptyRecommendationCopy
@@ -123,6 +131,26 @@ fun HomeScreen(
     val urgentItems = haveItems.filter { it.daysLeft in 0..2 }.sortedBy { it.daysLeft }
     // Bữa trưa ưu tiên món nhanh; bữa tối giữ nguyên danh sách.
     val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state, tasteProfile = tasteProfile).take(homeRecipeLimit)
+    var randomPick by remember { mutableStateOf<RandomRecipePick?>(null) }
+    var randomShown by remember { mutableStateOf(false) }
+    fun rollHomeRandom() {
+        val next = pickRandomRecipe(recipes, state, excludeId = randomPick?.recipe?.id, random = kotlin.random.Random.Default) ?: return
+        randomPick = next
+        randomShown = true
+    }
+
+    if (randomShown && randomPick != null) {
+        RandomWheelDialog(
+            pool = recipes,
+            pick = randomPick!!,
+            onSpinAgain = { rollHomeRandom() },
+            onOpenRecipe = { recipe ->
+                randomShown = false
+                onNavigateToRecipe(recipe.id)
+            },
+            onDismiss = { randomShown = false },
+        )
+    }
 
     Column(
         modifier = modifier
@@ -175,6 +203,15 @@ fun HomeScreen(
         )
 
         WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
+
+        if (haveItems.isNotEmpty() && recipes.isNotEmpty()) {
+            ShortcutCard(
+                icon = AppIcons.Wheel,
+                title = RandomRecipeCopy.button,
+                subtitle = "Quay vòng chọn nhanh một món cho bữa tới",
+                onClick = { rollHomeRandom() },
+            )
+        }
 
         if (onNavigateToHistory != null) {
             ShortcutCard(
