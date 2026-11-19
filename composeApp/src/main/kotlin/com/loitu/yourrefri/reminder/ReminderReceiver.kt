@@ -61,13 +61,17 @@ class ReminderReceiver : BroadcastReceiver() {
                         manager.createNotificationChannel(channel)
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
-                    // Đăng xong mới ghi mốc đã gửi; lỗi giữa chừng thì ngày đó vẫn được thử lại.
                     val entry = ReminderPicture.entryFor(today.dayOfYear)
-                    ReminderNotifier.post(
-                        context, notice.title, notice.body, entry.recipeId,
-                        ReminderNotifier.loadPicture(context, entry.assetPath),
+                    deliverDailyReminder(
+                        isTest = test,
+                        post = {
+                            ReminderNotifier.post(
+                                context, notice.title, notice.body, entry.recipeId,
+                                ReminderNotifier.loadPicture(context, entry.assetPath),
+                            )
+                        },
+                        markSent = { prefs.edit().putString("last_sent", today.toString()).commit() },
                     )
-                    if (!test) prefs.edit().putString("last_sent", today.toString()).commit()
                 }
             } catch (e: Exception) {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
