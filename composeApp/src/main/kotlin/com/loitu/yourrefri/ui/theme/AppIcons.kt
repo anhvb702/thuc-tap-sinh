@@ -73,6 +73,15 @@ object AppIcons {
     val Snowflake by lazy { strokeIcon("Snowflake", "M12 3v18", "M4.5 7.5l15 9", "M19.5 7.5l-15 9", "M9.5 4.5L12 6.5l2.5-2", "M9.5 19.5L12 17.5l2.5 2") }
     val Cart by lazy { strokeIcon("Cart", "M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.4a1 1 0 0 0 1-.8L20 8H6", "M9 19.5h.01", "M17 19.5h.01") }
     val ChefHat by lazy { strokeIcon("ChefHat", "M7 14a4 4 0 1 1 1-7.9A4 4 0 0 1 16 6a4 4 0 1 1 1 8v5H7z", "M7 17h10") }
+    // Vòng quay (nút "Nấu ngẫu nhiên"): vành, trục giữa và các nan.
+    val Wheel by lazy {
+        strokeIcon(
+            "Wheel",
+            "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z",
+            "M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z",
+            "M12 3v6.5", "M12 14.5V21", "M3 12h6.5", "M14.5 12H21", "M5.6 5.6l4.6 4.6", "M13.8 13.8l4.6 4.6",
+        )
+    }
     val Info by lazy { strokeIcon("Info", "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z", "M12 11v5", "M12 8h.01") }
     val Sliders by lazy { strokeIcon("Sliders", "M4 7h10", "M18 7h2", "M4 17h2", "M10 17h10", "M14 5v4", "M6 15v4") }
     val Utensils by lazy { strokeIcon("Utensils", "M7 3v8", "M5 3v5a2 2 0 0 0 4 0V3", "M7 11v10", "M17 3c-2 2-2 6 0 8v10") }

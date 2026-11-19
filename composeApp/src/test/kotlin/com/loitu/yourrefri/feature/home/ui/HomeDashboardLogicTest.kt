@@ -29,16 +29,16 @@ class HomeDashboardLogicTest {
 
     @Test
     fun urgentCaption_containsEstimateWord() {
-        assertEquals("Ước tính còn 1 ngày", urgentCaption(1))
-        assertEquals("Ước tính còn 2 ngày", urgentCaption(2))
+        assertEquals("Còn 1 ngày (ước tính)", urgentCaption(1))
+        assertEquals("Còn 2 ngày (ước tính)", urgentCaption(2))
         assertEquals("Nên dùng hôm nay (ước tính)", urgentCaption(0))
-        assertEquals("Kiểm tra lại giúp mình", urgentCaption(-1))
+        assertEquals("Đã qua 1 ngày (ước tính)", urgentCaption(-1))
     }
 
     @Test
     fun urgentCaption_avoidsBannedWords() {
         (-2..3).map(::urgentCaption).forEach { text ->
-            listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên").forEach { assertFalse(text.contains(it, true), text) }
+            listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên").forEach { assertFalse(text.contains(it, true), text) } // lint-copy: rule
         }
     }
 

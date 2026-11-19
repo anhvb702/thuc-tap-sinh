@@ -87,10 +87,11 @@ internal const val URGENT_DAYS = 2
 internal fun pantryRowUrgent(have: Boolean, daysLeft: Int?): Boolean =
     have && daysLeft != null && daysLeft <= URGENT_DAYS
 
-/** Dòng trạng thái dưới tên món; luôn là ước tính và không dùng lời nặng nề. */
-internal fun pantryRowStatus(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Kiểm tra lại xem còn dùng được không"
-    daysLeft == 0 -> "Nên dùng hôm nay"
-    daysLeft <= URGENT_DAYS -> "Ước tính còn $daysLeft ngày"
-    else -> "Còn khoảng $daysLeft ngày"
+internal fun estimateDaysText(daysLeft: Int): String = when {
+    daysLeft < 0 -> "Đã qua ${-daysLeft} ngày (ước tính)"
+    daysLeft == 0 -> "Nên dùng hôm nay (ước tính)"
+    else -> "Còn $daysLeft ngày (ước tính)"
 }
+
+/** Dòng trạng thái dưới tên món; luôn là ước tính và không dùng lời nặng nề. */
+internal fun pantryRowStatus(daysLeft: Int): String = estimateDaysText(daysLeft)

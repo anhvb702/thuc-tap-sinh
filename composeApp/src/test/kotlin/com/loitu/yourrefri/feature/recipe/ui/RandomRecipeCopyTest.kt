@@ -4,19 +4,25 @@ import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.ui.theme.AppIcons
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class RandomRecipeCopyTest {
-    private val banned = listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên")
+    private val banned = listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên") // lint-copy: rule
     private val pork = Recipe("thit-kho", "Thịt kho", listOf("kho"), listOf(Slot(listOf("thit-heo"))))
     private val veg = Recipe("rau-xao", "Rau xào", listOf("xào"), listOf(Slot(listOf("rau-muong"))))
     private val ingredients = listOf(
         Ingredient("thit-heo", "Thịt heo", "thit", 3),
         Ingredient("rau-muong", "Rau muống", "rau-la", 2),
     )
+
+    @Test
+    fun wheelIconInitializesWithExpectedName() {
+        assertEquals("Wheel", AppIcons.Wheel.name)
+    }
 
     @Test
     fun outsideDiet_trueWhenRecipeIsFilteredOut() {
