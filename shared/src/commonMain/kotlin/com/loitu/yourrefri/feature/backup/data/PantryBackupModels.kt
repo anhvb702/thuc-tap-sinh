@@ -1,5 +1,6 @@
 package com.loitu.yourrefri.feature.backup.data
 
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -16,6 +17,7 @@ data class PantryBackupSnapshot(
     val mealToggles: List<MealToggleBackup> = emptyList(),
     val favorites: List<FavoriteRecipeBackup> = emptyList(),
     val cookMeals: List<CookMealBackup> = emptyList(),
+    val tasteProfile: FamilyTasteProfile? = null,
 )
 
 /** Bữa (LUNCH/DINNER) của một lần nấu trong [PantryBackupSnapshot.cookLogs]; lần nấu không có dòng này là chưa biết bữa. */

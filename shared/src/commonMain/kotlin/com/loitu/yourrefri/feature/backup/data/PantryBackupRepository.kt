@@ -1,5 +1,8 @@
 package com.loitu.yourrefri.feature.backup.data
 
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.DishStyle
+import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
 import com.loitu.yourrefri.shared.db.YourRefriDatabase
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -51,6 +54,18 @@ class PantryBackupRepositoryImpl(
         val favorites = db.favoriteRecipeEntityQueries.selectAll().executeAsList().map {
             FavoriteRecipeBackup(it.recipeId, it.createdAtEpochMs)
         }
+        val tasteProfile = db.tasteProfileEntityQueries.selectTasteProfile().executeAsOneOrNull()?.let {
+            FamilyTasteProfile(
+                flavors = it.flavors.splitValues().mapNotNull { value ->
+                    TasteFlavor.entries.firstOrNull { flavor -> flavor.name == value }
+                }.toSet(),
+                dishStyles = it.dish_styles.splitValues().mapNotNull { value ->
+                    DishStyle.entries.firstOrNull { style -> style.name == value }
+                }.toSet(),
+                avoidIngredientIds = it.avoid_ingredient_ids.splitValues().filter(String::isNotEmpty).toSet(),
+                hasYoungKids = it.has_young_kids != 0L,
+            )
+        }
         BackupCodec.encode(
             PantryBackupSnapshot(
                 format = BackupCodec.FORMAT,
@@ -65,6 +80,7 @@ class PantryBackupRepositoryImpl(
                 weeklySettings = weeklySettings,
                 favorites = favorites,
                 cookMeals = cookMeals,
+                tasteProfile = tasteProfile,
             ),
         )
     }
@@ -83,6 +99,7 @@ class PantryBackupRepositoryImpl(
                 db.weeklyMealPlanEntityQueries.deleteAll()
                 db.weeklyMealPlanSettingsEntityQueries.deleteAll()
                 db.favoriteRecipeEntityQueries.deleteAll()
+                db.tasteProfileEntityQueries.deleteAll()
 
                 snapshot.pantry.forEach {
                     db.pantryEntityQueries.upsert(it.ingredientId, it.have, it.markedAt)
@@ -128,7 +145,18 @@ class PantryBackupRepositoryImpl(
                         includeLunchMealPrep = if (settings.includeLunchMealPrep) 1L else 0L,
                     )
                 }
+                snapshot.tasteProfile?.let { profile ->
+                    db.tasteProfileEntityQueries.upsertTasteProfile(
+                        1L,
+                        profile.flavors.joinToString(",") { it.name },
+                        profile.dishStyles.joinToString(",") { it.name },
+                        profile.avoidIngredientIds.sorted().joinToString(","),
+                        if (profile.hasYoungKids) 1L else 0L,
+                    )
+                }
             }
         }
     }
+
+    private fun String.splitValues(): List<String> = if (isEmpty()) emptyList() else split(',')
 }

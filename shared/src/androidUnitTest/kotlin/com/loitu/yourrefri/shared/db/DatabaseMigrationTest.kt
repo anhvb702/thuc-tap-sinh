@@ -14,7 +14,7 @@ class DatabaseMigrationTest {
             YourRefriDatabase.Schema.create(driver)
             driver.execute(null, "PRAGMA user_version = 7", 0)
 
-            YourRefriDatabase.Schema.migrate(driver, oldVersion = 7, newVersion = 8)
+            YourRefriDatabase.Schema.migrate(driver, oldVersion = 7, newVersion = 9)
             createDatabase(driver)
 
             // Nhánh này chưa có query cho các bảng này; kiểm tra bảng có mặt sau migration.
@@ -24,6 +24,7 @@ class DatabaseMigrationTest {
                 "WeeklyMealPlanSettingsEntity",
                 "ExtraShoppingItemEntity",
                 "LeftoverEntity",
+                "taste_profile",
             ).forEach { table ->
                 val count = driver.executeQuery(
                     identifier = null,
