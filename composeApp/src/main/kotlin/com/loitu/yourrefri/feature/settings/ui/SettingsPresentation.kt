@@ -18,6 +18,19 @@ internal object SettingsPresentation {
     const val tasteTitle = "Khẩu vị gia đình"
     const val goalTitle = "Ưu tiên gợi ý"
     const val dietTitle = "Chế độ ăn"
+    const val reminderGroupTitle = "Nhắc nhở"
+    const val tasteGroupTitle = "Khẩu vị & thói quen"
+    const val backupGroupTitle = "Sao lưu & khôi phục"
+    const val transferTitle = "Chuyển sang điện thoại mới"
+    const val onDeviceBadge = "Chỉ trên máy bạn"
+
+    val themeModeOrder: List<com.loitu.yourrefri.ui.theme.ThemeMode> = listOf(
+        com.loitu.yourrefri.ui.theme.ThemeMode.LIGHT,
+        com.loitu.yourrefri.ui.theme.ThemeMode.DARK,
+        com.loitu.yourrefri.ui.theme.ThemeMode.SYSTEM,
+    )
+
+    fun toggleChipLabel(enabled: Boolean): String = if (enabled) "Bật" else "Tắt"
 
     private const val EMPTY_PREFERENCES = "Thích đa dạng"
     private const val MAX_NAMED = 2

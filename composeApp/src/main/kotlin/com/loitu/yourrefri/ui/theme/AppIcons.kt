@@ -87,6 +87,16 @@ object AppIcons {
     val Sliders by lazy { strokeIcon("Sliders", "M4 7h10", "M18 7h2", "M4 17h2", "M10 17h10", "M14 5v4", "M6 15v4") }
     val Utensils by lazy { strokeIcon("Utensils", "M7 3v8", "M5 3v5a2 2 0 0 0 4 0V3", "M7 11v10", "M17 3c-2 2-2 6 0 8v10") }
     val Close by lazy { strokeIcon("Close", "M6 6l12 12", "M18 6L6 18") }
+    val Shuffle by lazy { strokeIcon("Shuffle", "M16 3h5v5", "M4 20L21 3", "M21 16v5h-5", "M15 15l6 6", "M4 4l5 5") }
+    val Timer by lazy { strokeIcon("Timer", "M12 6a8 8 0 1 0 0 16 8 8 0 1 0 0-16z", "M12 10v5l3 2", "M9 2h6") }
+    val Play by lazy { strokeIcon("Play", "M7 4l13 8-13 8z") }
+    val Pause by lazy { strokeIcon("Pause", "M8 5v14", "M16 5v14") }
+    val Reset by lazy { strokeIcon("Reset", "M4 12a8 8 0 1 0 3-6.2", "M4 4v5h5") }
+    val Pencil by lazy { strokeIcon("Pencil", "M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z", "M13.5 6.5l4 4") }
+    val Sun by lazy { strokeIcon("Sun", "M12 8a4 4 0 1 0 0 8 4 4 0 1 0 0-8z", "M12 2v2", "M12 20v2", "M4.9 4.9l1.4 1.4", "M17.7 17.7l1.4 1.4", "M2 12h2", "M20 12h2", "M4.9 19.1l1.4-1.4", "M17.7 6.3l1.4-1.4") }
+    val CheckCircle by lazy { strokeIcon("CheckCircle", "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z", "M8 12l3 3 5-6") }
+    val ChevronUp by lazy { strokeIcon("ChevronUp", "M5 15l7-7 7 7") }
+    val ChevronDown by lazy { strokeIcon("ChevronDown", "M5 9l7 7 7-7") }
 
     // Icon thực phẩm theo nhóm.
     val Tomato by lazy { strokeIcon("Tomato", "M12 6a7.5 7.5 0 1 0 0 15 7.5 7.5 0 1 0 0-15z", "M8.5 6.5c2 1 5 1 7 0", "M12 6V3.5") }
