@@ -177,12 +177,16 @@ fun MainScaffold(
         ids.forEach { onAction(PantryGridAction.ConsumeIngredient(it)) }
         // Ghi đúng bữa người dùng đang chọn ở Trang chủ; chưa chọn thì ViewModel tính theo giờ lúc ghi.
         // Chưa chọn bữa thì tính theo giờ lúc bấm nấu xong (không dùng giá trị cũ của state).
-        onRecordCook(recipe.id, ids, chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)) {}
         val namesById = before.ingredients.associate { it.id to it.nameVi }
         cookDone = CookDone(
             recipeTitle = recipe.title,
             summary = cookDoneSummary(cookDoneNames(ids, namesById)),
+            undo = com.loitu.yourrefri.feature.recipe.ui.cookUndoActions(before, ids),
         )
+        // Ghi lịch sử sau khi đặt cookDone để nhận id dòng vừa ghi; Hoàn tác (Q10) sẽ xóa dòng này.
+        onRecordCook(recipe.id, ids, chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)) { id ->
+            cookDone = cookDone?.copy(logId = id)
+        }
         handsFreeRecipeId = null
         openedRecipeId = null
         showHistory = false
@@ -292,7 +296,16 @@ fun MainScaffold(
         ) {
             val doneNow = cookDone
             if (doneNow != null) {
-                CookDoneScreen(done = doneNow, onHome = { goHomeAfterCook() })
+                CookDoneScreen(
+                    done = doneNow,
+                    onHome = { goHomeAfterCook() },
+                    onUndo = { actions ->
+                        // Q10: trả lại tủ đúng trạng thái trước khi nấu và xóa dòng "Đã nấu" vừa ghi.
+                        actions.forEach { onAction(it) }
+                        doneNow.logId?.let { onDeleteCook(it) }
+                        cookDone = null
+                    },
+                )
             } else if (handsFreeRecipe != null) {
                 HandsFreeCookScreen(
                     recipe = handsFreeRecipe,
