@@ -56,6 +56,7 @@ fun HandsFreeCookScreen(
     recipe: Recipe,
     onClose: () -> Unit,
     onFinished: () -> Unit,
+    freezerNames: List<String> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -128,6 +129,12 @@ fun HandsFreeCookScreen(
                 .padding(horizontal = 20.dp, vertical = 24.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (state.isFirst && freezerNames.isNotEmpty()) {
+                    DefrostNoticeBanner(
+                        freezerNames = freezerNames,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
                 if (state.isLast) {
                     Text(
                         text = "Dọn ra mâm",
