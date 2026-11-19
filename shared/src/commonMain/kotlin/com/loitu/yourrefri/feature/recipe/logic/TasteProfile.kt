@@ -1,7 +1,9 @@
 package com.loitu.yourrefri.feature.recipe.logic
 
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class TasteFlavor(val labelVi: String) {
     SAVORY("Đậm đà"),
     LIGHT("Thanh đạm"),
@@ -9,6 +11,7 @@ enum class TasteFlavor(val labelVi: String) {
     SPICY("Thích cay"),
 }
 
+@Serializable
 enum class DishStyle(val labelVi: String) {
     BRAISED("Món kho"),
     SOUP("Món canh"),
@@ -17,6 +20,7 @@ enum class DishStyle(val labelVi: String) {
     STEAMED_BOILED("Hấp/luộc"),
 }
 
+@Serializable
 data class FamilyTasteProfile(
     val flavors: Set<TasteFlavor> = emptySet(),
     val dishStyles: Set<DishStyle> = emptySet(),

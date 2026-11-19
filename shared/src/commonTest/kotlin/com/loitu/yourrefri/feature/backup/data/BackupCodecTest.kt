@@ -1,5 +1,8 @@
 package com.loitu.yourrefri.feature.backup.data
 
+import com.loitu.yourrefri.feature.recipe.logic.DishStyle
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -102,6 +105,26 @@ class BackupCodecTest {
 
         assertTrue(encoded.contains("\"version\":2"))
         assertEquals(snapshot, BackupCodec.decode(encoded))
+    }
+
+    @Test
+    fun versionTwo_roundTripsTasteProfile() {
+        val snapshot = expected.copy(
+            version = 2,
+            tasteProfile = FamilyTasteProfile(
+                flavors = setOf(TasteFlavor.LIGHT),
+                dishStyles = setOf(DishStyle.SOUP),
+                avoidIngredientIds = setOf("milk"),
+                hasYoungKids = true,
+            ),
+        )
+
+        assertEquals(snapshot, BackupCodec.decode(BackupCodec.encode(snapshot)))
+    }
+
+    @Test
+    fun oldBackupWithoutTasteProfileDefaultsToNull() {
+        assertEquals(null, BackupCodec.decode(validJson).tasteProfile)
     }
 
     @Test

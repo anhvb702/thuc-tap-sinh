@@ -6,6 +6,9 @@ import app.cash.sqldelight.db.SqlDriver
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import com.loitu.yourrefri.shared.db.YourRefriDatabase
 import com.loitu.yourrefri.shared.db.createDatabase
+import com.loitu.yourrefri.feature.recipe.logic.DishStyle
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -118,6 +121,24 @@ class PantryBackupRepositoryTest {
         val exported = BackupCodec.decode(repository().exportJson())
 
         assertEquals(expected, exported)
+    }
+
+    @Test
+    fun exportAndRestore_roundTripsTasteProfile() = runTest {
+        val profile = FamilyTasteProfile(
+            flavors = setOf(TasteFlavor.SAVORY),
+            dishStyles = setOf(DishStyle.BRAISED),
+            avoidIngredientIds = setOf("peanut"),
+            hasYoungKids = true,
+        )
+        db.tasteProfileEntityQueries.upsertTasteProfile(1L, "SAVORY", "BRAISED", "peanut", 1L)
+
+        val payload = repository().exportJson()
+        db.tasteProfileEntityQueries.deleteAll()
+        repository().restoreJson(payload)
+
+        assertEquals(profile, BackupCodec.decode(payload).tasteProfile)
+        assertEquals(1L, db.tasteProfileEntityQueries.selectTasteProfile().executeAsOne().has_young_kids)
     }
 
     @Test

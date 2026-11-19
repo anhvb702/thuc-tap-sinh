@@ -47,6 +47,11 @@ object BackupCodec {
             require(snapshot.favorites.isEmpty()) { "Version 1 cannot contain favorites" }
             require(snapshot.cookMeals.isEmpty()) { "Version 1 cannot contain cook meals" }
         }
+        snapshot.tasteProfile?.let { profile ->
+            require(profile.avoidIngredientIds.all { it.isNotBlank() && ',' !in it }) {
+                "Taste profile ingredient ids must be non-empty and contain no commas"
+            }
+        }
 
         validateUniqueIds("pantry", snapshot.pantry.map { it.ingredientId })
         snapshot.pantry.forEach { LocalDate.parse(it.markedAt) }

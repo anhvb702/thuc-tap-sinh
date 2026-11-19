@@ -36,7 +36,7 @@ class CookLogMealRepositoryTest {
 
     @Test
     fun schemaVersionIs8() {
-        assertEquals(8L, YourRefriDatabase.Schema.version)
+        assertEquals(9L, YourRefriDatabase.Schema.version)
     }
 
     @Test
