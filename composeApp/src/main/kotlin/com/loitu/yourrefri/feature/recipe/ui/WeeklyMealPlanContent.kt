@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +48,7 @@ import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 import com.loitu.yourrefri.ui.components.FoodThumb
+import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.AppIcons
 
@@ -104,6 +106,7 @@ internal fun WeeklyMealPlanSection(
     var openedDay by remember { mutableStateOf<Int?>(null) }
     var goalMenuOpen by remember { mutableStateOf(false) }
     var preferenceMenuOpen by remember { mutableStateOf(false) }
+    var weekConfirmed by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -139,7 +142,7 @@ internal fun WeeklyMealPlanSection(
                 DietGoal.entries.forEach { item ->
                     DropdownMenuItem(
                         text = { Text(item.labelVi) },
-                        onClick = { onGoal(item); goalMenuOpen = false },
+                        onClick = { onGoal(item); weekConfirmed = false; goalMenuOpen = false },
                         modifier = Modifier.heightIn(min = 48.dp),
                     )
                 }
@@ -159,7 +162,7 @@ internal fun WeeklyMealPlanSection(
                     val selected = item in preferences
                     DropdownMenuItem(
                         text = { Text(item.labelVi) },
-                        onClick = { onPreference(item) },
+                        onClick = { onPreference(item); weekConfirmed = false },
                         trailingIcon = { Checkbox(checked = selected, onCheckedChange = null) },
                         modifier = Modifier.heightIn(min = 48.dp).semantics(mergeDescendants = true) {
                             contentDescription = preferenceOptionDescription(item.labelVi, selected)
@@ -179,9 +182,15 @@ internal fun WeeklyMealPlanSection(
                         Text(totalMinutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RecipeThumb(recipeId = day.recipe.id, size = 44.dp, shape = RoundedCornerShape(10.dp))
+                        Text("Món chính: ${day.recipe.title}", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.text, modifier = Modifier.padding(start = 8.dp))
+                    }
                     day.sideRecipe?.let { side ->
-                        Text("Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = colors.text, modifier = Modifier.padding(top = 2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 2.dp)) {
+                            RecipeThumb(recipeId = side.id, size = 36.dp, shape = RoundedCornerShape(8.dp))
+                            Text("Canh/Rau: ${side.title}", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium), color = colors.text, modifier = Modifier.padding(start = 8.dp))
+                        }
                     }
                     Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -192,7 +201,7 @@ internal fun WeeklyMealPlanSection(
                             modifier = Modifier.weight(1f),
                         )
                         Spacer(Modifier.width(8.dp))
-                        SoftActionButton(label = "Đổi thực đơn", icon = AppIcons.Shuffle, onClick = { onSwap(day.dayIndex) }, modifier = Modifier.weight(1f))
+                        SoftActionButton(label = "Đổi thực đơn", icon = AppIcons.Shuffle, onClick = { weekConfirmed = false; onSwap(day.dayIndex) }, modifier = Modifier.weight(1f))
                     }
                     if (isExpanded) {
                         day.dishes.forEach { dish ->
@@ -200,14 +209,6 @@ internal fun WeeklyMealPlanSection(
                             Text("Cách nấu ${dish.title}:", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = colors.text)
                             dish.steps.forEachIndexed { index, step ->
                                 Text("${index + 1}. $step", style = MaterialTheme.typography.bodyMedium, color = colors.text, modifier = Modifier.padding(vertical = 3.dp))
-                            }
-                            Button(
-                                onClick = { onRequestCook(dish) },
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                                shape = RoundedCornerShape(20.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 50.dp),
-                            ) {
-                                Text("Đã nấu xong: ${dish.title}", color = colors.onPrimary)
                             }
                             if (updatedRecipeResult?.first == dish.id) {
                                 Text(updatedRecipeResult.second, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
@@ -217,13 +218,18 @@ internal fun WeeklyMealPlanSection(
                 }
             }
         }
-        Button(
-            onClick = { handleWeeklyConfirm(plan, onConfirmWeek, onNavigate) },
-            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 50.dp),
-        ) {
-            Text(WEEKLY_CONFIRM_LABEL)
+        if (!weekConfirmed) {
+            Button(
+                onClick = {
+                    weekConfirmed = true
+                    handleWeeklyConfirm(plan, onConfirmWeek, onNavigate)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 50.dp),
+            ) {
+                Text(WEEKLY_CONFIRM_LABEL)
+            }
         }
     }
 }
