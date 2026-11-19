@@ -41,11 +41,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 val repository = PantryRepositoryImpl(db, Clock.System, tz, Dispatchers.IO)
                 val base = ShelfTable.parse(context.assets.open("shelf_table.json").bufferedReader().use { it.readText() })
                 val overrides = runBlocking { repository.observeShelfOverrides().first() }
+                val entry = ReminderPicture.entryFor(today.dayOfYear)
                 val planned = planDailyNotice(
                     runBlocking { repository.observe().first() }, base.map { it.copy(userShelfDays = overrides[it.id]) },
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
                 )
-                val notice = planned ?: if (test) DailyNotice(today, emptyList(), "Gợi ý từ tủ nhà mình", "Thử thông báo: bấm để mở món hôm nay.") else null
+                val notice = planned ?: if (test) DailyNotice(today, emptyList(), "Gợi ý bữa cơm: ${entry.titleVi}", "Món gợi ý hôm nay: ${entry.titleVi}. Bấm để xem công thức và nấu ngay nhé!") else null
                 val manager = context.getSystemService(NotificationManager::class.java)
                 val legacy = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID) else null
                 val legacyImportance = legacy?.importance
@@ -55,13 +56,14 @@ class ReminderReceiver : BroadcastReceiver() {
                         val channel = NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance))
                         if (legacy != null) {
                             // Giữ âm thanh và rung người dùng đã chỉnh; legacy.sound == null nghĩa là đã chọn "Không có âm".
-                            channel.setSound(legacy.sound, legacy.audioAttributes)
-                            channel.enableVibration(legacy.shouldVibrate())
+                            if (legacy.sound == null || legacyImportance != NotificationManager.IMPORTANCE_DEFAULT) {
+                                channel.setSound(legacy.sound, legacy.audioAttributes)
+                            }
                         }
+                        channel.enableVibration(ReminderChannel.shouldVibrate(legacyImportance, legacy?.shouldVibrate() ?: true))
                         manager.createNotificationChannel(channel)
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
-                    val entry = ReminderPicture.entryFor(today.dayOfYear)
                     deliverDailyReminder(
                         isTest = test,
                         post = {

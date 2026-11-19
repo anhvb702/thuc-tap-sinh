@@ -69,6 +69,8 @@ import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.ThemeMode
+import com.loitu.yourrefri.reminder.ReminderPopupBoxDialog
+import com.loitu.yourrefri.reminder.buildReminderPopupData
 
 // Nhãn tab cho phép xuống dòng khi cỡ chữ hệ thống lớn, để không cắt còn một từ.
 internal const val NAV_LABEL_MAX_LINES = 2
@@ -125,6 +127,7 @@ fun MainScaffold(
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
     // Công thức đang mở ở màn chi tiết. Tạm dùng state cục bộ; khi có Navigation Compose sẽ thành route RecipeDetail.
     var openedRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showReminderPopup by rememberSaveable { mutableStateOf(false) }
     // Công thức đang nấu ở chế độ rảnh tay (màn riêng, tạm dùng state cục bộ như màn chi tiết).
     var handsFreeRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
     // Bấm popup nhắc: mở thẳng nấu rảnh tay của món đó (id do MainActivity đặt vào ReminderOpenRequest).
@@ -215,6 +218,14 @@ fun MainScaffold(
                 finishHandsFree(pending, kept)
             },
             onDismiss = { leftoverRecipe = null },
+        )
+    }
+    if (showReminderPopup) {
+        val popupData = remember(state, state.today) { buildReminderPopupData(state, state.today.dayOfYear) }
+        ReminderPopupBoxDialog(
+            data = popupData,
+            onOpenRecipe = { id -> showReminderPopup = false; openedRecipeId = id },
+            onDismiss = { showReminderPopup = false },
         )
     }
 
@@ -422,7 +433,7 @@ fun MainScaffold(
                     onCancelRestore = onCancelRestore,
                     reminderEnabled = reminderEnabled,
                     onReminderChanged = onReminderChanged,
-                    onTestReminder = onTestReminder,
+                    onTestReminder = { onTestReminder(); showReminderPopup = true },
                     themeMode = themeMode,
                     onThemeModeChange = onThemeModeChange,
                     weeklyGoal = weeklyMealPlanState.goal,
