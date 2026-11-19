@@ -1338,16 +1338,21 @@ private fun QuickAddTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Box(
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.surface),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = if (selected) AppIcons.Check else foodIconFor(iconId),
-                    contentDescription = null,
-                    tint = colors.accentText,
-                    modifier = Modifier.size(22.dp),
-                )
+            if (selected) {
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = colors.accentText,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            } else {
+                // Ảnh món hoặc icon riêng (FoodThumb); chưa có thì icon nhóm.
+                FoodThumb(ingredientId = iconId, size = 36.dp, shape = CircleShape)
             }
             Text(
                 text = name,
