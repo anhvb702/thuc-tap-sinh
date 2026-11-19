@@ -109,4 +109,8 @@ object AppIcons {
     val Milk by lazy { strokeIcon("Milk", "M8 3h8l2 4v14H6V7z", "M6 7h12") }
     val Leaf by lazy { strokeIcon("Leaf", "M5 19c0-8 5-14 15-14 0 10-6 15-14 15", "M5 19l8-8") }
     val Tofu by lazy { strokeIcon("Tofu", "M4 9l8-4 8 4v8l-8 4-8-4z", "M4 9l8 4 8-4", "M12 13v8") }
+    val Spice by lazy {
+        strokeIcon("Spice", "M8 6h8l1 3v11H7V9z", "M9 6V4h6v2", "M10 12h.01", "M14 12h.01", "M10 16h.01", "M14 16h.01")
+    }
+    val Bowl by lazy { strokeIcon("Bowl", "M4 11h16", "M5 11c.5 5 3.2 8 7 8s6.5-3 7-8", "M8 7c1.2-1 2.8-1.5 4-1.5S14.8 6 16 7") }
 }
