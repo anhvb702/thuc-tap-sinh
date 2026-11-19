@@ -52,6 +52,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -253,11 +255,13 @@ fun RecipeScreen(
     val todayIndex = todayIndexOverride
         ?: remember { todayDayIndex(Clock.System.now(), TimeZone.currentSystemDefault()) }
 
+    val pageScroll = rememberScrollState()
+    val scrollScope = rememberCoroutineScope()
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(pageScroll)
             .padding(16.dp)
     ) {
         RecipeScreenTitle()
@@ -294,7 +298,11 @@ fun RecipeScreen(
                     showCookConfirmation = true
                 },
                 updatedRecipeResult = updatedRecipeResult,
-                onNavigate = { updateMode(it) },
+                onNavigate = {
+                    updateMode(it)
+                    // Mở từ nút xác nhận ở cuối trang: đưa danh sách về đầu để thấy tiêu đề.
+                    scrollScope.launch { pageScroll.scrollTo(0) }
+                },
             )
 
             RecipeScreenMode.SHOPPING -> WeeklyShoppingSection(

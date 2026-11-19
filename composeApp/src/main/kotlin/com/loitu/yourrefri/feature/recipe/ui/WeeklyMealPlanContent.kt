@@ -182,10 +182,7 @@ internal fun WeeklyMealPlanSection(
             }
         }
         Button(
-            onClick = {
-                onConfirmWeek()
-                weeklyConfirmTarget(plan.isNotEmpty())?.let(onNavigate)
-            },
+            onClick = { handleWeeklyConfirm(plan, onConfirmWeek, onNavigate) },
             colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
