@@ -3,7 +3,7 @@ package com.loitu.yourrefri.feature.recipe.ui
 import android.animation.ValueAnimator
 import android.os.Build
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -86,7 +86,7 @@ internal fun RandomWheelDialog(
     val cardWidth = 132.dp
     val cardSpacing = 10.dp
     val itemStridePx = with(LocalDensity.current) { (cardWidth + cardSpacing).toPx() }
-    val spinEasing = remember { CubicBezierEasing(0.12f, 0.65f, 0.25f, 1.0f) }
+    val spinEasing = remember { Easing { t -> val inv = 1f - t; 1f - inv * inv * inv } }
 
     LaunchedEffect(reel, winnerIndex, spinTrigger) {
         if (reel.isNotEmpty()) {
@@ -95,7 +95,7 @@ internal fun RandomWheelDialog(
             if (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()) {
                 listState.animateScrollBy(
                     value = winnerIndex * itemStridePx,
-                    animationSpec = tween(durationMillis = 3600, easing = spinEasing),
+                    animationSpec = tween(durationMillis = 5200, easing = spinEasing),
                 )
             }
             listState.scrollToItem(winnerIndex)
