@@ -6,6 +6,18 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ShippedRecipeBundleTest {
+    @Test
+    fun parserReadsStepMinutesAndKeepsLegacyJsonCompatible() {
+        val withStepMinutes = """
+            [{"id":"a","title":"A","steps":["Rửa","Nấu"],"required":[{"anyOf":["x"]}],"stepMinutes":[null,7]}]
+        """.trimIndent()
+        val legacy = """
+            [{"id":"b","title":"B","steps":["Rửa"],"required":[{"anyOf":["x"]}]}]
+        """.trimIndent()
+
+        assertEquals(listOf(null, 7), RecipeBundle.parse(withStepMinutes).single().stepMinutes)
+        assertEquals(emptyList(), RecipeBundle.parse(legacy).single().stepMinutes)
+    }
     private val originalRecipeIds = setOf(
         "canh-chua-ca-basa",
         "thit-kho-trung",

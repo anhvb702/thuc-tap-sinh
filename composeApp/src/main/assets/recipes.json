@@ -3,6 +3,7 @@
     "id": "canh-chua-ca-basa",
     "title": "Canh chua cá basa",
     "minutes": 25,
+    "stepMinutes": [null, 10, 10, null],
     "steps": [
       "Rửa sạch cá basa, cắt khúc vừa ăn; cà chua bổ múi cau; hành lá cắt nhỏ.",
       "Ướp cá với một chút muối, tiêu và nước mắm trong 10 phút.",
@@ -19,6 +20,7 @@
     "id": "thit-kho-trung",
     "title": "Thịt heo kho trứng",
     "minutes": 35,
+    "stepMinutes": [null, 15, 20, null],
     "steps": [
       "Thịt heo rửa sạch, cắt miếng vừa ăn; trứng gà luộc chín và bóc vỏ.",
       "Ướp thịt với hành tím, nước mắm, đường và tiêu trong 15 phút.",
@@ -34,6 +36,7 @@
     "id": "rau-muong-xao-hanh",
     "title": "Rau muống xào hành tây",
     "minutes": 12,
+    "stepMinutes": [null, 5, 1, null],
     "steps": [
       "Rau muống nhặt ngọn non, rửa sạch và để ráo; hành tây thái mỏng.",
       "Phi thơm hành tây với một ít dầu, cho rau muống vào xào nhanh trên lửa lớn.",
@@ -49,6 +52,7 @@
     "id": "thit-bo-xao-hanh-tay",
     "title": "Thịt bò xào hành tây",
     "minutes": 15,
+    "stepMinutes": [null, 5, 5, null],
     "steps": [
       "Thịt bò thái mỏng; hành tây thái múi cau, cà rốt thái lát nếu nhà mình có.",
       "Ướp thịt bò với chút nước mắm và tiêu trong vài phút.",
@@ -67,6 +71,7 @@
     "id": "canh-rau-ngot-thit-bam",
     "title": "Canh rau ngót nấu thịt",
     "minutes": 15,
+    "stepMinutes": [null, 5, 10, null],
     "steps": [
       "Rau ngót tuốt lá, rửa sạch; thịt băm để riêng.",
       "Ướp thịt với chút nước mắm, rồi xào nhẹ cho thơm.",
@@ -82,6 +87,7 @@
     "id": "dau-phu-sot-ca-chua",
     "title": "Đậu phụ sốt cà chua",
     "minutes": 15,
+    "stepMinutes": [null, 5, 5, null],
     "steps": [
       "Đậu phụ cắt miếng vừa ăn; cà chua bổ nhỏ và hành lá thái khúc.",
       "Áp chảo đậu phụ đến khi các mặt vàng nhẹ rồi gắp ra.",
@@ -98,6 +104,7 @@
     "id": "tom-rim-thit",
     "title": "Tôm rim mặn ngọt",
     "minutes": 20,
+    "stepMinutes": [null, 5, 10, null],
     "steps": [
       "Tôm làm sạch; hành lá cắt nhỏ, thịt heo thái mỏng nếu dùng thêm.",
       "Ướp tôm với nước mắm và chút đường trong vài phút.",
@@ -116,6 +123,7 @@
     "id": "ga-kho-khoai-tay",
     "title": "Thịt gà kho khoai tây cà rốt",
     "minutes": 30,
+    "stepMinutes": [null, 5, 20, null],
     "steps": [
       "Thịt gà chặt miếng vừa ăn; khoai tây hoặc cà rốt gọt vỏ, cắt miếng.",
       "Ướp gà với chút nước mắm, tiêu và hành tím trong ít phút.",
@@ -131,6 +139,7 @@
     "id": "canh-bi-xanh-nau-tom",
     "title": "Canh bí xanh nấu tôm nấm",
     "minutes": 20,
+    "stepMinutes": [null, 5, 10, null],
     "steps": [
       "Bí xanh gọt vỏ, bỏ ruột và cắt miếng; tôm làm sạch hoặc dùng thịt băm.",
       "Xào nhẹ tôm hoặc thịt với chút nước mắm cho thơm.",
@@ -150,6 +159,7 @@
     "id": "ca-hoi-ap-chao-xa-lach",
     "title": "Cá hồi áp chảo trộn xà lách",
     "minutes": 15,
+    "stepMinutes": [null, 10, 5, null],
     "steps": [
       "Cá hồi thấm khô, ướp nhẹ với muối và tiêu; rửa sạch xà lách hoặc cải ngọt.",
       "Áp chảo cá hồi với chút dầu đến khi hai mặt chín vàng.",
@@ -168,6 +178,7 @@
     "id": "trung-xao-ca-chua",
     "title": "Trứng xào cà chua",
     "minutes": 12,
+    "stepMinutes": [null, 5, 5, null],
     "steps": [
       "Trứng gà đánh đều với một chút muối; cà chua bổ múi cau, hành lá cắt nhỏ.",
       "Phi cà chua với ít dầu đến khi mềm và ra nước sốt.",
@@ -186,6 +197,7 @@
     "id": "canh-cai-dau-phu",
     "title": "Canh cải đậu phụ",
     "minutes": 15,
+    "stepMinutes": [null, 10, 5, null],
     "steps": [
       "Đậu phụ thái miếng vuông; cải ngọt rửa sạch, cắt khúc vừa ăn.",
       "Đun sôi nước với một chút muối, cho cải ngọt vào nấu đến khi mềm.",
@@ -201,6 +213,7 @@
     "id": "ga-ap-chao",
     "title": "Thịt gà áp chảo",
     "minutes": 20,
+    "stepMinutes": [null, 15, 10, null],
     "steps": [
       "Đùi gà rửa sạch, thấm khô, khứa nhẹ mặt da và ướp với tiêu, muối, tỏi băm nếu có.",
       "Áp chảo mặt da xuống trước trên lửa vừa đến khi da vàng giòn.",
@@ -218,6 +231,7 @@
     "id": "canh-bi-thit-bam",
     "title": "Canh bí xanh nấu thịt bằm",
     "minutes": 20,
+    "stepMinutes": [null, 10, 5, null],
     "steps": [
       "Bí xanh gọt vỏ, thái miếng vừa ăn; thịt heo bằm ướp chút muối và tiêu.",
       "Đun sôi nước, cho bí xanh vào nấu đến khi miếng bí mềm trong.",
@@ -236,6 +250,7 @@
     "id": "rau-muong-xao-toi",
     "title": "Rau muống xào tỏi",
     "minutes": 10,
+    "stepMinutes": [null, 5, 5, null],
     "steps": [
       "Rau muống nhặt ngọn, rửa sạch và để ráo; tỏi đập dập và băm nhỏ.",
       "Phi thơm tỏi với ít dầu trên lửa vừa cho đến khi vàng nhẹ.",

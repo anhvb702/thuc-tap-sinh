@@ -4,8 +4,35 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.Slot
 
 class HandsFreeStepsTest {
+    private fun recipe(steps: List<String>, stepMinutes: List<Int?> = emptyList()) = Recipe(
+        id = "test-recipe",
+        title = "Món thử",
+        steps = steps,
+        required = listOf(Slot(listOf("ingredient"))),
+        stepMinutes = stepMinutes,
+    )
+
+    @Test
+    fun stepTimerPrefersStructuredMinutesAndReturnsSeconds() {
+        assertEquals(600, stepTimerSeconds(recipe(listOf("Nấu 2 phút"), listOf(10)), 0))
+    }
+
+    @Test
+    fun stepTimerFallsBackToMinutesInStepText() {
+        assertEquals(900, stepTimerSeconds(recipe(listOf("Kho nhỏ lửa trong 15 phút")), 0))
+    }
+
+    @Test
+    fun stepTimerIsNullForPreparationServingAndInvalidIndexes() {
+        val recipe = recipe(listOf("Rửa rau", "Dọn ra mâm"), listOf(null, null))
+        assertEquals(null, stepTimerSeconds(recipe, 0))
+        assertEquals(null, stepTimerSeconds(recipe, 1))
+        assertEquals(null, stepTimerSeconds(recipe, 2))
+    }
     @Test
     fun nextAdvancesUntilLastThenStays() {
         var s = HandsFreeState.of(0, 3)

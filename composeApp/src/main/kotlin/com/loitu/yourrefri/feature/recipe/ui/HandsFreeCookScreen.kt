@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -110,9 +111,14 @@ fun HandsFreeCookScreen(
             trackColor = colors.line,
         )
 
-        CookTimerCard(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-
         val stepText = recipe.steps[state.stepIndex]
+        val timerSeconds = stepTimerSeconds(recipe, state.stepIndex)
+        if (timerSeconds != null) {
+            CookTimerCard(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                totalSeconds = timerSeconds,
+            )
+        }
         // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn, không cắt chữ.
         Box(
             modifier = Modifier
@@ -121,19 +127,34 @@ fun HandsFreeCookScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 24.dp),
         ) {
-            Text(
-                text = stepText,
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 30.sp,
-                    lineHeight = 42.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-                color = colors.text,
-                modifier = Modifier.semantics {
-                    liveRegion = LiveRegionMode.Polite
-                    contentDescription = state.announcement(stepText)
-                },
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                if (state.isLast) {
+                    Text(
+                        text = "Dọn ra mâm",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = colors.accentText,
+                    )
+                    RecipeThumb(
+                        recipeId = recipe.id,
+                        modifier = Modifier.fillMaxWidth(),
+                        size = 180.dp,
+                        shape = RoundedCornerShape(20.dp),
+                    )
+                }
+                Text(
+                    text = stepText,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontSize = 30.sp,
+                        lineHeight = 42.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = colors.text,
+                    modifier = Modifier.semantics {
+                        liveRegion = LiveRegionMode.Polite
+                        contentDescription = state.announcement(stepText)
+                    },
+                )
+            }
         }
 
         Row(
