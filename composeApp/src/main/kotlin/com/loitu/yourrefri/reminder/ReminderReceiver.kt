@@ -61,14 +61,17 @@ class ReminderReceiver : BroadcastReceiver() {
                         manager.createNotificationChannel(channel)
                         manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
-                    val shouldShow = test || prefs.edit().putString("last_sent", today.toString()).commit()
-                    if (shouldShow) {
-                        val entry = ReminderPicture.entryFor(today.dayOfYear)
-                        ReminderNotifier.post(
-                            context, notice.title, notice.body, entry.recipeId,
-                            ReminderNotifier.loadPicture(context, entry.assetPath),
-                        )
-                    }
+                    val entry = ReminderPicture.entryFor(today.dayOfYear)
+                    deliverDailyReminder(
+                        isTest = test,
+                        post = {
+                            ReminderNotifier.post(
+                                context, notice.title, notice.body, entry.recipeId,
+                                ReminderNotifier.loadPicture(context, entry.assetPath),
+                            )
+                        },
+                        markSent = { prefs.edit().putString("last_sent", today.toString()).commit() },
+                    )
                 }
             } catch (e: Exception) {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
