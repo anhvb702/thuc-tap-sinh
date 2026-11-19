@@ -23,5 +23,6 @@
   { "id": "sua-tuoi", "nameVi": "Sữa tươi (đã mở)", "group": "sua-trung", "defaultShelfDays": 3 },
   { "id": "sua-chua", "nameVi": "Sữa chua", "group": "sua-trung", "defaultShelfDays": 10 },
   { "id": "dau-phu", "nameVi": "Đậu phụ", "group": "khac", "defaultShelfDays": 2 },
-  { "id": "nam", "nameVi": "Nấm tươi", "group": "khac", "defaultShelfDays": 3 }
+  { "id": "nam", "nameVi": "Nấm tươi", "group": "khac", "defaultShelfDays": 3 },
+  { "id": "toi", "nameVi": "Tỏi", "group": "khac", "defaultShelfDays": 14 }
 ]

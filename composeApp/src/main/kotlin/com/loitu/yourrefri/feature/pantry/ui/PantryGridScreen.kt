@@ -847,7 +847,10 @@ fun PantryGridScreen(
                             contentColor = colors.onPrimary,
                         ),
                     ) {
-                        Text(quickAddConfirmLabelFor(confirmActions.size, increasesExisting), fontWeight = FontWeight.Bold)
+                        Text(
+                            if (increasesExisting) quickAddConfirmLabelFor(confirmActions.size, true) else addSelectionLabel(confirmActions.size),
+                            fontWeight = FontWeight.Bold,
+                        )
                     }
                     TextButton(
                         onClick = { dismissAddFoodDialog() },
