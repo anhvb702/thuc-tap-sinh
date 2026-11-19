@@ -316,12 +316,12 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
         if (count == 0) {
             Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Tủ đang trống",
+                    HomeEmptyFridgeCopy.title,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colors.onPrimary,
                 )
                 Text(
-                    "Mình thêm vài món quen thuộc nhé",
+                    HomeEmptyFridgeCopy.subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.onPrimary,
                 )
@@ -331,7 +331,7 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
                     edge = colors.primaryEdge,
                     minHeight = 52.dp,
                 ) {
-                    Text("Chọn món", color = colors.primary, fontWeight = FontWeight.Bold)
+                    Text(HomeEmptyFridgeCopy.chooseAction, color = colors.primary, fontWeight = FontWeight.Bold)
                 }
             }
         } else {
