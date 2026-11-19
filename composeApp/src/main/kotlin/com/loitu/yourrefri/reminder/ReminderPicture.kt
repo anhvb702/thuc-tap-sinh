@@ -5,12 +5,12 @@ package com.loitu.yourrefri.reminder
  * để bấm vào popup mở đúng món. Thông báo chưa gắn với một món theo nguyên liệu, nên món luân phiên theo ngày.
  */
 object ReminderPicture {
-    data class Entry(val recipeId: String, val assetPath: String)
+    data class Entry(val recipeId: String, val assetPath: String, val titleVi: String)
 
     val ENTRIES: List<Entry> = listOf(
-        Entry("thit-kho-trung", "notify/thit-kho-trung.jpg"),
-        Entry("canh-rau-ngot-thit-bam", "notify/canh-rau-ngot-thit-bam.jpg"),
-        Entry("dau-phu-sot-ca-chua", "notify/dau-phu-sot-ca-chua.jpg"),
+        Entry("thit-kho-trung", "notify/thit-kho-trung.jpg", "Thịt kho trứng"),
+        Entry("canh-rau-ngot-thit-bam", "notify/canh-rau-ngot-thit-bam.jpg", "Canh rau ngót thịt băm"),
+        Entry("dau-phu-sot-ca-chua", "notify/dau-phu-sot-ca-chua.jpg", "Đậu phụ sốt cà chua"),
     )
 
     /** day: số ngày trong năm (1..366); cùng ngày luôn ra cùng món. */

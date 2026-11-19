@@ -28,4 +28,10 @@ object ReminderChannel {
         NotificationManager.IMPORTANCE_MIN, NotificationManager.IMPORTANCE_LOW -> NotificationManager.IMPORTANCE_LOW
         else -> IMPORTANCE
     }
+
+    fun shouldVibrate(legacyImportance: Int?, legacyVibrate: Boolean): Boolean = when {
+        importanceFor(legacyImportance) != NotificationManager.IMPORTANCE_HIGH -> false
+        legacyImportance == null || legacyImportance == NotificationManager.IMPORTANCE_DEFAULT -> true
+        else -> legacyVibrate
+    }
 }
