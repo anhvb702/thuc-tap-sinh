@@ -29,6 +29,6 @@
   { "id": "muc", "nameVi": "Mực tươi", "group": "ca", "defaultShelfDays": 1, "kind": "fresh" },
   { "id": "cai-thia", "nameVi": "Cải thìa", "group": "rau-la", "defaultShelfDays": 3, "kind": "fresh" },
   { "id": "dua-leo", "nameVi": "Dưa leo", "group": "rau-cu", "defaultShelfDays": 5, "kind": "fresh" },
-  { "id": "nuoc-mam", "nameVi": "Nước mắm", "group": "khac", "defaultShelfDays": 180, "kind": "seasoning" },
-  { "id": "dau-an", "nameVi": "Dầu ăn", "group": "khac", "defaultShelfDays": 180, "kind": "seasoning" }
+  { "id": "nuoc-mam", "nameVi": "Nước mắm", "group": "khac", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "dau-an", "nameVi": "Dầu ăn", "group": "khac", "defaultShelfDays": 30, "kind": "seasoning" }
 ]

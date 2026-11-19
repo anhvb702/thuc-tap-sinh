@@ -40,6 +40,7 @@ sealed interface PantryGridAction {
     data class Tap(val ingredientId: String) : PantryGridAction
     // null keeps the catalog estimate (and any existing user override).
     data class AddIngredient(val ingredientId: String, val shelfDays: Int?) : PantryGridAction
+    data class AddCustomFood(val name: String, val shelfDays: Int, val group: String = "leftover") : PantryGridAction
     data class IncreaseQuantity(val ingredientId: String) : PantryGridAction
     data class DecreaseQuantity(val ingredientId: String) : PantryGridAction
     data class ConsumeIngredient(val ingredientId: String) : PantryGridAction
@@ -100,6 +101,7 @@ fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate =
     )
     is PantryGridAction.Tap -> tap(state, action.ingredientId)
     is PantryGridAction.AddIngredient -> addIngredient(state, action.ingredientId, action.shelfDays)
+    is PantryGridAction.AddCustomFood -> addCustomFood(state, action)
     is PantryGridAction.IncreaseQuantity -> changeQuantity(state, action.ingredientId, 1)
     is PantryGridAction.DecreaseQuantity -> decreaseQuantity(state, action.ingredientId)
     is PantryGridAction.ConsumeIngredient -> consumeIngredient(state, action.ingredientId)
@@ -139,6 +141,17 @@ private fun addIngredient(state: PantryGridState, id: String, days: Int?): Pantr
     )
     return savedEstimate.copy(
         effects = listOf(PantryGridEffect.SaveHave(id, true, state.today)) + savedEstimate.effects,
+    )
+}
+
+private fun addCustomFood(state: PantryGridState, action: PantryGridAction.AddCustomFood): PantryGridUpdate {
+    val name = action.name.trim()
+    val id = customFoodId(name) ?: return PantryGridUpdate(state)
+    if (state.pantry[id]?.have == true || action.shelfDays < 0) return PantryGridUpdate(state)
+    val ingredient = Ingredient(id, "Đồ ăn thừa: $name", action.group, action.shelfDays, action.shelfDays, "leftover")
+    return PantryGridUpdate(
+        state.copy(ingredients = state.ingredients + ingredient, pantry = state.pantry + (id to PantryItem(id, true, state.today)), sessionBase = state.sessionBase - id),
+        listOf(PantryGridEffect.SaveHave(id, true, state.today), PantryGridEffect.SaveShelfDays(id, action.shelfDays)),
     )
 }
 
