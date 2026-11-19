@@ -50,6 +50,9 @@ import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.theme.ThemeMode
 import com.loitu.yourrefri.ui.theme.ThemePrefs
 import com.loitu.yourrefri.ui.theme.YourRefriTheme
+import com.loitu.yourrefri.reminder.ReminderIntents
+import com.loitu.yourrefri.reminder.ReminderOpenRequest
+import com.loitu.yourrefri.reminder.ReminderReceiver
 import com.loitu.yourrefri.reminder.ReminderScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -92,8 +95,16 @@ private object AppGraph {
 }
 
 class MainActivity : ComponentActivity() {
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        ReminderOpenRequest.request(intent.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Chỉ đọc intent khi tạo mới: xoay màn hình không mở lại món đã mở.
+        if (savedInstanceState == null) ReminderOpenRequest.request(intent?.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
         setContent {
             val context = LocalContext.current
             var themeMode by remember { mutableStateOf(ThemePrefs.read(context)) }
@@ -290,6 +301,13 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         snackbarHostState = snackbarHostState,
         recipes = dependencies.recipes,
         onAction = viewModel::dispatch,
+        onTestReminder = {
+            if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                context.sendBroadcast(android.content.Intent(context, ReminderReceiver::class.java).setAction(ReminderIntents.ACTION_TEST))
+            }
+        },
         reminderEnabled = reminderEnabled,
         onReminderChanged = { enabled ->
             if (!enabled) {

@@ -55,6 +55,8 @@ import com.loitu.yourrefri.feature.settings.ui.SettingsPresentation
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import com.loitu.yourrefri.reminder.ReminderOpenRequest
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanAction
@@ -101,6 +103,7 @@ fun MainScaffold(
     onCancelRestore: () -> Unit = {},
     reminderEnabled: Boolean = false,
     onReminderChanged: (Boolean) -> Unit = {},
+    onTestReminder: () -> Unit = {},
     themeMode: ThemeMode = ThemeMode.SYSTEM,
     onThemeModeChange: (ThemeMode) -> Unit = {},
     favoriteIds: Set<String> = emptySet(),
@@ -124,6 +127,14 @@ fun MainScaffold(
     var openedRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
     // Công thức đang nấu ở chế độ rảnh tay (màn riêng, tạm dùng state cục bộ như màn chi tiết).
     var handsFreeRecipeId by rememberSaveable { mutableStateOf<String?>(null) }
+    // Bấm popup nhắc: mở thẳng nấu rảnh tay của món đó (id do MainActivity đặt vào ReminderOpenRequest).
+    val openRequest by ReminderOpenRequest.recipeId.collectAsState()
+    LaunchedEffect(openRequest) {
+        openRequest?.let {
+            handsFreeRecipeId = it
+            ReminderOpenRequest.consume()
+        }
+    }
     // Màn "Đã nấu" mở từ Trang chủ, đóng bằng nút quay lại hoặc khi đổi tab.
     var showHistory by rememberSaveable { mutableStateOf(false) }
     BackHandler(enabled = showHistory && handsFreeRecipeId == null) { showHistory = false }
@@ -398,6 +409,7 @@ fun MainScaffold(
                     onCancelRestore = onCancelRestore,
                     reminderEnabled = reminderEnabled,
                     onReminderChanged = onReminderChanged,
+                    onTestReminder = onTestReminder,
                     themeMode = themeMode,
                     onThemeModeChange = onThemeModeChange,
                     weeklyGoal = weeklyMealPlanState.goal,
