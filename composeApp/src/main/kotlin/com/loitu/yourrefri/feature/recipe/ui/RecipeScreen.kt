@@ -83,6 +83,7 @@ import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyMealPlan
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyShoppingList
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
 
@@ -121,6 +122,7 @@ fun RecipeScreen(
     randomPool: List<Recipe>? = null,
     dietRestriction: DietRestriction = DietRestriction.NONE,
     onBackHome: () -> Unit = {},
+    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
 ) {
     val colors = AppTheme.colors
     val randomSource = remember { kotlin.random.Random.Default }
@@ -155,8 +157,8 @@ fun RecipeScreen(
         }
     }
 
-    val weeklyPlan = remember(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets) {
-        buildWeeklyMealPlan(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets)
+    val weeklyPlan = remember(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets, tasteProfile) {
+        buildWeeklyMealPlan(recipes, initialPantrySnapshot, goal, preferences, swappedOffsets, tasteProfile)
     }
     val stepChecks = remember { mutableStateMapOf<String, Boolean>() }
     var updatedRecipeResult by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -243,7 +245,7 @@ fun RecipeScreen(
     val shopping = remember(weeklyPlan, state, preferences) {
         buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = LUNCH_MEAL_PREP_ENABLED)
     }
-    val recommendations = recommendRecipes(recipes, state)
+    val recommendations = recommendRecipes(recipes, state, tasteProfile = tasteProfile)
     val recommendationIds = recommendations.map { it.recipe.id }
     val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
     // Có onOpenRecipe thì chạm thẻ mở màn chi tiết; không có thì bung cách nấu ngay dưới thẻ nổi bật.

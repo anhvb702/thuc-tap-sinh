@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -71,6 +72,8 @@ fun SettingsScreen(
     appVersionName: String = "",
     sundayTime: LocalTime = LocalTime(8, 0),
     onSundayTimeChange: (LocalTime) -> Unit = {},
+    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
+    onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val context = LocalContext.current
@@ -153,6 +156,7 @@ fun SettingsScreen(
                 ValueChip(SettingsPresentation.goalSummary(weeklyGoal), SettingsPresentation.goalTitle, { openPicker = PICKER_GOAL }, dropdown = true)
             }
         }
+        FamilyTasteSettingsCard(tasteProfile, onTasteProfileChange)
 
         SectionTitle(ThemeModeCopy.title)
         SettingsCard {
