@@ -25,7 +25,7 @@ internal fun pantryCategoryOf(cell: PantryCell): PantryCategory {
     val name = cell.nameVi.lowercase()
     return when {
         kind == "leftover" || group == "leftover" || group == "do-an-thua" ||
-            name.contains("đồ ăn thừa") || name.contains("leftover") -> PantryCategory.LEFTOVER
+            name.contains("đồ ăn thừa") || name.contains("leftover") || name.contains("dư") || name.contains("thừa") || name.contains("cơm nguội") -> PantryCategory.LEFTOVER
         kind == "seasoning" || group == "gia-vi" ||
             listOf("muối", "đường", "tiêu", "nước mắm", "nước tương", "dầu ăn", "dầu hào", "bột ngọt")
                 .any(name::contains) -> PantryCategory.SPICE

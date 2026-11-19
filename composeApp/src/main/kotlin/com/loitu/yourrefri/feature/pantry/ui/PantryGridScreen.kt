@@ -73,6 +73,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -146,6 +147,9 @@ fun PantryGridScreen(
     var addChoice by remember { mutableStateOf(AddChoice.ADD_INGREDIENT) }
     var selectedGroup by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var batchMode by remember { mutableStateOf(false) }
+    var showComboDialog by remember { mutableStateOf(false) }
+    var showLeftoverDialog by remember { mutableStateOf(false) }
     // "Mình nghe được: ..." chỉ hiện trong bảng thêm món khi mở từ giọng nói.
     var voiceHeard by remember { mutableStateOf<String?>(null) }
     var voicePhase by remember { mutableStateOf(VoicePhase.IDLE) }
@@ -203,6 +207,25 @@ fun PantryGridScreen(
             }
         } else {
             voiceNote = message
+        }
+    }
+
+    fun clearBatch() {
+        val ids = selectedIds
+        if (ids.isEmpty()) return
+        batchClearActions(ids, state).forEach(onAction)
+        batchMode = false
+        selectedIds = emptySet()
+        val host = snackbarHostState ?: return
+        scope.launch {
+            host.currentSnackbarData?.dismiss()
+            val snackbar = launch {
+                if (host.showSnackbar("Đã dọn ${ids.size} món khỏi tủ", "Hoàn tác", duration = SnackbarDuration.Indefinite) == SnackbarResult.ActionPerformed) {
+                    ids.forEach { onAction(PantryGridAction.Tap(it)) }
+                }
+            }
+            delay(5_000)
+            if (snackbar.isActive) host.currentSnackbarData?.dismiss()
         }
     }
 
@@ -429,6 +452,32 @@ fun PantryGridScreen(
             onSelect = { filters = filters.copy(pantryCategory = it) },
         )
 
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            QuickActionButton("Dọn tủ", batchMode) {
+                batchMode = !batchMode
+                if (!batchMode) selectedIds = emptySet()
+            }
+            QuickActionButton("+ Combo", false) { showComboDialog = true }
+            QuickActionButton("+ Món thừa", false) { showLeftoverDialog = true }
+        }
+        if (batchMode) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line),
+            ) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Đã dùng hết (${selectedIds.size})", color = colors.text, modifier = Modifier.weight(1f))
+                    TextButton(onClick = ::clearBatch, enabled = selectedIds.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text("Dọn", color = colors.accentText)
+                    }
+                }
+            }
+        }
+
         val filteredByLocation = presentation.visibleCells
         val categoryCells = filterByCategory(filteredByLocation, filters.pantryCategory)
         val cells = if (searchOpen) filterCellsBySearch(categoryCells, searchQuery) else categoryCells
@@ -507,9 +556,13 @@ fun PantryGridScreen(
             fun FoodCard(cell: PantryCell) = WarmFoodCard(
                 cell = cell,
                 quantity = cell.quantity,
+                selected = cell.ingredientId in selectedIds,
                 onTap = {
-                    if (tapMarksOut(cell.have)) offerUndo(cell)
-                    onAction(PantryGridAction.Tap(cell.ingredientId))
+                    if (batchMode) selectedIds = toggleBatchSelection(selectedIds, cell.ingredientId)
+                    else {
+                        if (tapMarksOut(cell.have)) offerUndo(cell)
+                        onAction(PantryGridAction.Tap(cell.ingredientId))
+                    }
                 },
                 onEditShelf = { onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId)) },
                 onEditUnit = { onAction(PantryGridAction.OpenUnitEditor(cell.ingredientId)) },
@@ -549,6 +602,23 @@ fun PantryGridScreen(
                 }
             }
         }
+    }
+
+    if (showComboDialog) {
+        GroceryComboDialog(
+            combos = GROCERY_COMBOS,
+            onPick = { combo -> comboActionsFor(combo, state).forEach(onAction); showComboDialog = false },
+            onDismiss = { showComboDialog = false },
+        )
+    }
+    if (showLeftoverDialog) {
+        QuickLeftoverDialog(
+            onSave = { name ->
+                if (name.isNotBlank()) onAction(PantryGridAction.AddCustomFood(name, shelfDays = 2))
+                showLeftoverDialog = false
+            },
+            onDismiss = { showLeftoverDialog = false },
+        )
     }
 
     val unitEditor = state.unitEditor
@@ -918,6 +988,25 @@ fun PantryGridScreen(
     }
 }
 
+@Composable
+private fun QuickActionButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.heightIn(min = 48.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = if (selected) colors.onPrimary else colors.primary),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = if (selected) colors.primary else colors.surface,
+            border = BorderStroke(1.dp, if (selected) colors.primary else colors.line),
+        ) {
+            Text(label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp), fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
 /** Chip lọc Tất cả | Ngăn mát | Ngăn đông có icon; chữ xuống dòng khi cỡ chữ lớn thay vì bị cắt. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -1194,6 +1283,7 @@ private fun VoiceSheet(
 private fun WarmFoodCard(
     cell: PantryCell,
     quantity: Int,
+    selected: Boolean = false,
     onTap: () -> Unit,
     onEditShelf: () -> Unit,
     onEditUnit: () -> Unit,
@@ -1208,7 +1298,7 @@ private fun WarmFoodCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp),
         color = if (cell.have) colors.surface else Color.Transparent,
-        border = BorderStroke(1.dp, if (cell.have) colors.line else colors.primarySoft),
+        border = BorderStroke(2.dp, if (selected) colors.primary else if (cell.have) colors.line else colors.primarySoft),
     ) {
         Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(

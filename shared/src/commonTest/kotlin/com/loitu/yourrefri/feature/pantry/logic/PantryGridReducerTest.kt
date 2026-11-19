@@ -497,6 +497,7 @@ class PantryGridReducerTest {
         is PickUnit -> null
         SaveUnitEditor -> null
         CancelUnitEditor -> null
+        is PantryGridAction.AddCustomFood -> null
     }
 
     @Test
