@@ -48,6 +48,7 @@ import com.loitu.yourrefri.feature.recipe.ui.CookDoneScreen
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
 import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
+import com.loitu.yourrefri.feature.recipe.ui.freezerIngredientNames
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
@@ -326,6 +327,7 @@ fun MainScaffold(
                     recipe = handsFreeRecipe,
                     onClose = { handsFreeRecipeId = null },
                     onFinished = { requestFinishHandsFree(handsFreeRecipe) },
+                    freezerNames = freezerIngredientNames(handsFreeRecipe, state),
                 )
             } else if (showHistory && currentTab == NavTab.HOME) {
                 com.loitu.yourrefri.feature.cooklog.ui.CookHistoryScreen(

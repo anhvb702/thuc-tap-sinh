@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.planServings
 import com.loitu.yourrefri.feature.recipe.logic.servingNoteVi
@@ -187,6 +188,10 @@ fun RecipeDetailScreen(
                     color = colors.text,
                     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                 )
+                DefrostNoticeBanner(
+                    freezerIngredientNames(recipe, state),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                )
                 recipeIngredientRows(recipe.required, state).forEach { row -> IngredientRow(row) }
                 if (recipe.optional.isNotEmpty()) {
                     Text(
@@ -298,7 +303,18 @@ private fun IngredientRow(row: RecipeIngredientRow) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         FoodThumb(ingredientId = row.id, size = 32.dp, shape = CircleShape)
-        Text(row.name, style = MaterialTheme.typography.bodyLarge, color = if (row.have) colors.text else colors.muted)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(row.name, style = MaterialTheme.typography.bodyLarge, color = if (row.have) colors.text else colors.muted)
+            if (row.have) {
+                Text(
+                    text = ingredientZoneLabel(row.id),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = if (isFreezerItem(row.id)) FontWeight.SemiBold else FontWeight.Normal,
+                    ),
+                    color = if (isFreezerItem(row.id)) colors.warnText else colors.muted,
+                )
+            }
+        }
         if (!row.have) Text("chưa có", style = MaterialTheme.typography.bodySmall, color = colors.muted)
     }
 }
