@@ -61,6 +61,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     reminderEnabled: Boolean = false,
     onReminderChanged: (Boolean) -> Unit = {},
+    onTestReminder: () -> Unit = {},
     backupStatus: String? = null,
     restoreConfirmationPending: Boolean = false,
     onExportBackup: () -> Unit = {},
@@ -182,6 +183,12 @@ fun SettingsScreen(
                         ),
                     )
                 },
+            )
+            HorizontalDivider(color = colors.line)
+            SettingRow(
+                title = "Thử thông báo ngay",
+                subtitle = "Hiện popup mẫu để xem trước",
+                onClick = onTestReminder,
             )
             HorizontalDivider(color = colors.line)
             // Chủ Nhật lời nhắc đi chợ thay cho lời nhắc thường, vẫn tối đa 1 lời nhắc mỗi ngày.

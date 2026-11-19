@@ -60,6 +60,8 @@ internal fun WeeklyMealPlanSection(
     updatedRecipeResult: Pair<String, String>?,
     weekStart: kotlinx.datetime.LocalDate? = null,
     modifier: Modifier = Modifier,
+    onConfirmWeek: () -> Unit = {},
+    onNavigate: (RecipeScreenMode) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     var openedDay by remember { mutableStateOf<Int?>(null) }
@@ -181,6 +183,14 @@ internal fun WeeklyMealPlanSection(
                     }
                 }
             }
+        }
+        Button(
+            onClick = { handleWeeklyConfirm(plan, onConfirmWeek, onNavigate) },
+            colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
+        ) {
+            Text(WEEKLY_CONFIRM_LABEL)
         }
     }
 }
