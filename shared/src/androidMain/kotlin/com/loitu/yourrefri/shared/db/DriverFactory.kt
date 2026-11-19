@@ -12,7 +12,14 @@ class DatabaseTooNewException(val storedVersion: Long, val appVersion: Long) :
 class DriverFactory(private val context: Context) {
     private val dbName = "yourrefri.db"
 
-    fun create(): SqlDriver = AndroidSqliteDriver(YourRefriDatabase.Schema, context, dbName)
+    /**
+     * Mọi chỗ mở DB đi qua đây. Guard nằm trong create() để không caller nào (MainActivity,
+     * ReminderReceiver, sau này là worker) mở DB mới hơn app và kích hoạt onDowngrade.
+     */
+    fun create(): SqlDriver {
+        ensureOpenable()
+        return AndroidSqliteDriver(YourRefriDatabase.Schema, context, dbName)
+    }
 
     /** `PRAGMA user_version` của file đang có; null khi chưa có file (lần cài đầu). Mở chỉ đọc. */
     fun storedVersion(): Long? {
