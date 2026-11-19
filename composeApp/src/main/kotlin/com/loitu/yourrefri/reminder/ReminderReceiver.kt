@@ -7,10 +7,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.app.PendingIntent
 import android.os.Build
-import com.loitu.yourrefri.MainActivity
-import com.loitu.yourrefri.R
+import com.loitu.yourrefri.feature.notice.logic.DailyNotice
 import com.loitu.yourrefri.feature.notice.logic.planDailyNotice
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.ShelfTable
@@ -27,7 +25,9 @@ import kotlin.time.ExperimentalTime
 class ReminderReceiver : BroadcastReceiver() {
     @OptIn(ExperimentalTime::class)
     override fun onReceive(context: Context, intent: Intent?) {
-        if (!ReminderScheduler.enabled(context)) return
+        val test = intent?.action == ReminderIntents.ACTION_TEST
+        // Nút "thử ngay" chạy cả khi nhắc hằng ngày đang tắt; không đụng mốc last_sent.
+        if (!test && !ReminderScheduler.enabled(context)) return
         val pending = goAsync()
         Thread {
             var driver: app.cash.sqldelight.db.SqlDriver? = null
@@ -41,33 +41,41 @@ class ReminderReceiver : BroadcastReceiver() {
                 val repository = PantryRepositoryImpl(db, Clock.System, tz, Dispatchers.IO)
                 val base = ShelfTable.parse(context.assets.open("shelf_table.json").bufferedReader().use { it.readText() })
                 val overrides = runBlocking { repository.observeShelfOverrides().first() }
-                val notice = planDailyNotice(
+                val planned = planDailyNotice(
                     runBlocking { repository.observe().first() }, base.map { it.copy(userShelfDays = overrides[it.id]) },
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
                 )
-                if (notice != null && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
-                    val manager = context.getSystemService(NotificationManager::class.java)
+                val notice = planned ?: if (test) DailyNotice(today, emptyList(), "Gợi ý từ tủ nhà mình", "Thử thông báo: bấm để mở món hôm nay.") else null
+                val manager = context.getSystemService(NotificationManager::class.java)
+                val legacy = if (Build.VERSION.SDK_INT >= 26) manager.getNotificationChannel(ReminderChannel.LEGACY_ID) else null
+                val legacyImportance = legacy?.importance
+                if (notice != null && ReminderChannel.shouldNotify(legacyImportance) && (Build.VERSION.SDK_INT < 33 || context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
                     if (Build.VERSION.SDK_INT >= 26) {
-                        manager.createNotificationChannel(NotificationChannel("daily_reminder", "Nhắc nhở YourRefri", NotificationManager.IMPORTANCE_DEFAULT))
+                        // Tạo kênh mới trước, xóa kênh cũ sau: nếu bị gián đoạn giữa chừng thì kênh cũ vẫn còn và lần sau cho kết quả giống hệt.
+                        val channel = NotificationChannel(ReminderChannel.ID, ReminderChannel.NAME, ReminderChannel.importanceFor(legacyImportance))
+                        if (legacy != null) {
+                            // Giữ âm thanh và rung người dùng đã chỉnh; legacy.sound == null nghĩa là đã chọn "Không có âm".
+                            channel.setSound(legacy.sound, legacy.audioAttributes)
+                            channel.enableVibration(legacy.shouldVibrate())
+                        }
+                        manager.createNotificationChannel(channel)
+                        manager.deleteNotificationChannel(ReminderChannel.LEGACY_ID)
                     }
-                    if (prefs.edit().putString("last_sent", today.toString()).commit()) {
-                        val openApp = PendingIntent.getActivity(
-                            context,
-                            1730,
-                            Intent(context, MainActivity::class.java),
-                            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                        )
-                        val builder = notificationBuilder(context)
-                        manager.notify(1730, builder.setSmallIcon(R.drawable.ic_notification_fridge)
-                            .setContentTitle(notice.title)
-                            .setContentText(notice.body.lineSequence().take(2).joinToString(" · "))
-                            .setStyle(android.app.Notification.BigTextStyle().bigText(notice.body))
-                            .setContentIntent(openApp)
-                            .setAutoCancel(true).build())
-                    }
+                    val entry = ReminderPicture.entryFor(today.dayOfYear)
+                    deliverDailyReminder(
+                        isTest = test,
+                        post = {
+                            ReminderNotifier.post(
+                                context, notice.title, notice.body, entry.recipeId,
+                                ReminderNotifier.loadPicture(context, entry.assetPath),
+                            )
+                        },
+                        markSent = { prefs.edit().putString("last_sent", today.toString()).commit() },
+                    )
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 // A later scheduled reminder can retry if local data is temporarily unavailable.
+                android.util.Log.w("ReminderReceiver", "Không gửi được nhắc: ${e.javaClass.simpleName} ${e.message}", e)
             } finally {
                 completeReminderWork(
                     closeDriver = { driver?.close() },
@@ -78,11 +86,6 @@ class ReminderReceiver : BroadcastReceiver() {
         }.start()
     }
 }
-
-@Suppress("DEPRECATION")
-private fun notificationBuilder(context: Context): android.app.Notification.Builder =
-    if (Build.VERSION.SDK_INT >= 26) android.app.Notification.Builder(context, "daily_reminder")
-    else android.app.Notification.Builder(context)
 
 class ReminderRescheduleReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) { ReminderScheduler.schedule(context) }

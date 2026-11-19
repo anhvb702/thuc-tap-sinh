@@ -163,5 +163,88 @@
     "optional": [
       { "anyOf": ["ca-chua"] }
     ]
+  },
+  {
+    "id": "trung-xao-ca-chua",
+    "title": "Trứng xào cà chua",
+    "minutes": 12,
+    "steps": [
+      "Trứng gà đánh đều với một chút muối; cà chua bổ múi cau, hành lá cắt nhỏ.",
+      "Phi cà chua với ít dầu đến khi mềm và ra nước sốt.",
+      "Đổ trứng vào, đảo nhẹ tay đến khi trứng vừa đông.",
+      "Rắc hành lá, nêm vừa ăn và dọn ra đĩa cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["trung-ga"] },
+      { "anyOf": ["ca-chua"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "canh-cai-dau-phu",
+    "title": "Canh cải đậu phụ",
+    "minutes": 15,
+    "steps": [
+      "Đậu phụ thái miếng vuông; cải ngọt rửa sạch, cắt khúc vừa ăn.",
+      "Đun sôi nước với một chút muối, cho cải ngọt vào nấu đến khi mềm.",
+      "Thả đậu phụ vào, đun thêm vài phút cho đậu phụ nóng đều.",
+      "Nêm vừa ăn, rắc hành lá và dùng nóng."
+    ],
+    "required": [
+      { "anyOf": ["cai-ngot"] },
+      { "anyOf": ["dau-phu"] }
+    ]
+  },
+  {
+    "id": "ga-ap-chao",
+    "title": "Thịt gà áp chảo",
+    "minutes": 20,
+    "steps": [
+      "Đùi gà rửa sạch, thấm khô, khứa nhẹ mặt da và ướp với tiêu, muối, tỏi băm nếu có.",
+      "Áp chảo mặt da xuống trước trên lửa vừa đến khi da vàng giòn.",
+      "Lật mặt còn lại, đậy nắp đun thêm cho gà chín hẳn.",
+      "Cắt miếng, dọn cùng hành lá và dùng nóng với cơm."
+    ],
+    "required": [
+      { "anyOf": ["thit-ga"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "canh-bi-thit-bam",
+    "title": "Canh bí xanh nấu thịt bằm",
+    "minutes": 20,
+    "steps": [
+      "Bí xanh gọt vỏ, thái miếng vừa ăn; thịt heo bằm ướp chút muối và tiêu.",
+      "Đun sôi nước, cho bí xanh vào nấu đến khi miếng bí mềm trong.",
+      "Vo thịt bằm thành viên nhỏ thả vào nồi, nấu thêm vài phút.",
+      "Nêm vừa ăn, rắc hành lá và dọn ra bát cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["bi-xanh"] },
+      { "anyOf": ["thit-heo-xay", "thit-heo"] }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"] }
+    ]
+  },
+  {
+    "id": "rau-muong-xao-toi",
+    "title": "Rau muống xào tỏi",
+    "minutes": 10,
+    "steps": [
+      "Rau muống nhặt ngọn, rửa sạch và để ráo; tỏi đập dập và băm nhỏ.",
+      "Phi thơm tỏi với ít dầu trên lửa vừa cho đến khi vàng nhẹ.",
+      "Cho rau muống vào xào nhanh trên lửa lớn đến khi rau vừa chín tới.",
+      "Nêm vừa ăn rồi dọn ra đĩa, dùng cùng cơm nóng."
+    ],
+    "required": [
+      { "anyOf": ["rau-muong"] },
+      { "anyOf": ["toi"] }
+    ]
   }
 ]
