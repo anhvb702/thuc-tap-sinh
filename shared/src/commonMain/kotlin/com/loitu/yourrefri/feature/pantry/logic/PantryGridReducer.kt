@@ -78,6 +78,8 @@ data class PantryCell(
     // null khi have = false: món chưa có thì không có hạn để đếm.
     val daysLeft: Int?,
     val urgency: Urgency?,
+    val kind: String = "fresh",
+    val group: String? = null,
 )
 
 // Cố định, không cho nhập tự do: đủ để chọn bằng một chạm và không tràn màn hình.
@@ -261,6 +263,8 @@ fun cellsOf(state: PantryGridState): List<PantryCell> = state.ingredients.map { 
             unit = state.unitOverrides[ingredient.id] ?: DEFAULT_PANTRY_UNIT,
             daysLeft = left,
             urgency = urgencyOf(left),
+            kind = ingredient.kind,
+            group = ingredient.group,
         )
     } else {
         PantryCell(
@@ -271,6 +275,8 @@ fun cellsOf(state: PantryGridState): List<PantryCell> = state.ingredients.map { 
             unit = state.unitOverrides[ingredient.id] ?: DEFAULT_PANTRY_UNIT,
             daysLeft = null,
             urgency = null,
+            kind = ingredient.kind,
+            group = ingredient.group,
         )
     }
 }

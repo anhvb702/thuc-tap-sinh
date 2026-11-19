@@ -6,9 +6,38 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 internal data class PantryGridFilters(
     val storageTab: StorageTab = StorageTab.ALL,
     val presentOnly: Boolean = false,
+    val pantryCategory: PantryCategory = PantryCategory.ALL,
 ) {
     fun showAllItems() = PantryGridFilters()
 }
+
+internal enum class PantryCategory(val labelVi: String) {
+    ALL("Tất cả"),
+    FRESH("Đồ tươi"),
+    LEFTOVER("Đồ ăn thừa"),
+    INSTANT_DRINK("Đồ ăn liền & uống"),
+    SPICE("Gia vị"),
+}
+
+internal fun pantryCategoryOf(cell: PantryCell): PantryCategory {
+    val kind = cell.kind.lowercase()
+    val group = cell.group?.lowercase()
+    val name = cell.nameVi.lowercase()
+    return when {
+        kind == "leftover" || group == "leftover" || group == "do-an-thua" ||
+            name.contains("đồ ăn thừa") || name.contains("leftover") -> PantryCategory.LEFTOVER
+        kind == "seasoning" || group == "gia-vi" ||
+            listOf("muối", "đường", "tiêu", "nước mắm", "nước tương", "dầu ăn", "dầu hào", "bột ngọt")
+                .any(name::contains) -> PantryCategory.SPICE
+        kind == "ready" ||
+            (group == "sua-trung" && listOf("sữa", "nước", "trà", "cà phê", "nước ép").any(name::contains)) ->
+            PantryCategory.INSTANT_DRINK
+        else -> PantryCategory.FRESH
+    }
+}
+
+internal fun filterByCategory(cells: List<PantryCell>, category: PantryCategory): List<PantryCell> =
+    if (category == PantryCategory.ALL) cells else cells.filter { pantryCategoryOf(it) == category }
 
 internal enum class PantryGridEmptyState {
     NONE,

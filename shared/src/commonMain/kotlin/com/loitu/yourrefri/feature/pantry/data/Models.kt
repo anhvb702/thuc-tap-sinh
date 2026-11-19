@@ -12,6 +12,7 @@ data class Ingredient(
     val defaultShelfDays: Int,
     // null nghĩa là người dùng chưa ghi đè; 0 là một giá trị hợp lệ, không phải "chưa có".
     val userShelfDays: Int? = null,
+    val kind: String = "fresh",
 )
 
 data class PantryItem(

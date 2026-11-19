@@ -68,6 +68,15 @@ class ShelfTableTest {
     }
 
     @Test
+    fun parse_kind_isOptionalAndDefaultsToFresh() {
+        val legacy = ShelfTable.parse("[${entry("rau-muong", "Rau muống", "rau-la", "2")}]")[0]
+        val ready = ShelfTable.parse("[${entry("sua-tuoi", "Sữa tươi", "sua-trung", "3").dropLast(1)},\"kind\":\"ready\"}]")[0]
+
+        assertEquals("fresh", legacy.kind)
+        assertEquals("ready", ready.kind)
+    }
+
+    @Test
     fun parse_emptyArray_returnsEmptyList() {
         assertEquals(emptyList(), ShelfTable.parse("[]"))
     }
