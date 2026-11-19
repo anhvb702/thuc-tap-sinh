@@ -811,6 +811,14 @@ fun PantryGridScreen(
                             repeat(columns - rowItems.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
+                    if (notFoundSectionVisible(newFoodName, suggestions.size)) {
+                        Text(
+                            text = PantrySearchCopy.notFoundSectionTitle,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    }
                     Spacer(Modifier.height(8.dp))
                     AddFoodEstimateSection(
                         state = state,
@@ -1440,6 +1448,7 @@ internal object PantrySearchCopy {
     const val placeholder = "Tìm món, ví dụ: cà chua"
     const val notFound = "Chưa thấy món này, mình thêm vào tủ nhé?"
     const val addAction = "Thêm vào tủ"
+    const val notFoundSectionTitle = "Không thấy món bạn cần?"
 }
 
 internal object PantryActionCopy {
