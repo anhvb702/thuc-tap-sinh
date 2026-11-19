@@ -8,10 +8,14 @@ import kotlin.test.assertTrue
 class ReminderPictureTest {
     private val recipesJson: String = File("src/main/assets/recipes.json").readText()
 
+    // Khớp "id": "x" bất kể khoảng trắng hay định dạng JSON.
+    private fun hasRecipeId(id: String): Boolean =
+        Regex(""""id"\s*:\s*"${Regex.escape(id)}"""").containsMatchIn(recipesJson)
+
     @Test
     fun everyPictureMapsToARealRecipeId() {
         for (entry in ReminderPicture.ENTRIES) {
-            assertTrue(recipesJson.contains("\"id\": \"${entry.recipeId}\""), "công thức không tồn tại: ${entry.recipeId}")
+            assertTrue(hasRecipeId(entry.recipeId), "công thức không tồn tại: ${entry.recipeId}")
             assertTrue(entry.assetPath.startsWith("notify/") && entry.assetPath.endsWith(".jpg"), entry.assetPath)
             assertTrue(File("src/main/assets/${entry.assetPath}").exists(), "thiếu ảnh ${entry.assetPath}")
         }
@@ -37,7 +41,7 @@ class ReminderPictureTest {
         for (day in 1..366) {
             val entry = ReminderPicture.entryFor(day)
             assertEquals(ReminderPicture.assetFor(day), entry.assetPath)
-            assertTrue(recipesJson.contains("\"id\": \"${entry.recipeId}\""), "ngày $day")
+            assertTrue(hasRecipeId(entry.recipeId), "ngày $day")
         }
     }
 }
