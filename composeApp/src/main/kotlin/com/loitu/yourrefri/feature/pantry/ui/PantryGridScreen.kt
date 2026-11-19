@@ -690,7 +690,7 @@ fun PantryGridScreen(
             val customId = if (canAddOther(newFoodName, existingNames)) customFoodId(newFoodName) else null
             listOfNotNull(customId?.let { PantryGridAction.AddIngredient(it, newFoodDays) })
         } else {
-            quickAddConfirmActions(state, selectedIds, newFoodName, newFoodDays)
+            ingredientOnlyConfirmActions(state, selectedIds, newFoodName, newFoodDays)
         }
         val increasesExisting = !isOther && confirmActions.singleOrNull() is PantryGridAction.IncreaseQuantity
         val columns = quickAddGridColumns(LocalDensity.current.fontScale)
