@@ -50,11 +50,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+import com.loitu.yourrefri.ui.components.RecipeThumb
 import kotlinx.coroutines.launch
 
 /**
@@ -140,24 +142,39 @@ fun RecipeDetailScreen(
                     }
                     FavoriteHeartButton(title = recipe.title, isFavorite = isFavorite, onToggle = onToggleFavorite)
                 }
-                Text(
-                    text = recipe.title,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = colors.text,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Row(
-                    modifier = Modifier.padding(top = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    color = colors.surface,
+                    border = BorderStroke(1.dp, colors.line),
                 ) {
-                    Icon(AppIcons.Clock, contentDescription = null, tint = colors.muted, modifier = Modifier.size(16.dp))
-                    Text(
-                        text = (recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ") +
-                            " · " + servingsDifficultyLabel(recipe.minutes),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.muted,
-                    )
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        RecipeThumb(
+                            recipeId = recipe.id,
+                            modifier = Modifier.fillMaxWidth(),
+                            size = 144.dp,
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                        Text(
+                            text = recipe.title,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontSize = 27.sp, fontWeight = FontWeight.SemiBold),
+                            color = colors.text,
+                            modifier = Modifier.padding(top = 12.dp),
+                        )
+                        Row(
+                            modifier = Modifier.padding(top = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(AppIcons.Clock, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = (recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ") +
+                                    " · " + servingsDifficultyLabel(recipe.minutes),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.accentText,
+                            )
+                        }
+                    }
                 }
 
                 Text(
@@ -195,7 +212,7 @@ fun RecipeDetailScreen(
                     Button(
                         onClick = onStartHandsFree,
                         colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceSoft, contentColor = colors.text),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(20.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 16.dp, end = 16.dp, top = 8.dp)
@@ -211,7 +228,7 @@ fun RecipeDetailScreen(
                         if (candidateIds.isEmpty()) finishCook(emptySet()) else showLeftover = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -273,7 +290,7 @@ private fun IngredientChip(chip: RecipeIngredientChip) {
 @Composable
 private fun StepRow(title: String, text: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     val colors = AppTheme.colors
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(20.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()

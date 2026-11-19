@@ -1,4 +1,4 @@
-﻿package com.loitu.yourrefri.feature.recipe.ui
+package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,8 +27,61 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+
+// Chữ và quy tắc trình bày thuần của tab "Món ăn" (theo khung Figma "Gợi ý hôm nay").
+internal const val RECIPE_DAILY_SUBTITLE = "Ba gợi ý nhỏ, bữa cơm bớt đắn đo."
+internal const val ALTERNATIVE_EYEBROW = "HAY LÀ MÓN NÀY?"
+internal const val RECIPE_FOOTER_NOTE = "Gợi ý ưu tiên món nấu được ngay từ tủ."
+internal const val VIEW_COOK_ACTION = "Xem cách nấu"
+
+internal fun recipeEyebrow(count: Int): String = if (count > 0) "MÓN ĂN · $count CÔNG THỨC" else "MÓN ĂN"
+
+internal fun recipeHeadline(mode: RecipeScreenMode): String = when (mode) {
+    RecipeScreenMode.DAILY -> "Hôm nay ăn gì?"
+    RecipeScreenMode.WEEKLY -> "Thực đơn tuần này"
+    RecipeScreenMode.SHOPPING -> "Giỏ đi chợ lẻ"
+}
+
+internal fun heroEyebrow(index: Int, reason: RecommendationReason): String {
+    val label = when (reason) {
+        RecommendationReason.USE_SOON -> "Dùng đồ cần dùng sớm"
+        RecommendationReason.READY -> "Nấu được ngay"
+        RecommendationReason.QUICK -> "Một món nhanh"
+        RecommendationReason.OTHER -> "Gợi ý cho gia đình"
+    }
+    return "${(index + 1).toString().padStart(2, '0')} · ${label.uppercase()}"
+}
+
+internal fun recipeMetaLine(recipe: Recipe): String =
+    "${heroMinutesLabel(recipe.minutes)} · ${difficultyLabel(recipe)}"
+
+internal fun ingredientCoverageLabel(have: Int, total: Int): String = when {
+    total <= 0 -> ""
+    have >= total -> "Có đủ $total/$total nguyên liệu chính"
+    else -> "Có $have/$total nguyên liệu chính"
+}
+
+internal fun dietChipOptions(): List<DietRestriction> = DietRestriction.entries.filter { it != DietRestriction.NONE }
+
+internal fun nextDietRestriction(current: DietRestriction, tapped: DietRestriction): DietRestriction =
+    if (current == tapped) DietRestriction.NONE else tapped
+
+internal fun dietSelectionNote(restriction: DietRestriction): String? =
+    if (restriction == DietRestriction.NONE) null else "Đang chọn: ${restriction.labelVi.lowercase()}"
+
+internal fun alternativeRecipe(recipes: List<Recipe>, excludeIds: Set<String>, offset: Int): Recipe? {
+    val candidates = recipes.filter { it.id !in excludeIds }.distinctBy { it.id }
+    if (candidates.isEmpty()) return null
+    return candidates[Math.floorMod(offset, candidates.size)]
+}
+
+internal fun alternativeStatusLabel(canCookNow: Boolean): String =
+    if (canCookNow) "Có đủ nguyên liệu" else "Cần thêm vài thứ nữa"
 
 /** Mục "Thực đơn tuần này" + nút chữ "Xem chi tiết" và dải 7 ngày T2..CN. */
 @Composable
