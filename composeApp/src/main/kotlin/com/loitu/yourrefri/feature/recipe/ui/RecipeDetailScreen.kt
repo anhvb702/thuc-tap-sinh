@@ -7,8 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +16,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -29,6 +29,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,9 +55,12 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.planServings
+import com.loitu.yourrefri.feature.recipe.logic.servingNoteVi
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
+import com.loitu.yourrefri.ui.components.FoodThumb
 import kotlinx.coroutines.launch
 
 /**
@@ -64,7 +68,6 @@ import kotlinx.coroutines.launch
  * [onCook] nhận danh sách id nguyên liệu cần giảm; [onUndo] nhận các action đưa tủ về trạng thái trước khi nấu.
  */
 @Composable
-@OptIn(ExperimentalLayoutApi::class)
 fun RecipeDetailScreen(
     recipe: Recipe,
     state: PantryGridState,
@@ -85,8 +88,9 @@ fun RecipeDetailScreen(
     val host = snackbarHostState ?: localHost
     val scope = rememberCoroutineScope()
     var ticked by rememberSaveable(recipe.id) { mutableStateOf(listOf<Int>()) }
-    val chips = remember(recipe, state) { recipeIngredientChips(recipe, state) }
     var showLeftover by remember(recipe.id) { mutableStateOf(false) }
+    var desiredServings by rememberSaveable(recipe.id) { mutableStateOf(2) }
+    val servingPlan = remember(recipe, state, desiredServings) { planServings(recipe, state, desiredServings) }
     val candidateIds = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds }
     val namesById = remember(state.ingredients) { state.ingredients.associate { it.id to it.nameVi } }
 
@@ -178,17 +182,38 @@ fun RecipeDetailScreen(
                 }
 
                 Text(
-                    text = "Nguyên liệu",
+                    text = "Nguyên liệu chính",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = colors.text,
                     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                 )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    chips.forEach { IngredientChip(it) }
+                recipeIngredientRows(recipe.required, state).forEach { row -> IngredientRow(row) }
+                if (recipe.optional.isNotEmpty()) {
+                    Text(
+                        text = "Có thể thêm",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = colors.accentText,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
+                    )
+                    recipeIngredientRows(recipe.optional, state).forEach { row -> IngredientRow(row) }
                 }
+
+                Text(
+                    text = "Số suất",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+                )
+                Text(
+                    text = servingNoteVi(servingPlan),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.accentText,
+                )
+                ServingSelector(
+                    servings = desiredServings,
+                    onChange = { desiredServings = it },
+                    modifier = Modifier.padding(top = 4.dp),
+                )
 
                 Text(
                     text = "Cách nấu",
@@ -228,6 +253,7 @@ fun RecipeDetailScreen(
                         if (candidateIds.isEmpty()) finishCook(emptySet()) else showLeftover = true
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                    enabled = servingPlan.canCookAtAll,
                     shape = RoundedCornerShape(20.dp),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -245,6 +271,62 @@ fun RecipeDetailScreen(
                 hostState = localHost,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (onStartHandsFree != null) 136.dp else 76.dp),
             )
+        }
+    }
+}
+
+private data class RecipeIngredientRow(val id: String, val name: String, val have: Boolean)
+
+private fun recipeIngredientRows(
+    slots: List<com.loitu.yourrefri.feature.recipe.data.Slot>,
+    state: PantryGridState,
+): List<RecipeIngredientRow> {
+    val haveIds = state.pantry.values.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
+    val names = state.ingredients.associate { it.id to it.nameVi }
+    return slots.map { slot ->
+        val id = slot.anyOf.firstOrNull { it in haveIds } ?: slot.anyOf.first()
+        RecipeIngredientRow(id, names[id] ?: id, id in haveIds)
+    }
+}
+
+@Composable
+private fun IngredientRow(row: RecipeIngredientRow) {
+    val colors = AppTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        FoodThumb(ingredientId = row.id, size = 32.dp, shape = CircleShape)
+        Text(row.name, style = MaterialTheme.typography.bodyLarge, color = if (row.have) colors.text else colors.muted)
+        if (!row.have) Text("chưa có", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+    }
+}
+
+@Composable
+private fun ServingSelector(servings: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val colors = AppTheme.colors
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { onChange((servings - 1).coerceAtLeast(1)) }, enabled = servings > 1) {
+            Icon(AppIcons.Minus, contentDescription = "Giảm số suất", tint = colors.text)
+        }
+        Text(
+            text = "$servings suất",
+            style = MaterialTheme.typography.titleMedium,
+            color = colors.text,
+            modifier = Modifier.weight(1f),
+        )
+        IconButton(onClick = { onChange((servings + 1).coerceAtMost(6)) }, enabled = servings < 6) {
+            Icon(AppIcons.Plus, contentDescription = "Tăng số suất", tint = colors.text)
+        }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            listOf(1, 2, 4).forEach { option ->
+                TextButton(onClick = { onChange(option) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("$option suất", color = if (servings == option) colors.accentText else colors.muted)
+                }
+            }
         }
     }
 }
