@@ -344,6 +344,10 @@ fun MainScaffold(
                     state = state,
                     recipes = visibleRecipes,
                     onNavigateToPantry = { currentTab = NavTab.PANTRY },
+                    onOpenShopping = {
+                        requestedRecipeMode = RecipeScreenMode.SHOPPING
+                        currentTab = NavTab.RECIPES
+                    },
                     onNavigateToRecipes = {
                         requestedRecipeId = recipeRequestForAllRecipes()
                         requestedRecipeMode = RecipeScreenMode.DAILY
@@ -406,6 +410,7 @@ fun MainScaffold(
                     weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
                     weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
                     onModeChange = { requestedRecipeMode = it },
+                    onBackHome = { currentTab = NavTab.HOME },
                     onOpenRecipe = { openedRecipeId = it },
                     onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
                     onStockIngredients = { ids ->

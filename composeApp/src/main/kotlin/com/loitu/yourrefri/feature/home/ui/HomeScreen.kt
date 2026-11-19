@@ -104,6 +104,7 @@ fun HomeScreen(
     state: PantryGridState,
     recipes: List<Recipe>,
     onNavigateToPantry: () -> Unit,
+    onOpenShopping: () -> Unit = onNavigateToPantry,
     onNavigateToRecipes: () -> Unit,
     onNavigateToRecipe: (String) -> Unit,
     onNavigateToWeeklyRecipes: () -> Unit = onNavigateToRecipes,
@@ -155,7 +156,12 @@ fun HomeScreen(
             }
         }
 
-        PantrySummaryCard(count = haveItems.size, zones = zones, onOpenPantry = onNavigateToPantry)
+        PantrySummaryCard(
+            count = haveItems.size,
+            zones = zones,
+            onOpenPantry = onNavigateToPantry,
+            onOpenShopping = onOpenShopping,
+        )
 
         UseSoonSection(items = urgentItems, onOpenPantry = onNavigateToPantry)
 
@@ -294,7 +300,12 @@ private fun RecommendationSection(
 }
 
 @Composable
-private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry: () -> Unit) {
+private fun PantrySummaryCard(
+    count: Int,
+    zones: PantryZoneCounts,
+    onOpenPantry: () -> Unit,
+    onOpenShopping: () -> Unit,
+) {
     val colors = AppTheme.colors
     val stacked = summaryButtonBelowText(LocalDensity.current.fontScale)
     Surface(
@@ -302,7 +313,7 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .semantics(mergeDescendants = true) { contentDescription = pantryCardDescription(count, zones) }
-            .clickable(role = Role.Button, onClick = onOpenPantry),
+            .clickable(role = Role.Button, onClick = if (count == 0) onOpenShopping else onOpenPantry),
         shape = RoundedCornerShape(20.dp),
         color = colors.primary,
     ) {
@@ -319,7 +330,7 @@ private fun PantrySummaryCard(count: Int, zones: PantryZoneCounts, onOpenPantry:
                     color = colors.onPrimary,
                 )
                 ChunkyButton(
-                    onClick = onOpenPantry,
+                    onClick = onOpenShopping,
                     container = colors.surface,
                     edge = colors.primaryEdge,
                     minHeight = 52.dp,
