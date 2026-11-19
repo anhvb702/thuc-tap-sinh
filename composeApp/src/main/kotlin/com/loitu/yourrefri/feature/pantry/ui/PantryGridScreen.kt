@@ -95,6 +95,7 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.SHELF_DAY_OPTIONS
 import com.loitu.yourrefri.feature.pantry.data.PANTRY_UNITS
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
+import com.loitu.yourrefri.feature.pantry.logic.customFoodId
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -139,6 +140,7 @@ fun PantryGridScreen(
     var newFoodDays by remember { mutableStateOf<Int?>(null) }
     var addFoodError by remember { mutableStateOf(false) }
     var addFoodAlreadyPresent by remember { mutableStateOf(false) }
+    var addChoice by remember { mutableStateOf(AddChoice.ADD_INGREDIENT) }
     var selectedGroup by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     // "Mình nghe được: ..." chỉ hiện trong bảng thêm món khi mở từ giọng nói.
@@ -169,9 +171,16 @@ fun PantryGridScreen(
         selectedGroup = null
         selectedIds = emptySet()
         voiceHeard = null
+        addChoice = AddChoice.ADD_INGREDIENT
     }
 
-    fun openAddSheet(prefill: String = "", preselected: Set<String> = emptySet(), heard: String? = null) {
+    fun openAddSheet(
+        prefill: String = "",
+        preselected: Set<String> = emptySet(),
+        heard: String? = null,
+        choice: AddChoice = AddChoice.ADD_INGREDIENT,
+    ) {
+        addChoice = choice
         newFoodName = prefill
         newFoodDays = null
         addFoodError = false
@@ -334,7 +343,16 @@ fun PantryGridScreen(
                 minHeight = 52.dp,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(PantryScreenCopy.addPrimaryAction, color = colors.onPrimary, fontWeight = FontWeight.Bold)
+                Text(addChoiceLabel(AddChoice.ADD_INGREDIENT), color = colors.onPrimary, fontWeight = FontWeight.Bold)
+            }
+            ChunkyButton(
+                onClick = { openAddSheet(choice = AddChoice.ADD_OTHER) },
+                container = colors.surface,
+                edge = colors.line,
+                minHeight = 52.dp,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(addChoiceLabel(AddChoice.ADD_OTHER), color = colors.primary, fontWeight = FontWeight.Bold)
             }
             if (voiceAvailable) {
                 ChunkyButton(
@@ -432,7 +450,7 @@ fun PantryGridScreen(
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 Button(
-                    onClick = { openAddSheet(prefill = searchQuery.trim()) },
+                    onClick = { openAddSheet(prefill = searchQuery.trim(), choice = searchToAddChoice()) },
                     modifier = Modifier.padding(top = 12.dp).heightIn(min = 52.dp),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
@@ -665,8 +683,16 @@ fun PantryGridScreen(
     }
 
     if (showAddDialog) {
-        val confirmActions = quickAddConfirmActions(state, selectedIds, newFoodName, newFoodDays)
-        val increasesExisting = confirmActions.singleOrNull() is PantryGridAction.IncreaseQuantity
+        val isOther = addChoice == AddChoice.ADD_OTHER
+        val existingNames = state.ingredients.map { it.nameVi }.toSet()
+        val confirmActions = if (isOther) {
+            // "Khác / Thêm món": chỉ thêm món mới ngoài danh mục, chặn tên trùng.
+            val customId = if (canAddOther(newFoodName, existingNames)) customFoodId(newFoodName) else null
+            listOfNotNull(customId?.let { PantryGridAction.AddIngredient(it, newFoodDays) })
+        } else {
+            ingredientOnlyConfirmActions(state, selectedIds, newFoodName, newFoodDays)
+        }
+        val increasesExisting = !isOther && confirmActions.singleOrNull() is PantryGridAction.IncreaseQuantity
         val columns = quickAddGridColumns(LocalDensity.current.fontScale)
         ModalBottomSheet(
             onDismissRequest = { dismissAddFoodDialog() },
@@ -683,7 +709,7 @@ fun PantryGridScreen(
                         .padding(horizontal = 20.dp),
                 ) {
                     Text(
-                        AddFoodSheetCopy.title,
+                        if (isOther) addChoiceLabel(AddChoice.ADD_OTHER) else AddFoodSheetCopy.title,
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = colors.text,
                     )
@@ -706,7 +732,7 @@ fun PantryGridScreen(
                                 .padding(12.dp),
                         )
                     }
-                    Row(
+                    if (!isOther) Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -763,7 +789,9 @@ fun PantryGridScreen(
                         ),
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                     )
-                    val queryMessage = if (increasesExisting) {
+                    val queryMessage = if (isOther) {
+                        if (addFoodError && newFoodName.isNotBlank()) AddFoodSheetCopy.alreadyPresent else null
+                    } else if (increasesExisting) {
                         AddFoodSheetCopy.alreadyPresentWithIncrease
                     } else if (addFoodError && addFoodAlreadyPresent) {
                         AddFoodSheetCopy.alreadyPresent
@@ -779,12 +807,14 @@ fun PantryGridScreen(
                         )
                     }
                     Spacer(Modifier.height(12.dp))
-                    val suggestions = quickAddSuggestions(
-                        state = state,
-                        query = newFoodName,
-                        limit = Int.MAX_VALUE,
-                        selectedGroup = selectedGroup,
-                    )
+                    val suggestions = ingredientOnlySuggestions(
+                        quickAddSuggestions(
+                            state = state,
+                            query = newFoodName,
+                            limit = Int.MAX_VALUE,
+                            selectedGroup = selectedGroup,
+                        ),
+                    ).takeUnless { isOther }.orEmpty()
                     suggestions.chunked(columns).forEach { rowItems ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
@@ -840,7 +870,9 @@ fun PantryGridScreen(
                                 dismissAddFoodDialog()
                             } else {
                                 addFoodError = true
-                                addFoodAlreadyPresent = if (selectedIds.isNotEmpty()) {
+                                addFoodAlreadyPresent = if (isOther) {
+                                    true
+                                } else if (selectedIds.isNotEmpty()) {
                                     selectedIds.any { state.pantry[it]?.have == true }
                                 } else {
                                     quickAddMatch(state.ingredients, newFoodName)
@@ -856,7 +888,11 @@ fun PantryGridScreen(
                         ),
                     ) {
                         Text(
-                            if (increasesExisting) quickAddConfirmLabelFor(confirmActions.size, true) else addSelectionLabel(confirmActions.size),
+                            when {
+                                isOther -> "Thêm vào tủ"
+                                increasesExisting -> quickAddConfirmLabelFor(confirmActions.size, true)
+                                else -> addSelectionLabel(confirmActions.size)
+                            },
                             fontWeight = FontWeight.Bold,
                         )
                     }
