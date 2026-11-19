@@ -2,7 +2,11 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import android.animation.ValueAnimator
 import android.os.Build
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -32,10 +36,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -72,24 +78,28 @@ internal fun RandomWheelDialog(
 ) {
     val colors = AppTheme.colors
     var spinTrigger by remember { mutableIntStateOf(0) }
+    var landed by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
     val (reel, winnerIndex) = remember(pool, pick.recipe.id, spinTrigger) {
-        wheelReel(pool, pick.recipe, loops = 1, tail = 3)
+        wheelReel(pool, pick.recipe, loops = 2, tail = 3)
     }
     val listState = rememberLazyListState()
     val cardWidth = 132.dp
     val cardSpacing = 10.dp
     val itemStridePx = with(LocalDensity.current) { (cardWidth + cardSpacing).toPx() }
+    val spinEasing = remember { CubicBezierEasing(0.05f, 0.92f, 0.15f, 1.0f) }
 
     LaunchedEffect(reel, winnerIndex, spinTrigger) {
         if (reel.isNotEmpty()) {
+            landed = false
             listState.scrollToItem(0)
             if (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()) {
                 listState.animateScrollBy(
                     value = winnerIndex * itemStridePx,
-                    animationSpec = tween(durationMillis = 1100, easing = FastOutSlowInEasing),
+                    animationSpec = tween(durationMillis = 2200, easing = spinEasing),
                 )
             }
             listState.scrollToItem(winnerIndex)
+            landed = true
         }
     }
 
@@ -99,26 +109,57 @@ internal fun RandomWheelDialog(
         title = { Text("Hôm nay mình nấu gì nhỉ?", color = colors.text) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Món được chọn", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+                Text(
+                    if (landed) "Món được chọn" else "Đang quay chọn món...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.muted,
+                )
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                     val sidePadding = ((maxWidth - cardWidth) / 2).coerceAtLeast(0.dp)
                     Box {
                         LazyRow(
                             state = listState,
                             userScrollEnabled = false,
+                            verticalAlignment = Alignment.CenterVertically,
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = sidePadding),
                             horizontalArrangement = Arrangement.spacedBy(cardSpacing),
-                            modifier = Modifier.fillMaxWidth().height(150.dp),
+                            modifier = Modifier.fillMaxWidth().height(172.dp),
                         ) {
                             itemsIndexed(reel, key = { idx, item -> "$idx-${item.id}" }) { index, item ->
-                                val selected = index == winnerIndex
+                                val isWinnerLit = landed && index == winnerIndex
+                                val cardScale by animateFloatAsState(
+                                    targetValue = if (isWinnerLit) 1.08f else 0.96f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium,
+                                    ),
+                                    label = "wheelCardScale",
+                                )
+                                val borderColor by animateColorAsState(
+                                    targetValue = if (isWinnerLit) colors.primary else colors.line,
+                                    animationSpec = tween(durationMillis = 260),
+                                    label = "wheelBorderColor",
+                                )
+                                val cardBg by animateColorAsState(
+                                    targetValue = if (isWinnerLit) colors.primarySoft else colors.surfaceSoft,
+                                    animationSpec = tween(durationMillis = 260),
+                                    label = "wheelCardBg",
+                                )
                                 Card(
                                     modifier = Modifier
                                         .width(cardWidth)
-                                        .height(138.dp)
-                                        .then(if (selected) Modifier.border(BorderStroke(2.dp, colors.primary), RoundedCornerShape(16.dp)) else Modifier),
+                                        .height(142.dp)
+                                        .graphicsLayer {
+                                            scaleX = cardScale
+                                            scaleY = cardScale
+                                        }
+                                        .border(
+                                            BorderStroke(if (isWinnerLit) 3.dp else 1.dp, borderColor),
+                                            RoundedCornerShape(16.dp),
+                                        ),
                                     shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = if (selected) colors.primarySoft else colors.surfaceSoft),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = if (isWinnerLit) 8.dp else 0.dp),
+                                    colors = CardDefaults.cardColors(containerColor = cardBg),
                                 ) {
                                     Column(
                                         modifier = Modifier.fillMaxWidth().padding(8.dp),
@@ -128,7 +169,7 @@ internal fun RandomWheelDialog(
                                         RecipeThumb(recipeId = item.id, size = 72.dp)
                                         Text(
                                             item.title,
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (isWinnerLit) FontWeight.Bold else FontWeight.Medium),
                                             color = colors.text,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,
@@ -146,7 +187,7 @@ internal fun RandomWheelDialog(
                         )
                     }
                 }
-                if (!pick.canCookNow) {
+                if (landed && !pick.canCookNow) {
                     Text(RandomRecipeCopy.needMore, style = MaterialTheme.typography.bodySmall, color = colors.muted)
                 }
             }
