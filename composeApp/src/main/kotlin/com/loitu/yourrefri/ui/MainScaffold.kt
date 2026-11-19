@@ -185,6 +185,7 @@ fun MainScaffold(
             recipeTitle = recipe.title,
             summary = cookDoneSummary(cookDoneNames(ids, namesById)),
             undo = com.loitu.yourrefri.feature.recipe.ui.cookUndoActions(before, ids),
+            recipeId = recipe.id,
         )
         // Ghi lịch sử sau khi đặt cookDone để nhận id dòng vừa ghi; Hoàn tác (Q10) sẽ xóa dòng này.
         onRecordCook(recipe.id, ids, chosenMeal ?: defaultMealFor(currentHour?.invoke() ?: state.hourOfDay)) { id ->

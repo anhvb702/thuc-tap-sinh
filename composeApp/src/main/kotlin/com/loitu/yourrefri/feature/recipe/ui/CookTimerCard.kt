@@ -32,9 +32,12 @@ import kotlinx.coroutines.delay
 internal const val COOK_TIMER_TOTAL_SEC = 240
 
 @Composable
-internal fun CookTimerCard(modifier: Modifier = Modifier) {
+internal fun CookTimerCard(
+    modifier: Modifier = Modifier,
+    totalSeconds: Int = 5 * 60,
+) {
     val colors = AppTheme.colors
-    var timer by remember { mutableStateOf(TimerState(remaining = 0, running = false)) }
+    var timer by remember(totalSeconds) { mutableStateOf(TimerState(remaining = totalSeconds, running = false)) }
     val remaining = timer.remaining
     val running = timer.running
 
@@ -64,7 +67,7 @@ internal fun CookTimerCard(modifier: Modifier = Modifier) {
                     color = colors.text,
                 )
                 ChunkyButton(
-                    onClick = { timer = toggleTimer(timer, COOK_TIMER_TOTAL_SEC) },
+                    onClick = { timer = toggleTimer(timer, totalSeconds) },
                     container = colors.primary,
                     edge = colors.primaryEdge,
                     minHeight = 48.dp,
@@ -74,7 +77,7 @@ internal fun CookTimerCard(modifier: Modifier = Modifier) {
                         text = when {
                             running -> "Tạm dừng"
                             remaining > 0 -> "Tiếp tục"
-                            else -> "Hẹn giờ 4 phút"
+                            else -> "Hẹn giờ ${totalSeconds / 60} phút"
                         },
                         color = colors.onPrimary,
                         fontWeight = FontWeight.Bold,
@@ -82,7 +85,7 @@ internal fun CookTimerCard(modifier: Modifier = Modifier) {
                 }
             }
             LinearProgressIndicator(
-                progress = { timerProgress(remaining, COOK_TIMER_TOTAL_SEC) },
+                progress = { timerProgress(remaining, totalSeconds) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 4.dp, max = 4.dp),
                 color = colors.primary,
                 trackColor = colors.line,

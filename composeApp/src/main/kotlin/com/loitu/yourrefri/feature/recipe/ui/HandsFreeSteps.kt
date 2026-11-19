@@ -1,5 +1,9 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+
+private val StepMinutesPattern = Regex("(\\d+)\\s*phút", RegexOption.IGNORE_CASE)
+
 // Logic thuần cho chế độ nấu rảnh tay, không phụ thuộc Compose.
 // Recipe.required chỉ chứa id nguyên liệu (chưa có tên hiển thị) nên không có trang "Chuẩn bị"; bước 0 là bước nấu đầu tiên.
 
@@ -10,6 +14,15 @@ object HandsFreeCopy {
     const val NEXT = "Tiếp"
     const val DONE = "Xong, mình nấu xong rồi"
     const val CLOSE_DESCRIPTION = "Thoát chế độ nấu rảnh tay"
+}
+
+/** Returns the optional countdown for a step, preferring structured recipe data. */
+fun stepTimerSeconds(recipe: Recipe, stepIndex: Int): Int? {
+    recipe.stepMinutes.getOrNull(stepIndex)?.takeIf { it > 0 }?.let { return it * 60 }
+    return recipe.steps.getOrNull(stepIndex)
+        ?.let { StepMinutesPattern.find(it)?.groupValues?.get(1)?.toIntOrNull() }
+        ?.takeIf { it > 0 }
+        ?.times(60)
 }
 
 /** Vị trí bước hiện tại; luôn nằm trong [0, totalSteps - 1] khi tạo bằng [of]. */

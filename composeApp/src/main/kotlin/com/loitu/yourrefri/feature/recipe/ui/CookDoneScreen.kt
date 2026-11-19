@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+import com.loitu.yourrefri.ui.components.RecipeThumb
 
 internal object CookDoneCopy {
     const val title = "Xong rồi, dọn cơm thôi!"
@@ -51,6 +52,7 @@ internal data class CookDone(
     val undo: List<com.loitu.yourrefri.feature.pantry.logic.PantryGridAction> = emptyList(),
     // Id dòng "Đã nấu" vừa ghi; null khi chưa ghi xong hoặc không ghi được.
     val logId: Long? = null,
+    val recipeId: String? = null,
 )
 
 /** Tên các nguyên liệu đã trừ, theo thứ tự; bỏ id không có tên. */
@@ -89,6 +91,15 @@ internal fun CookDoneScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
+        done.recipeId?.let { recipeId ->
+            RecipeThumb(
+                recipeId = recipeId,
+                modifier = Modifier.fillMaxWidth(),
+                size = 160.dp,
+                shape = RoundedCornerShape(20.dp),
+            )
+            Spacer(Modifier.height(20.dp))
+        }
         Box(
             modifier = Modifier.size(112.dp).clip(CircleShape).background(colors.primarySoft),
             contentAlignment = Alignment.Center,
