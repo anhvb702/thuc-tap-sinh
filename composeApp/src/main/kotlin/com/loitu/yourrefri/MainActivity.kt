@@ -67,9 +67,8 @@ private object AppGraph {
         cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
 
     private fun build(context: android.content.Context): AppDependencies {
-        val factory = DriverFactory(context)
-        factory.ensureOpenable()
-        val driver = factory.create()
+        // create() tự kiểm tra DB mới hơn app (ném DatabaseTooNewException) trước khi mở.
+        val driver = DriverFactory(context).create()
         val db = createDatabase(driver)
         val repo = PantryRepositoryImpl(
             db = db,
