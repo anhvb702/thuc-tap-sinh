@@ -64,6 +64,26 @@ class WeeklyMealPlannerTest {
         assertEquals("pork", buildWeeklyMealPlan(recipes, urgentState).first().recipe.id)
     }
 
+    @Test fun tasteProfilePrefersMildRecipeAndAvoidsIngredientAndSpicyDish() {
+        val candidates = listOf(
+            recipe("plain", "rice"),
+            Recipe("mild", "Gà hấp thanh đạm", listOf("Hấp"), listOf(Slot(listOf("rau-muong")))),
+            Recipe("unsafe", "Đậu phộng cay", listOf("Nấu"), listOf(Slot(listOf("peanut")))),
+            Recipe("spicy", "Thịt xào ớt", listOf("Xào"), listOf(Slot(listOf("rau-muong")))),
+        )
+        val profile = FamilyTasteProfile(
+            flavors = setOf(TasteFlavor.LIGHT),
+            dishStyles = setOf(DishStyle.STEAMED_BOILED),
+            avoidIngredientIds = setOf("peanut"),
+            hasYoungKids = true,
+        )
+
+        val plan = buildWeeklyMealPlan(candidates, state, tasteProfile = profile)
+
+        assertEquals("mild", plan.first().recipe.id)
+        assertEquals(false, plan.any { it.recipe.id == "unsafe" || TasteFlavor.SPICY in inferFlavors(it.recipe) })
+    }
+
     @Test fun shoppingUsesAvailableAlternativeAndCountsMeals() {
         val dish = Recipe("dish", "Dish", listOf("Nấu"), listOf(Slot(listOf("pork", "rau-muong"))))
         val plan = listOf(PlannedDayMeal(0, "Thứ 2", dish, ""), PlannedDayMeal(1, "Thứ 3", dish, ""))
