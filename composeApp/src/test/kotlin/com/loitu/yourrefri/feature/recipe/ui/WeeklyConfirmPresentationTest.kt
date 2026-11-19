@@ -1,18 +1,13 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class WeeklyConfirmPresentationTest {
     @Test
-    fun hasPlanOpensShopping() {
-        assertEquals(RecipeScreenMode.SHOPPING, weeklyConfirmTarget(true))
-    }
-
-    @Test
-    fun noPlanStaysPut() {
-        assertNull(weeklyConfirmTarget(false))
+    fun confirmTargetIsShoppingForAnyPlan() {
+        assertEquals(RecipeScreenMode.SHOPPING, confirmTargetMode(listOf("a")))
+        assertEquals(RecipeScreenMode.SHOPPING, confirmTargetMode(emptyList<String>()))
     }
 
     @Test
@@ -23,9 +18,9 @@ class WeeklyConfirmPresentationTest {
     }
 
     @Test
-    fun confirmWithEmptyPlanDoesNotNavigate() {
+    fun confirmWithEmptyPlanConfirmsThenNavigatesToShopping() {
         val calls = mutableListOf<String>()
         handleWeeklyConfirm(emptyList<String>(), { calls += "confirm" }, { calls += "nav:$it" })
-        assertEquals(listOf("confirm"), calls)
+        assertEquals(listOf("confirm", "nav:SHOPPING"), calls)
     }
 }
