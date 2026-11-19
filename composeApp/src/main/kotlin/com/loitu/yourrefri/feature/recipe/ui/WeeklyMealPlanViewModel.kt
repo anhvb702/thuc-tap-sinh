@@ -6,6 +6,7 @@ import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -48,6 +49,7 @@ class WeeklyMealPlanViewModel(
     private val clock: Clock,
     timeZone: TimeZone,
     scope: CoroutineScope? = null,
+    initialTasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
 ) : ViewModel() {
     private sealed interface Event {
         data class Action(val value: WeeklyMealPlanAction) : Event
@@ -61,11 +63,16 @@ class WeeklyMealPlanViewModel(
     private val mutableEffects = Channel<WeeklyMealPlanEffect>(Channel.BUFFERED)
     private val pendingActions = mutableListOf<WeeklyMealPlanAction>()
     private var currentTimeZone = timeZone
+    private var currentTasteProfile = initialTasteProfile
     private val mutableState = MutableStateFlow(
         WeeklyMealPlanState(isLoaded = false, weekStart = currentWeekStart()),
     )
     val state = mutableState.asStateFlow()
     val effects = mutableEffects.receiveAsFlow()
+
+    fun updateTasteProfile(profile: FamilyTasteProfile) {
+        currentTasteProfile = profile
+    }
 
     init {
         requestSettings(replace = false)

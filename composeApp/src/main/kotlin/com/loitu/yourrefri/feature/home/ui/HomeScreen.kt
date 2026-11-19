@@ -46,6 +46,7 @@ import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
 import com.loitu.yourrefri.feature.recipe.logic.recommendRecipes
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
 import com.loitu.yourrefri.feature.recipe.logic.recipesForMeal
@@ -114,13 +115,14 @@ fun HomeScreen(
     meal: MealSlot = defaultMealFor(state.hourOfDay),
     onMealChange: (MealSlot) -> Unit = {},
     modifier: Modifier = Modifier,
+    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
 ) {
     val colors = AppTheme.colors
     val haveItems = cellsOf(state).filter { it.have }
     val zones = pantryZoneCounts(haveItems.map { it.ingredientId })
     val urgentItems = haveItems.filter { it.daysLeft in 0..2 }.sortedBy { it.daysLeft }
     // Bữa trưa ưu tiên món nhanh; bữa tối giữ nguyên danh sách.
-    val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state).take(homeRecipeLimit)
+    val recommendations = recommendRecipes(recipesForMeal(recipes, meal), state, tasteProfile = tasteProfile).take(homeRecipeLimit)
 
     Column(
         modifier = modifier

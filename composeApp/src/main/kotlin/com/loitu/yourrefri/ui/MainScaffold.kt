@@ -49,6 +49,7 @@ import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
 import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.recipe.logic.isDietFilterTooStrict
 import com.loitu.yourrefri.feature.settings.ui.SettingsPresentation
@@ -121,6 +122,8 @@ fun MainScaffold(
     cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
     onDeleteCook: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
+    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
+    onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
@@ -367,6 +370,7 @@ fun MainScaffold(
                     onNavigateToHistory = { showHistory = true },
                     meal = currentMeal,
                     onMealChange = { chosenMeal = it },
+                    tasteProfile = tasteProfile,
                 )
                 NavTab.PANTRY -> PantryGridScreen(
                     state = state,
@@ -413,6 +417,7 @@ fun MainScaffold(
                     onBackHome = { currentTab = NavTab.HOME },
                     onOpenRecipe = { openedRecipeId = it },
                     onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
+                     tasteProfile = tasteProfile,
                     onStockIngredients = { ids ->
                         ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
                             val alreadyHave = state.pantry[id]?.have == true
@@ -456,6 +461,8 @@ fun MainScaffold(
                     appVersionName = appVersionName,
                     sundayTime = sundayTime,
                     onSundayTimeChange = onSundayTimeChange,
+                     tasteProfile = tasteProfile,
+                     onTasteProfileChange = onTasteProfileChange,
                 )
             }
         }

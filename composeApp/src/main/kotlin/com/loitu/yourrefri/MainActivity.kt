@@ -34,6 +34,8 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.FavoriteRecipeRepositoryImpl
+import com.loitu.yourrefri.feature.recipe.data.SqlTasteProfileRepository
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
@@ -88,6 +90,7 @@ private object AppGraph {
             backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
             recipes = RecipeBundle.parse(recipeJson),
             weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
+            tasteProfileRepository = SqlTasteProfileRepository(db, Dispatchers.IO),
             favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
             cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
         )
@@ -135,6 +138,7 @@ private data class AppDependencies(
     val backupRepository: PantryBackupRepositoryImpl,
     val recipes: List<Recipe>,
     val weeklyMealPlanRepository: WeeklyMealPlanRepositoryImpl,
+    val tasteProfileRepository: SqlTasteProfileRepository,
     val favoriteRepository: FavoriteRecipeRepositoryImpl,
     val cookLogRepository: com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl,
 )
@@ -177,6 +181,10 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             }
         },
     )
+    val tasteProfile by dependencies.tasteProfileRepository.observe().collectAsState(initial = FamilyTasteProfile())
+    LaunchedEffect(weeklyMealPlanViewModel, tasteProfile) {
+        weeklyMealPlanViewModel.updateTasteProfile(tasteProfile)
+    }
 
     val favoriteViewModel: FavoriteRecipesViewModel = viewModel(
         factory = remember(dependencies.favoriteRepository) {
@@ -365,5 +373,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             }
         },
         onCancelRestore = { pendingRestoreJson = null },
+        tasteProfile = tasteProfile,
+        onTasteProfileChange = { next -> scope.launch { dependencies.tasteProfileRepository.save(next) } },
     )
 }
