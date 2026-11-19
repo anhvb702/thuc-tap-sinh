@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +25,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,7 +46,40 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
+import com.loitu.yourrefri.ui.components.FoodThumb
 import com.loitu.yourrefri.ui.theme.AppTheme
+import com.loitu.yourrefri.ui.theme.AppIcons
+
+internal const val WEEKLY_SHOPPING_HELPER_BANNER = "Mua đến đâu, cất đến đó."
+
+@Composable
+private fun SoftActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+) {
+    val colors = AppTheme.colors
+    Button(
+        onClick = onClick,
+        colors = ButtonDefaults.buttonColors(containerColor = colors.primarySoft, contentColor = colors.accentText),
+        shape = RoundedCornerShape(20.dp),
+        modifier = modifier.heightIn(min = 50.dp),
+    ) {
+        Text(label, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(8.dp))
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun DropdownFieldText(text: String) {
+    val colors = AppTheme.colors
+    Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, modifier = Modifier.weight(1f), color = colors.text)
+        Icon(AppIcons.ChevronDown, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
+    }
+}
 
 /**
  * Tab "Thực đơn tuần": mục tiêu, khẩu vị, các thẻ ngày, đổi thực đơn, xem cách nấu, Đã nấu xong.
@@ -93,10 +130,10 @@ internal fun WeeklyMealPlanSection(
         androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
             Surface(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { goalMenuOpen = true },
-                shape = RoundedCornerShape(16.dp), color = colors.surface,
+                shape = RoundedCornerShape(20.dp), color = colors.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, colors.line),
             ) {
-                Text(dietGoalFieldText(goal) + "  ▾", modifier = Modifier.padding(12.dp), color = colors.text)
+                DropdownFieldText(dietGoalFieldText(goal))
             }
             DropdownMenu(expanded = goalMenuOpen, onDismissRequest = { goalMenuOpen = false }) {
                 DietGoal.entries.forEach { item ->
@@ -112,10 +149,10 @@ internal fun WeeklyMealPlanSection(
         androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth()) {
             Surface(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { preferenceMenuOpen = true },
-                shape = RoundedCornerShape(16.dp), color = colors.surface,
+                shape = RoundedCornerShape(20.dp), color = colors.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, colors.line),
             ) {
-                Text(preferenceFieldText(preferences) + "  ▾", modifier = Modifier.padding(12.dp), color = colors.text)
+                DropdownFieldText(preferenceFieldText(preferences))
             }
             DropdownMenu(expanded = preferenceMenuOpen, onDismissRequest = { preferenceMenuOpen = false }) {
                 FamilyPreferenceTag.entries.forEach { item ->
@@ -133,7 +170,7 @@ internal fun WeeklyMealPlanSection(
         }
         plan.forEach { day ->
             val isExpanded = openedDay == day.dayIndex
-            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(16.dp)) {
+            Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, colors.line)) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         val dayTitle = weekStart?.let { dayDateLabel(it, day.dayIndex, day.dayLabelVi) } ?: day.dayLabelVi
@@ -148,18 +185,14 @@ internal fun WeeklyMealPlanSection(
                     }
                     Text(day.matchReasonVi, style = MaterialTheme.typography.bodySmall, color = colors.accentText, modifier = Modifier.padding(top = 4.dp))
                     Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
+                        SoftActionButton(
+                            label = if (isExpanded) "Thu gọn cách nấu" else "Xem cách nấu",
+                            icon = if (isExpanded) AppIcons.ChevronUp else AppIcons.ChevronDown,
                             onClick = { openedDay = if (isExpanded) null else day.dayIndex },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text(if (isExpanded) "Thu gọn cách nấu ▲" else "Xem cách nấu ▼", color = colors.accentText, fontWeight = FontWeight.SemiBold)
-                        }
-                        TextButton(
-                            onClick = { onSwap(day.dayIndex) },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                        ) {
-                            Text("Đổi thực đơn ↻", color = colors.text)
-                        }
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        SoftActionButton(label = "Đổi thực đơn", icon = AppIcons.Shuffle, onClick = { onSwap(day.dayIndex) }, modifier = Modifier.weight(1f))
                     }
                     if (isExpanded) {
                         day.dishes.forEach { dish ->
@@ -171,8 +204,8 @@ internal fun WeeklyMealPlanSection(
                             Button(
                                 onClick = { onRequestCook(dish) },
                                 colors = ButtonDefaults.buttonColors(containerColor = colors.primary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 48.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 50.dp),
                             ) {
                                 Text("Đã nấu xong: ${dish.title}", color = colors.onPrimary)
                             }
@@ -187,8 +220,8 @@ internal fun WeeklyMealPlanSection(
         Button(
             onClick = { handleWeeklyConfirm(plan, onConfirmWeek, onNavigate) },
             colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
-            shape = RoundedCornerShape(10.dp),
-            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 48.dp),
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp).heightIn(min = 50.dp),
         ) {
             Text(WEEKLY_CONFIRM_LABEL)
         }
@@ -217,31 +250,35 @@ internal fun WeeklyShoppingSection(
     }
     Column(modifier.fillMaxWidth()) {
         Text("Danh sách đi chợ tuần này", style = MaterialTheme.typography.titleLarge, color = colors.text, modifier = Modifier.padding(top = 14.dp))
-        Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), color = colors.accentText)
-        Text(shoppingProgressLabel(bought = bought.count { it in buyIds }, total = buyItems.size), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+        Surface(
+            Modifier.fillMaxWidth().padding(top = 8.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = colors.primarySoft,
+        ) {
+            Column(Modifier.padding(16.dp)) {
+                Text(shoppingSummaryText(buyItems.size, shopping.size - buyItems.size), style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.accentText)
+                Text(shoppingProgressLabel(bought = bought.count { it in buyIds }, total = buyItems.size), color = colors.accentText, style = MaterialTheme.typography.bodySmall)
+                Text(WEEKLY_SHOPPING_HELPER_BANNER, color = colors.muted, style = MaterialTheme.typography.bodySmall)
+            }
+        }
         buyItems.forEach { item ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    checked = item.ingredient.id !in uncheckedIds,
-                    onCheckedChange = { onToggleChecked(item.ingredient.id, it) },
-                    colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.muted, checkmarkColor = colors.onPrimary),
-                )
-                Column(Modifier.clickable { bought = if (item.ingredient.id in bought) bought - item.ingredient.id else bought + item.ingredient.id }) {
-                    Text(
-                        item.ingredient.nameVi,
-                        color = colors.text,
-                        fontWeight = FontWeight.Medium,
-                        textDecoration = if (item.ingredient.id in bought) TextDecoration.LineThrough else null,
+            Surface(
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = colors.surface,
+                border = BorderStroke(1.dp, colors.line),
+            ) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = item.ingredient.id !in uncheckedIds,
+                        onCheckedChange = { onToggleChecked(item.ingredient.id, it) },
+                        colors = CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.muted, checkmarkColor = colors.onPrimary),
                     )
-                    Text(
-                        text = shoppingItemSubtitle(
-                            mealCount = item.mealCount,
-                            availableQuantity = item.availableQuantity,
-                            missingQuantity = item.missingQuantity,
-                        ),
-                        color = colors.muted,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
+                    FoodThumb(ingredientId = item.ingredient.id, size = 36.dp)
+                    Column(Modifier.padding(start = 12.dp).clickable { bought = if (item.ingredient.id in bought) bought - item.ingredient.id else bought + item.ingredient.id }) {
+                        Text(item.ingredient.nameVi, color = colors.text, fontWeight = FontWeight.Medium, textDecoration = if (item.ingredient.id in bought) TextDecoration.LineThrough else null)
+                        Text(text = shoppingItemSubtitle(mealCount = item.mealCount, availableQuantity = item.availableQuantity, missingQuantity = item.missingQuantity), color = colors.muted, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         }
@@ -255,7 +292,7 @@ internal fun WeeklyShoppingSection(
             Button(onClick = {
                 onStock?.invoke(stockListForAction)
                 if (onStock != null) result = stockResultMessage(selectedIds.size)
-            }, enabled = onStock != null && selectedIds.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            }, enabled = onStock != null && selectedIds.isNotEmpty(), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary, disabledContainerColor = colors.line, disabledContentColor = colors.muted), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 50.dp)) {
                 // stockActionButtonLabel còn emoji vì test SW-02 khóa chuỗi gốc; giao diện chỉ hiện phần chữ.
                 Text(stockActionButtonLabel(selectedIds.size).removeSuffix(" 🧊")) // guard:allow
             }
