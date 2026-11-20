@@ -102,17 +102,16 @@ fun RecipeDetailScreen(
     val host = snackbarHostState ?: localHost
     val scope = rememberCoroutineScope()
     var showManualChecklist by remember(recipe.id) { mutableStateOf(false) }
-    val presentation = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true) }
 
     fun finishCook() {
+        val plan = buildDirectCookPlan(recipe, state, callbackAvailable = true) ?: return
         val before = state
-        val ids = presentation.ingredientIds
-        onCook(ids)
+        onCook(plan.ingredientIds)
         if (!showDoneSnackbar) return
-        val undo = cookUndoActions(before, ids)
+        val undo = cookUndoActions(before, plan.ingredientIds)
         scope.launch {
             val result = host.showSnackbar(
-                message = cookDoneMessage(hasUpdates = ids.isNotEmpty()),
+                message = cookDoneMessage(hasUpdates = plan.ingredientIds.isNotEmpty()),
                 actionLabel = if (undo.isNotEmpty()) "Hoàn tác" else null,
                 duration = SnackbarDuration.Long,
             )

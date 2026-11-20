@@ -56,12 +56,11 @@ import com.loitu.yourrefri.feature.recipe.ui.RecipeScreen
 import com.loitu.yourrefri.feature.recipe.ui.HandsFreeCookScreen
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
 import com.loitu.yourrefri.feature.recipe.ui.findRecipeById
-import com.loitu.yourrefri.feature.recipe.ui.ingredientsToConsume
 import com.loitu.yourrefri.feature.recipe.ui.CookDone
 import com.loitu.yourrefri.feature.recipe.ui.CookDoneScreen
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
-import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
+import com.loitu.yourrefri.feature.recipe.ui.buildDirectCookPlan
 import com.loitu.yourrefri.feature.recipe.ui.freezerIngredientNames
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
@@ -242,13 +241,9 @@ fun MainScaffold(
     }
 
     // Nấu rảnh tay xong: trừ nguyên liệu như nút "Nấu xong" ở màn công thức, rồi hiện màn chúc mừng (có Hoàn tác).
-    fun finishHandsFree(recipe: Recipe, kept: Set<String>) {
-        val ids = ingredientsToConsume(recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds, kept)
-        completeCook(recipe, ids)
-    }
-
-    fun requestFinishHandsFree(recipe: Recipe) {
-        finishHandsFree(recipe, emptySet())
+    fun finishHandsFree(recipe: Recipe) {
+        val plan = buildDirectCookPlan(recipe, state, callbackAvailable = true) ?: return
+        completeCook(recipe, plan.ingredientIds)
     }
     if (showReminderPopup) {
         val popupData = remember(state, state.today) { buildReminderPopupData(state, state.today.dayOfYear) }
@@ -351,7 +346,7 @@ fun MainScaffold(
                 HandsFreeCookScreen(
                     recipe = handsFreeRecipe,
                     onClose = { handsFreeRecipeId = null },
-                    onFinished = { requestFinishHandsFree(handsFreeRecipe) },
+                    onFinished = { finishHandsFree(handsFreeRecipe) },
                     freezerNames = freezerIngredientNames(handsFreeRecipe, state),
                 )
             } else if (showHistory && currentTab == NavTab.HOME) {

@@ -26,7 +26,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,36 +62,22 @@ internal fun RecipeCookConfirmationHost(
     showConfirmation: Boolean,
     pendingRecipe: Recipe?,
     presentation: RecipeCookPresentation?,
-    state: PantryGridState,
-    callbackAvailable: Boolean,
-    onCookRecipe: ((Recipe, List<String>) -> Unit)?,
     onDismiss: () -> Unit,
     onResult: (String, String) -> Unit,
 ) {
     if (!showConfirmation || pendingRecipe == null) return
-    if (onCookRecipe != null && presentation != null) {
-        LaunchedEffect(showConfirmation, pendingRecipe) {
-            onCookRecipe(pendingRecipe, presentation.ingredientIds)
-            val names = state.ingredients.associate { it.id to it.nameVi }
-            onResult(pendingRecipe.id, cookResultMessage(presentation.ingredientIds.mapNotNull(names::get)))
-            onDismiss()
-        }
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(if (presentation?.ingredientNames.isNullOrEmpty()) "Chưa có nguyên liệu cần cập nhật" else "Cập nhật nguyên liệu?") },
-            text = { Text(presentation?.confirmationMessage.orEmpty()) },
-            confirmButton = {
-                Button(onClick = {
-                    val ids = if (presentation != null) confirmedCookIngredientIds(presentation, true, callbackAvailable) else emptyList()
-                    onCookRecipe?.invoke(pendingRecipe, ids)
-                    presentation?.resultMessage?.let { onResult(pendingRecipe.id, it) }
-                    onDismiss()
-                }) { Text(if (!callbackAvailable) "Đóng" else if (presentation?.ingredientIds.isNullOrEmpty()) "Đã nấu xong" else "Cập nhật") }
-            },
-            dismissButton = { TextButton(onClick = onDismiss) { Text("Để sau") } },
-        )
-    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (presentation?.ingredientNames.isNullOrEmpty()) "Ch?a c? nguy?n li?u c?n c?p nh?t" else "C?p nh?t nguy?n li?u?") },
+        text = { Text(presentation?.confirmationMessage.orEmpty()) },
+        confirmButton = {
+            Button(onClick = {
+                presentation?.resultMessage?.let { onResult(pendingRecipe.id, it) }
+                onDismiss()
+            }) { Text("??ng") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("?? sau") } },
+    )
 }
 
 @Composable

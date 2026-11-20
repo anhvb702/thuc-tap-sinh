@@ -99,8 +99,30 @@ fun RecipeScreen(
     val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)
     val expandInPlace = onOpenRecipe == null
     var selectedRecipeId by remember(recommendationIds, initialRecipeId) { mutableStateOf(resolvedInitialRecipeId.takeIf { initialRecipeId != null }) }
-    val pendingPresentation = pendingRecipe?.let { recipeCookPresentation(it, state, onCookRecipe != null) }
-    RecipeCookConfirmationHost(showCookConfirmation, pendingRecipe, pendingPresentation, state, onCookRecipe != null, onCookRecipe, { showCookConfirmation = false; pendingRecipe = null }) { id, message -> updatedResult = id to message }
+    fun finishCook(recipe: Recipe) {
+        val plan = buildDirectCookPlan(recipe, state, callbackAvailable = onCookRecipe != null)
+        if (plan != null) {
+            onCookRecipe?.invoke(recipe, plan.ingredientIds)
+            updatedResult = recipe.id to plan.resultMessage
+        } else {
+            pendingRecipe = recipe
+            showCookConfirmation = true
+        }
+    }
+
+    if (onCookRecipe == null) {
+        val pendingPresentation = pendingRecipe?.let { recipeCookPresentation(it, state, callbackAvailable = false) }
+        RecipeCookConfirmationHost(
+            showConfirmation = showCookConfirmation,
+            pendingRecipe = pendingRecipe,
+            presentation = pendingPresentation,
+            onDismiss = {
+                showCookConfirmation = false
+                pendingRecipe = null
+            },
+            onResult = { id, message -> updatedResult = id to message },
+        )
+    }
     if (recipeState.showNoCookableDialog) AlertDialog(onDismissRequest = { recipeViewModel.onIntent(RecipeIntent.DismissNoCookableDialog) }, containerColor = colors.surface, title = { Text("Nấu ngẫu nhiên", color = colors.text) }, text = { Text(RandomRecipeCopy.noCookable, color = colors.muted) }, confirmButton = { TextButton(onClick = { recipeViewModel.onIntent(RecipeIntent.DismissNoCookableDialog) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Đóng", color = colors.accentText) } })
     val todayIndex = todayIndexOverride ?: remember { todayDayIndex(Clock.System.now(), TimeZone.currentSystemDefault()) }
     val pageScroll = rememberScrollState()
@@ -120,7 +142,7 @@ fun RecipeScreen(
                 onGoal = { next -> goalLocal = next; onWeeklyAction?.invoke(WeeklyMealPlanAction.SetGoal(next)) ?: onWeeklyGoalChange?.invoke(next) },
                 onPreference = { tag -> val next = togglePreferenceTag(preferences, tag); preferencesLocal = next; onWeeklyAction?.invoke(WeeklyMealPlanAction.TogglePreference(tag)) ?: onWeeklyPreferencesChange?.invoke(next) },
                 onSwap = { day -> val next = bumpDaySwapOffset(swaps, day); swapsLocal = next; onWeeklyAction?.invoke(WeeklyMealPlanAction.SwapDay(day)) ?: onWeeklySwappedOffsetsChange?.invoke(next) },
-                onRequestCook = { recipe -> pendingRecipe = recipe; showCookConfirmation = true },
+                onRequestCook = ::finishCook,
                 updatedRecipeResult = updatedResult,
                 weekStart = weekStart,
                 includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: false,
@@ -138,7 +160,7 @@ fun RecipeScreen(
                 expandInPlace = expandInPlace,
                 stepChecks = stepChecks,
                 updatedResult = updatedResult,
-                onCooked = { pendingRecipe = it; showCookConfirmation = true },
+                onCooked = ::finishCook,
                 weeklyPlan = weeklyPlan,
                 todayIndex = todayIndex,
                 shopping = shopping,
