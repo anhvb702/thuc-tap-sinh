@@ -5,6 +5,18 @@ import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
 // SHOPPING là tab "Đi chợ" (chỉ phần danh sách đi chợ của thực đơn tuần).
 enum class RecipeScreenMode { DAILY, WEEKLY, SHOPPING }
 
+enum class WeeklyMealOption(
+    val labelVi: String,
+    val cardMealLabelVi: String,
+    val includesLunchPrep: Boolean,
+) {
+    DINNER("Bữa tối", "Bữa tối", false),
+    LUNCH("Bữa trưa", "Bữa trưa", false),
+    BOTH("Cả trưa & tối", "Bữa trưa & tối", true),
+}
+
+internal fun mealOptionDisplayLabel(option: WeeklyMealOption): String = option.cardMealLabelVi
+
 // Nút vào thực đơn tuần ở Trang chủ.
 internal const val WEEKLY_BUTTON_LABEL = "Lên thực đơn cả tuần"
 

@@ -25,13 +25,12 @@ class LunchMealPrepHiddenTest {
         assertFalse(content.contains("isLunchPrep"))
     }
 
-    @Test fun recipeScreenAndScaffoldDoNotPassLunchPrep() {
+    @Test fun recipeScreenAndScaffoldWireWeeklyMealOption() {
+        // Cập nhật có chủ đích theo yêu cầu người dùng: Thực đơn tuần cho chọn Bữa trưa / Bữa tối / Cả trưa & tối.
         val screen = source("feature/recipe/ui/RecipeScreen.kt")
         val scaffold = source("ui/MainScaffold.kt")
-        assertTrue(screen.contains("includeLunchMealPrep = LUNCH_MEAL_PREP_ENABLED"))
-        assertFalse(screen.contains("weeklyIncludeLunchMealPrep ?:"))
-        assertFalse(screen.contains("onToggleLunchMealPrep ="))
-        assertFalse(scaffold.contains("weeklyIncludeLunchMealPrep ="))
+        assertTrue(screen.contains("weeklyIncludeLunchMealPrep ?:"))
+        assertTrue(scaffold.contains("weeklyIncludeLunchMealPrep ="))
     }
 
     @Test fun pantryStockSubtitleWithoutLunch() {
