@@ -46,7 +46,8 @@ internal fun filterByCategories(cells: List<PantryCell>, selected: Set<PantryCat
     else -> cells.filter { pantryCategoryOf(it) in selected }
 }
 
-internal fun pantryStatusSwitchLabel(presentOnly: Boolean): String = if (presentOnly) "Đang có" else "Tất cả"
+internal fun pantryStatusSwitchLabel(presentOnly: Boolean): String =
+    if (presentOnly) "Đang có trong tủ" else "Tất cả nguyên liệu"
 
 internal fun parseDirectQuantityInput(raw: String, maxQuantity: Int = MAX_PANTRY_QUANTITY): Int? {
     val digits = raw.trim()

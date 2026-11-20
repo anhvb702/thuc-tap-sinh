@@ -8,16 +8,27 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -123,23 +134,54 @@ import com.loitu.yourrefri.ui.theme.AppTheme
 @Composable
 internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onToggle: (PantryCategory) -> Unit) {
     val colors = AppTheme.colors
+    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PantryCategory.entries.forEach { category ->
             val selected = category in selectedCategories
             val shape = RoundedCornerShape(16.dp)
-            Box(
+            val containerColor by animateColorAsState(
+                targetValue = if (selected) colors.primary else colors.surface,
+                animationSpec = if (animatorsEnabled) tween(180) else snap(),
+                label = "pantry chip bg",
+            )
+            val borderColor by animateColorAsState(
+                targetValue = if (selected) colors.primary else colors.line,
+                animationSpec = if (animatorsEnabled) tween(180) else snap(),
+                label = "pantry chip border",
+            )
+            val textColor by animateColorAsState(
+                targetValue = if (selected) colors.onPrimary else colors.text,
+                animationSpec = if (animatorsEnabled) tween(180) else snap(),
+                label = "pantry chip text",
+            )
+            Row(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
-                    .background(if (selected) colors.primary else colors.surface)
-                    .border(1.dp, if (selected) colors.primary else colors.line, shape)
+                    .background(containerColor)
+                    .border(1.dp, borderColor, shape)
                     .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle(category) })
-                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
             ) {
+                AnimatedVisibility(
+                    visible = selected,
+                    enter = fadeIn(if (animatorsEnabled) tween(150) else snap()) + expandHorizontally(if (animatorsEnabled) tween(150) else snap()),
+                    exit = fadeOut(if (animatorsEnabled) tween(120) else snap()) + shrinkHorizontally(if (animatorsEnabled) tween(120) else snap()),
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.padding(end = 3.dp).size(14.dp),
+                    )
+                }
                 Text(
                     text = category.labelVi,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (selected) colors.onPrimary else colors.text,
+                    color = textColor,
                     textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -147,11 +189,11 @@ internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onTogg
 }
 
 internal enum class PantryAddFeature(val title: String, val description: String, val icon: ImageVector) {
-    INGREDIENT("Thêm nguyên liệu", "Chọn nhanh rau, thịt, gia vị từ danh mục", AppIcons.Leaf),
-    OTHER("Thêm món khác", "Tự nhập tên món chưa có trong danh sách", AppIcons.Pencil),
-    LEFTOVER("Cất món thừa", "Lưu đồ ăn dư, hạn ước tính 2 ngày", AppIcons.Bowl),
-    COMBO("Thêm combo đi chợ", "Bỏ nhanh gói đồ quen thuộc vào tủ", AppIcons.Cart),
-    VOICE("Nói để thêm", "Đọc tên nguyên liệu bằng giọng nói", AppIcons.Mic),
+    INGREDIENT("Chọn đồ có sẵn", "Chọn nhanh rau, thịt, gia vị từ danh mục", AppIcons.Leaf),
+    OTHER("Tự thêm món mới", "Tự nhập tên món chưa có trong danh sách", AppIcons.Pencil),
+    LEFTOVER("Cất đồ ăn thừa", "Lưu đồ ăn dư, hạn ước tính 2 ngày", AppIcons.Bowl),
+    COMBO("Thêm gói đi chợ", "Bỏ nhanh gói đồ quen thuộc vào tủ", AppIcons.Cart),
+    VOICE("Đọc tên để thêm", "Đọc tên nguyên liệu bằng giọng nói", AppIcons.Mic),
 }
 
 @Composable
@@ -381,10 +423,10 @@ private fun PantryAddFeaturePreview(
 
 /** Tiêu đề nhóm: icon + "Rau củ (6)". */
 @Composable
-internal fun CategoryHeader(group: PantryCategoryGroup) {
+internal fun CategoryHeader(group: PantryCategoryGroup, modifier: Modifier = Modifier) {
     val colors = AppTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -571,16 +613,34 @@ internal fun WarmFoodCard(
     onEditQuantity: () -> Unit,
     onIncreaseQty: () -> Unit,
     onDecreaseQty: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
     val cardCopy = pantryCardCopy(cell.have, quantity)
     val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
+    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val containerColor by animateColorAsState(
+        targetValue = if (cell.have) colors.surface else Color.Transparent,
+        animationSpec = if (animatorsEnabled) tween(200) else snap(),
+        label = "pantry card bg",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) colors.primary else if (cell.have) colors.line else colors.primarySoft,
+        animationSpec = if (animatorsEnabled) tween(200) else snap(),
+        label = "pantry card border",
+    )
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().animateContentSize(
+            animationSpec = if (animatorsEnabled) {
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            } else {
+                snap()
+            },
+        ),
         shape = RoundedCornerShape(14.dp),
-        color = if (cell.have) colors.surface else Color.Transparent,
-        border = BorderStroke(2.dp, if (selected) colors.primary else if (cell.have) colors.line else colors.primarySoft),
+        color = containerColor,
+        border = BorderStroke(2.dp, borderColor),
     ) {
         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
@@ -615,19 +675,27 @@ internal fun WarmFoodCard(
                     )
                     if (cardCopy.showEstimatedStatus) {
                         cell.daysLeft?.let { days ->
-                            Text(
-                                text = pantryRowStatus(days),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
-                                ),
-                                color = if (urgent) colors.ctaText else colors.accentText,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                if (urgent) {
+                                    UrgentPulseDot(animatorsEnabled = animatorsEnabled)
+                                }
+                                Text(
+                                    text = pantryRowStatus(days),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
+                                    ),
+                                    color = if (urgent) colors.ctaText else colors.accentText,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     } else {
                         Text(
-                            text = cardCopy.statusLabel,
+                            text = "Chạm để thêm",
                             style = MaterialTheme.typography.labelSmall,
                             color = colors.muted,
                             maxLines = 1,
@@ -671,6 +739,32 @@ internal fun WarmFoodCard(
 }
 
 @Composable
+private fun UrgentPulseDot(animatorsEnabled: Boolean) {
+    val colors = AppTheme.colors
+    val dotAlpha = if (animatorsEnabled) {
+        val transition = rememberInfiniteTransition(label = "pantry urgent dot")
+        val animated by transition.animateFloat(
+            initialValue = 0.4f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1100),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "pantry urgent alpha",
+        )
+        animated
+    } else {
+        1f
+    }
+    Box(
+        modifier = Modifier
+            .size(7.dp)
+            .graphicsLayer { alpha = dotAlpha }
+            .background(colors.ctaText, CircleShape),
+    )
+}
+
+@Composable
 internal fun QuantityStepper(
     name: String,
     quantity: Int,
@@ -681,6 +775,21 @@ internal fun QuantityStepper(
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
+    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val decInteraction = remember { MutableInteractionSource() }
+    val decPressed by decInteraction.collectIsPressedAsState()
+    val decScale by animateFloatAsState(
+        targetValue = if (decPressed) 0.88f else 1f,
+        animationSpec = if (animatorsEnabled) spring(stiffness = Spring.StiffnessMedium) else snap(),
+        label = "pantry dec scale",
+    )
+    val incInteraction = remember { MutableInteractionSource() }
+    val incPressed by incInteraction.collectIsPressedAsState()
+    val incScale by animateFloatAsState(
+        targetValue = if (incPressed) 0.88f else 1f,
+        animationSpec = if (animatorsEnabled) spring(stiffness = Spring.StiffnessMedium) else snap(),
+        label = "pantry inc scale",
+    )
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -689,8 +798,17 @@ internal fun QuantityStepper(
         Box(
             modifier = Modifier
                 .size(48.dp)
+                .graphicsLayer {
+                    scaleX = decScale
+                    scaleY = decScale
+                }
                 .clip(CircleShape)
-                .clickable(role = Role.Button, onClick = onDecrease)
+                .clickable(
+                    interactionSource = decInteraction,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onDecrease,
+                )
                 .semantics {
                     contentDescription = if (quantity > 1) "Giảm số lượng $name" else "Đánh dấu hết $name"
                 },
@@ -708,18 +826,43 @@ internal fun QuantityStepper(
                 .semantics { contentDescription = "Chỉnh số lượng $name" },
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "$quantity $unit",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.text,
-                textAlign = TextAlign.Center,
-            )
+            AnimatedContent(
+                targetState = quantity,
+                transitionSpec = {
+                    if (!animatorsEnabled) {
+                        fadeIn(snap()) togetherWith fadeOut(snap())
+                    } else if (targetState >= initialState) {
+                        (slideInVertically(tween(170)) { it / 2 } + fadeIn(tween(170))) togetherWith
+                            (slideOutVertically(tween(140)) { -it / 2 } + fadeOut(tween(140)))
+                    } else {
+                        (slideInVertically(tween(170)) { -it / 2 } + fadeIn(tween(170))) togetherWith
+                            (slideOutVertically(tween(140)) { it / 2 } + fadeOut(tween(140)))
+                    }
+                },
+                label = "pantry qty counter",
+            ) { animatedQty ->
+                Text(
+                    text = "$animatedQty $unit",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
         Box(
             modifier = Modifier
                 .size(48.dp)
+                .graphicsLayer {
+                    scaleX = incScale
+                    scaleY = incScale
+                }
                 .clip(CircleShape)
-                .clickable(role = Role.Button, onClick = onIncrease)
+                .clickable(
+                    interactionSource = incInteraction,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onIncrease,
+                )
                 .semantics { contentDescription = "Tăng số lượng $name" },
             contentAlignment = Alignment.Center,
         ) {

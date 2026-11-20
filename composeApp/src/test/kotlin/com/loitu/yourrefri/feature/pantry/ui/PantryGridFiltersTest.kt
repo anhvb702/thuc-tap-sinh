@@ -23,8 +23,8 @@ class PantryGridFiltersTest {
 
     @Test
     fun pantryStatusSwitchLabel_dependsOnlyOnPresence() {
-        assertEquals("Đang có", pantryStatusSwitchLabel(true))
-        assertEquals("Tất cả", pantryStatusSwitchLabel(false))
+        assertEquals("Đang có trong tủ", pantryStatusSwitchLabel(true))
+        assertEquals("Tất cả nguyên liệu", pantryStatusSwitchLabel(false))
     }
 
     @Test

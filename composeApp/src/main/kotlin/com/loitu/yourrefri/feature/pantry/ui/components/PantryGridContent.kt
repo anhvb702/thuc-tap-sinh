@@ -211,7 +211,9 @@ internal fun PantryGridContent(
             }
         } else {
             groupCellsByCategory(cells, state.ingredients).forEach { group ->
-                item(key = "header-${group.key}", span = fullRow) { CategoryHeader(group) }
+                item(key = "header-${group.key}", span = fullRow) {
+                    CategoryHeader(group, modifier = Modifier.animateItem())
+                }
                 foodCards(group.cells, selectedIds, onAction, onUndo, onEditQuantity)
             }
         }
@@ -243,6 +245,7 @@ private fun LazyGridScope.foodCards(
                 if (decreaseMarksOut(cell.quantity)) onUndo(cell)
                 onAction(PantryGridAction.DecreaseQuantity(id))
             },
+            modifier = Modifier.animateItem(),
         )
     }
 }
