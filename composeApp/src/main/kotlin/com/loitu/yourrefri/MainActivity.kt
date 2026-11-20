@@ -24,17 +24,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.ViewModelProvider
 import com.loitu.yourrefri.feature.backup.data.BackupCodec
-import com.loitu.yourrefri.feature.backup.data.PantryBackupRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
-import com.loitu.yourrefri.feature.pantry.data.Ingredient
-import com.loitu.yourrefri.feature.pantry.data.ShelfTable
-import com.loitu.yourrefri.feature.recipe.data.Recipe
-import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
-import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.FavoriteRecipeRepositoryImpl
-import com.loitu.yourrefri.feature.recipe.data.SqlTasteProfileRepository
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
@@ -42,12 +32,10 @@ import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
-import com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
+import com.loitu.yourrefri.di.AppGraph
 import com.loitu.yourrefri.shared.db.DatabaseTooNewException
-import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.ui.DatabaseTooNewNotice
-import com.loitu.yourrefri.shared.db.createDatabase
 import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.theme.ThemeMode
 import com.loitu.yourrefri.ui.theme.ThemePrefs
@@ -63,39 +51,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-
-@OptIn(kotlin.time.ExperimentalTime::class)
-private object AppGraph {
-    @Volatile private var cached: AppDependencies? = null
-
-    fun get(context: android.content.Context): AppDependencies =
-        cached ?: synchronized(this) { cached ?: build(context.applicationContext).also { cached = it } }
-
-    private fun build(context: android.content.Context): AppDependencies {
-        // create() tự kiểm tra DB mới hơn app (ném DatabaseTooNewException) trước khi mở.
-        val driver = DriverFactory(context).create()
-        val db = createDatabase(driver)
-        val repo = PantryRepositoryImpl(
-            db = db,
-            clock = Clock.System,
-            timeZone = TimeZone.currentSystemDefault(),
-            ioContext = Dispatchers.IO,
-        )
-        val json = context.assets.open("shelf_table.json").bufferedReader().use { it.readText() }
-        val parsedIngredients = ShelfTable.parse(json)
-        val recipeJson = context.assets.open("recipes.json").bufferedReader().use { it.readText() }
-        return AppDependencies(
-            pantryRepository = repo,
-            ingredients = parsedIngredients,
-            backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO),
-            recipes = RecipeBundle.parse(recipeJson),
-            weeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO),
-            tasteProfileRepository = SqlTasteProfileRepository(db, Dispatchers.IO),
-            favoriteRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, Clock.System),
-            cookLogRepository = com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl(db, Dispatchers.IO),
-        )
-    }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
@@ -132,17 +87,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class AppDependencies(
-    val pantryRepository: PantryRepositoryImpl,
-    val ingredients: List<Ingredient>,
-    val backupRepository: PantryBackupRepositoryImpl,
-    val recipes: List<Recipe>,
-    val weeklyMealPlanRepository: WeeklyMealPlanRepositoryImpl,
-    val tasteProfileRepository: SqlTasteProfileRepository,
-    val favoriteRepository: FavoriteRecipeRepositoryImpl,
-    val cookLogRepository: com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl,
-)
-
 @OptIn(ExperimentalTime::class)
 @Composable
 private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
@@ -157,29 +101,9 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     // Một bộ phụ thuộc cho cả tiến trình: xoay màn hình không mở thêm SqlDriver mới cho các ViewModel đang giữ lại.
     val dependencies = remember(context) { AppGraph.get(context) }
 
-    val pantryRepository = dependencies.pantryRepository
-    val ingredients = dependencies.ingredients
-    val backupRepository = dependencies.backupRepository
-    val viewModel = remember(pantryRepository, ingredients) {
-        PantryGridViewModel(
-            repository = pantryRepository,
-            ingredients = ingredients,
-            clock = Clock.System,
-            timeZone = TimeZone.currentSystemDefault(),
-        )
-    }
+    val viewModel = remember(dependencies) { dependencies.createPantryGridViewModel() }
     val weeklyMealPlanViewModel: WeeklyMealPlanViewModel = viewModel(
-        factory = remember(dependencies.weeklyMealPlanRepository) {
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
-                    WeeklyMealPlanViewModel(
-                        repository = dependencies.weeklyMealPlanRepository,
-                        clock = Clock.System,
-                        timeZone = TimeZone.currentSystemDefault(),
-                    ) as T
-            }
-        },
+        factory = remember(dependencies) { dependencies.weeklyMealPlanViewModelFactory() },
     )
     val tasteProfile by dependencies.tasteProfileRepository.observe().collectAsState(initial = FamilyTasteProfile())
     LaunchedEffect(weeklyMealPlanViewModel, tasteProfile) {
@@ -187,27 +111,11 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     }
 
     val favoriteViewModel: FavoriteRecipesViewModel = viewModel(
-        factory = remember(dependencies.favoriteRepository) {
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
-                    FavoriteRecipesViewModel(repository = dependencies.favoriteRepository) as T
-            }
-        },
+        factory = remember(dependencies) { dependencies.favoriteRecipesViewModelFactory() },
     )
     val favoriteState by favoriteViewModel.state.collectAsState()
     val cookHistoryViewModel: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel = viewModel(
-        factory = remember(dependencies.cookLogRepository) {
-            object : ViewModelProvider.Factory {
-                @Suppress("UNCHECKED_CAST")
-                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T =
-                    com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel(
-                        repository = dependencies.cookLogRepository,
-                        clock = Clock.System,
-                        timeZone = TimeZone.currentSystemDefault(),
-                    ) as T
-            }
-        },
+        factory = remember(dependencies) { dependencies.cookHistoryViewModelFactory() },
     )
     val cookHistoryState by cookHistoryViewModel.state.collectAsState()
     var dietRestriction by remember { mutableStateOf(DietPrefs.read(context)) }
@@ -269,7 +177,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             scope.launch {
                 backupStatus = try {
                     withContext(Dispatchers.IO) {
-                        val json = backupRepository.exportJson()
+                        val json = dependencies.backupRepository.exportJson()
                         val output = context.contentResolver.openOutputStream(uri)
                             ?: error("Không mở được file để ghi")
                         output.bufferedWriter(Charsets.UTF_8).use { it.write(json) }
@@ -362,7 +270,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             pendingRestoreJson = null
             scope.launch {
                 backupStatus = try {
-                    withContext(Dispatchers.IO) { backupRepository.restoreJson(json) }
+                    withContext(Dispatchers.IO) { dependencies.backupRepository.restoreJson(json) }
                     weeklyMealPlanViewModel.reloadSettings()
                     favoriteViewModel.reload()
                     cookHistoryViewModel.reload()
