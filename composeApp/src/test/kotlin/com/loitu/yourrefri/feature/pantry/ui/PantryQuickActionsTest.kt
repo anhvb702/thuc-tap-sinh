@@ -26,13 +26,16 @@ class PantryQuickActionsTest {
         )
     }
 
-    @Test fun selectionToggle_isReversible() {
-        assertEquals(setOf("a"), toggleBatchSelection(emptySet(), "a"))
-        assertEquals(emptySet(), toggleBatchSelection(setOf("a"), "a"))
-    }
-
-    @Test fun batchClear_marksOnlySelectedItemsThatArePresent() {
-        assertEquals(listOf(PantryGridAction.Tap("thit-heo")), batchClearActions(setOf("thit-heo", "trung-ga"), state))
+    @Test fun clearAll_marksEveryPresentItem_once() {
+        val all = state.copy(
+            ingredients = state.ingredients + Ingredient("tom", "Tôm", "hai-san", 2),
+            pantry = state.pantry + ("tom" to PantryItem("tom", true, today)) +
+                ("trung-ga" to PantryItem("trung-ga", false, today)),
+        )
+        assertEquals(
+            listOf(PantryGridAction.Tap("thit-heo"), PantryGridAction.Tap("tom")),
+            clearAllPantryActions(all),
+        )
     }
 
     @Test fun copy_hasNoProductBannedWords() {
