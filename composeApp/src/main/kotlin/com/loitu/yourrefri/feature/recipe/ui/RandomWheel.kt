@@ -29,6 +29,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -110,7 +111,12 @@ internal fun RandomWheelDialog(
     if (!showResult) AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text("Hôm nay mình nấu gì nhỉ?", color = colors.text) },
+        title = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Hôm nay mình nấu gì nhỉ?", color = colors.text, modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.muted) }
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -193,20 +199,15 @@ internal fun RandomWheelDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("Đóng", color = colors.muted)
-            }
-        },
+        confirmButton = {},
     ) else AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
         title = {
-            Text(
-                RandomRecipeCopy.resultTitle,
-                color = colors.text,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            )
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(RandomRecipeCopy.resultTitle, color = colors.text, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), modifier = Modifier.weight(1f))
+                IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.muted) }
+            }
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -6,6 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,6 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,6 +40,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.home.logic.homeGreeting
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
@@ -81,6 +94,99 @@ internal fun pantryCardDescription(count: Int, zones: PantryZoneCounts): String 
     } else {
         "Trong tủ hiện có $count nguyên liệu, ${zones.fridge} ở ngăn mát, ${zones.freezer} ở ngăn đông. Chạm để xem tủ"
     }
+
+internal enum class PantryOverviewBucket { FRIDGE, FREEZER, URGENT }
+
+@Composable
+internal fun PantryOverviewSection(
+    totalCount: Int,
+    fridgeCount: Int,
+    freezerCount: Int,
+    urgentCount: Int,
+    onOpenPantry: () -> Unit,
+    onSelectBucket: (PantryOverviewBucket) -> Unit,
+) {
+    val colors = AppTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Surface(
+            modifier = Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button, onClick = onOpenPantry),
+            shape = RoundedCornerShape(20.dp),
+            color = colors.primary,
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Trong tủ hiện có", style = MaterialTheme.typography.bodyMedium, color = colors.onPrimary)
+                Text("$totalCount", style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, fontWeight = FontWeight.ExtraBold), color = colors.onPrimary)
+                Text("nguyên liệu", style = MaterialTheme.typography.bodyMedium, color = colors.onPrimary)
+            }
+        }
+        Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            PantryBucketButton("Ngăn mát", fridgeCount, colors.primary) { onSelectBucket(PantryOverviewBucket.FRIDGE) }
+            PantryBucketButton("Ngăn đông", freezerCount, colors.primary) { onSelectBucket(PantryOverviewBucket.FREEZER) }
+            PantryBucketButton("Cần dùng ngay", urgentCount, colors.warnText) { onSelectBucket(PantryOverviewBucket.URGENT) }
+        }
+    }
+}
+
+@Composable
+private fun PantryBucketButton(label: String, count: Int, circleColor: Color, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    Surface(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick),
+        shape = RoundedCornerShape(16.dp), color = colors.surface,
+        shadowElevation = 4.dp, border = BorderStroke(1.dp, colors.line),
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text)
+            Surface(shape = CircleShape, color = circleColor, shadowElevation = 3.dp, modifier = Modifier.size(28.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(count.toString(), color = if (circleColor == colors.warnText) colors.onCta else colors.onPrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PantryBucketPopupDialog(bucket: PantryOverviewBucket, items: List<PantryCell>, onDismiss: () -> Unit) {
+    val colors = AppTheme.colors
+    val title = when (bucket) {
+        PantryOverviewBucket.FRIDGE -> "Ngăn mát"
+        PantryOverviewBucket.FREEZER -> "Ngăn đông"
+        PantryOverviewBucket.URGENT -> "Cần dùng ngay"
+    }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxWidth(0.92f).heightIn(max = 560.dp), shape = RoundedCornerShape(24.dp), color = colors.surface) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                        Text("${items.size} thực phẩm · Hạn là ước tính", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    }
+                    IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text) }
+                }
+                if (items.isEmpty()) {
+                    Text("Chưa có thực phẩm nào trong mục này.", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(items, key = { it.ingredientId }) { item ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                FoodThumb(item.ingredientId, size = 44.dp, shape = RoundedCornerShape(12.dp), urgent = bucket == PantryOverviewBucket.URGENT)
+                                Column(Modifier.weight(1f)) {
+                                    Text(item.nameVi, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text)
+                                    Text(estimateDaysText(item.daysLeft ?: 0), style = MaterialTheme.typography.bodySmall, color = if ((item.daysLeft ?: 0) <= 2) colors.warnText else colors.muted)
+                                }
+                                if (item.quantity > 0) Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.bodySmall, color = colors.text)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 // Mục "Nên dùng trước": một thẻ cam nhạt gom các món sắp hết hạn ước tính.
 @Composable

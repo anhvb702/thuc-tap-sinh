@@ -1,10 +1,15 @@
 package com.loitu.yourrefri.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,6 +19,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +74,14 @@ import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForAllRecipes
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForHomeCard
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreenMode
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyMealPlan
+import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyShoppingList
+import com.loitu.yourrefri.feature.recipe.logic.cookableRecipes
+import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
+import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
+import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
+import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanSection
+import com.loitu.yourrefri.feature.recipe.ui.WeeklyShoppingSection
 import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
@@ -127,6 +142,11 @@ fun MainScaffold(
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
+    var showWeeklyOverlay by remember { mutableStateOf(false) }
+    var showShoppingOverlay by remember { mutableStateOf(false) }
+    var showGlobalRandomWheel by remember { mutableStateOf(false) }
+    var showGlobalNoCookable by remember { mutableStateOf(false) }
+    var globalRandomPick by remember { mutableStateOf<com.loitu.yourrefri.feature.recipe.logic.RandomRecipePick?>(null) }
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
     // Công thức đang mở ở màn chi tiết. Tạm dùng state cục bộ; khi có Navigation Compose sẽ thành route RecipeDetail.
@@ -171,6 +191,20 @@ fun MainScaffold(
     }
     val visibleRecipes = remember(recipes, dietRestriction, dietTooStrict, state.ingredients) {
         if (dietTooStrict) recipes else filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
+    }
+    val globalWeeklyPlan = remember(visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences, weeklyMealPlanState.swappedOffsets, tasteProfile) {
+        buildWeeklyMealPlan(visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences, weeklyMealPlanState.swappedOffsets, tasteProfile)
+    }
+    val globalShopping = remember(globalWeeklyPlan, state, weeklyMealPlanState.preferences, weeklyMealPlanState.includeLunchMealPrep) {
+        buildWeeklyShoppingList(globalWeeklyPlan, state, weeklyMealPlanState.preferences, includeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep)
+    }
+    fun stockIngredients(ids: List<String>) {
+        ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
+            if (state.pantry[id]?.have != true) {
+                onAction(PantryGridAction.AddIngredient(id, null))
+                repeat((needed - 1).coerceAtLeast(0)) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+            } else repeat(needed.coerceAtLeast(0)) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+        }
     }
     LaunchedEffect(dietTooStrict, dietRestriction) {
         if (dietTooStrict) snackbarHostState.showSnackbar(SettingsPresentation.dietTooStrictNotice)
@@ -471,6 +505,58 @@ fun MainScaffold(
                      onTasteProfileChange = onTasteProfileChange,
                 )
             }
+            GlobalFloatingActionButtons(
+                onOpenWeeklyPlan = { showWeeklyOverlay = true },
+                onOpenRandomWheel = {
+                    val cookable = cookableRecipes(recipes, state)
+                    if (cookable.isEmpty()) showGlobalNoCookable = true
+                    else {
+                        globalRandomPick = pickRandomRecipe(cookable, state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default)
+                        showGlobalRandomWheel = globalRandomPick != null
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
+            )
+            if (showWeeklyOverlay) FloatingOverlayDialog("Thực đơn cả tuần", { showWeeklyOverlay = false }) {
+                WeeklyMealPlanSection(
+                    plan = globalWeeklyPlan,
+                    goal = weeklyMealPlanState.goal,
+                    preferences = weeklyMealPlanState.preferences,
+                    onGoal = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetGoal(it)) },
+                    onPreference = { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) },
+                    onSwap = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SwapDay(it)) },
+                    onRequestCook = { cooked -> showWeeklyOverlay = false; openedRecipeId = cooked.id; currentTab = NavTab.RECIPES },
+                    updatedRecipeResult = null,
+                    weekStart = weeklyMealPlanState.weekStart,
+                    onNavigate = { target -> if (target == RecipeScreenMode.SHOPPING) showShoppingOverlay = true },
+                    includeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
+                    onIncludeLunchMealPrepChange = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(it)) },
+                )
+            }
+            if (showShoppingOverlay) FloatingOverlayDialog("Danh sách đi chợ", { showShoppingOverlay = false }) {
+                WeeklyShoppingSection(
+                    shopping = globalShopping,
+                    uncheckedIds = weeklyMealPlanState.uncheckedIds,
+                    onToggleChecked = { id, checked -> onWeeklyMealPlanAction(WeeklyMealPlanAction.ToggleIngredient(id, checked)) },
+                    onStock = { ids -> stockIngredients(ids); showShoppingOverlay = false; showWeeklyOverlay = false },
+                )
+            }
+            val globalPick = globalRandomPick
+            if (showGlobalRandomWheel && globalPick != null) RandomWheelDialog(
+                pool = cookableRecipes(recipes, state), pick = globalPick,
+                onSpinAgain = { globalRandomPick = pickRandomRecipe(cookableRecipes(recipes, state), state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default) },
+                onOpenRecipe = { recipe -> showGlobalRandomWheel = false; showHistory = false; cookDone = null; handsFreeRecipeId = null; openedRecipeId = recipe.id; currentTab = NavTab.RECIPES },
+                onDismiss = { showGlobalRandomWheel = false },
+            )
         }
     }
+    if (showGlobalNoCookable) AlertDialog(
+        onDismissRequest = { showGlobalNoCookable = false }, containerColor = AppTheme.colors.surface,
+        title = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Nấu ngẫu nhiên", Modifier.weight(1f), color = AppTheme.colors.text)
+                IconButton(onClick = { showGlobalNoCookable = false }) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = AppTheme.colors.text) }
+            }
+        }, text = { Text(RandomRecipeCopy.noCookable, color = AppTheme.colors.muted) }, confirmButton = {},
+    )
 }

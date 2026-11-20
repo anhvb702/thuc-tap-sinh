@@ -20,6 +20,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
@@ -66,6 +68,7 @@ fun HomeScreen(
     val homeState by homeViewModel.state.collectAsState()
     val dashboard = homeState.dashboard
     val zones = pantryZoneCounts(dashboard.haveItems.map { it.ingredientId })
+    var activeBucket by remember { mutableStateOf<PantryOverviewBucket?>(null) }
 
     LaunchedEffect(state, recipes, meal, tasteProfile) {
         homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
@@ -111,7 +114,7 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         HomeHeader(
@@ -124,28 +127,20 @@ fun HomeScreen(
                 PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
             }
         }
-        PantrySummaryCard(
-            count = dashboard.haveItems.size,
-            zones = zones,
+        PantryOverviewSection(
+            totalCount = dashboard.haveItems.size,
+            fridgeCount = zones.fridge,
+            freezerCount = zones.freezer,
+            urgentCount = dashboard.urgentItems.size,
             onOpenPantry = onNavigateToPantry,
-            onOpenShopping = onOpenShopping,
+            onSelectBucket = { activeBucket = it },
         )
-        UseSoonSection(items = dashboard.urgentItems, onOpenPantry = onNavigateToPantry)
         RecommendationSection(
             recommendations = dashboard.recommendations,
             onNavigateToRecipe = onNavigateToRecipe,
             onNavigateToRecipes = onNavigateToRecipes,
             onNavigateToPantry = onNavigateToPantry,
         )
-        WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
-        if (dashboard.haveItems.isNotEmpty() && recipes.isNotEmpty()) {
-            ShortcutCard(
-                icon = AppIcons.Wheel,
-                title = RandomRecipeCopy.button,
-                subtitle = "Quay vòng chọn nhanh một món cho bữa tối",
-                onClick = { homeViewModel.onIntent(HomeIntent.OpenRandomWheel) },
-            )
-        }
         if (onNavigateToHistory != null) {
             ShortcutCard(
                 icon = AppIcons.Clock,
@@ -159,6 +154,14 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodySmall,
             color = colors.muted,
         )
+    }
+    activeBucket?.let { bucket ->
+        val items = when (bucket) {
+            PantryOverviewBucket.FRIDGE -> dashboard.haveItems.filter { !isFreezerItem(it.ingredientId) }
+            PantryOverviewBucket.FREEZER -> dashboard.haveItems.filter { isFreezerItem(it.ingredientId) }
+            PantryOverviewBucket.URGENT -> dashboard.urgentItems
+        }
+        PantryBucketPopupDialog(bucket, items, onDismiss = { activeBucket = null })
     }
 }
 @Composable
