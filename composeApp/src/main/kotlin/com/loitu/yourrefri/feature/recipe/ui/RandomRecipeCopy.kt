@@ -28,6 +28,8 @@ import com.loitu.yourrefri.ui.theme.AppTheme
 
 internal object RandomRecipeCopy {
     const val button = "Nấu ngẫu nhiên"
+    const val resultTitle = "Nay hữu duyên nấu món này nè!"
+    const val noCookable = "Chưa đủ nguyên liệu để nấu trọn món nào — mình đi chợ thêm nhé!"
     const val needMore = "Món này cần thêm vài thứ nữa nè"
     const val outsideDiet = "Món này ngoài chế độ ăn của bạn"
     const val tryAnother = "Thử món khác"
