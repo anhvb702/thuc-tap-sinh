@@ -1,17 +1,16 @@
 package com.loitu.yourrefri.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -42,7 +41,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.home.ui.HomeScreen
@@ -511,26 +509,28 @@ fun MainScaffold(
                     }
                 }
             }
-            val fabLiftState = animateDpAsState(
-                targetValue = if (currentTab == NavTab.RECIPES && openedRecipeId != null && cookDone == null && handsFreeRecipe == null) 72.dp else 0.dp,
-                animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-                label = "fabLift",
-            )
-            GlobalFloatingActionButtons(
-                onOpenWeeklyPlan = { showWeeklyOverlay = true },
-                onOpenRandomWheel = {
-                    val cookable = cookableRecipes(recipes, state)
-                    if (cookable.isEmpty()) showGlobalNoCookable = true
-                    else {
-                        globalRandomPick = pickRandomRecipe(cookable, state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default)
-                        showGlobalRandomWheel = globalRandomPick != null
-                    }
-                },
+            val showHomeFabs = shouldShowGlobalFloatingActions(currentTab, cookDone != null, handsFreeRecipe != null, showHistory)
+            AnimatedVisibility(
+                visible = showHomeFabs,
+                enter = fadeIn(tween(180)),
+                exit = fadeOut(tween(140)),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 16.dp)
-                    .offset { IntOffset(0, -fabLiftState.value.roundToPx()) },
-            )
+                    .padding(end = 16.dp, bottom = 16.dp),
+            ) {
+                GlobalFloatingActionButtons(
+                    onOpenWeeklyPlan = { showWeeklyOverlay = true },
+                    onOpenRandomWheel = {
+                        val cookable = cookableRecipes(recipes, state)
+                        if (cookable.isEmpty()) showGlobalNoCookable = true
+                        else {
+                            globalRandomPick = pickRandomRecipe(cookable, state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default)
+                            showGlobalRandomWheel = globalRandomPick != null
+                        }
+                    },
+                    modifier = Modifier,
+                )
+            }
             if (showWeeklyOverlay) FloatingOverlayDialog("Thực đơn cả tuần", { showWeeklyOverlay = false }) {
                 WeeklyMealPlanSection(
                     plan = globalWeeklyPlan,
