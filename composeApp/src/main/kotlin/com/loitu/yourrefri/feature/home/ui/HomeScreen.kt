@@ -36,9 +36,8 @@ import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
-import com.loitu.yourrefri.feature.recipe.ui.MealCopy
-import com.loitu.yourrefri.feature.recipe.ui.PillChip
 import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
 import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
@@ -69,6 +68,8 @@ fun HomeScreen(
     val dashboard = homeState.dashboard
     val zones = pantryZoneCounts(dashboard.haveItems.map { it.ingredientId })
     var activeBucket by remember { mutableStateOf<PantryOverviewBucket?>(null) }
+    var dismissedRecipeIds by remember { mutableStateOf(emptySet<String>()) }
+    val activeSuggestion: RecipeRecommendation? = dashboard.recommendations.firstOrNull { it.recipe.id !in dismissedRecipeIds }
 
     LaunchedEffect(state, recipes, meal, tasteProfile) {
         homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
@@ -122,11 +123,6 @@ fun HomeScreen(
             weatherLine = formatHomeWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
             onWeatherClick = { homeViewModel.onIntent(HomeIntent.ToggleWeatherCity) },
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MealSlot.entries.forEach { option ->
-                PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
-            }
-        }
         PantryOverviewSection(
             totalCount = dashboard.haveItems.size,
             fridgeCount = zones.fridge,
@@ -135,8 +131,11 @@ fun HomeScreen(
             onOpenPantry = onNavigateToPantry,
             onSelectBucket = { activeBucket = it },
         )
-        RecommendationSection(
-            recommendations = dashboard.recommendations,
+        DailySpotlightRecommendationSection(
+            hasRecommendations = dashboard.recommendations.isNotEmpty(),
+            activeSuggestion = activeSuggestion,
+            onDismissSuggestion = { dismissedRecipeIds = dismissedRecipeIds + it },
+            onResetDismissedSuggestions = { dismissedRecipeIds = emptySet() },
             onNavigateToRecipe = onNavigateToRecipe,
             onNavigateToRecipes = onNavigateToRecipes,
             onNavigateToPantry = onNavigateToPantry,

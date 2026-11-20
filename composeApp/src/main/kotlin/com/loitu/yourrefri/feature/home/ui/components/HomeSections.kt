@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -107,44 +108,40 @@ internal fun PantryOverviewSection(
     onSelectBucket: (PantryOverviewBucket) -> Unit,
 ) {
     val colors = AppTheme.colors
-    Row(
-        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenPantry),
+        shape = RoundedCornerShape(22.dp),
+        color = colors.primary,
     ) {
-        Surface(
-            modifier = Modifier.weight(1f).fillMaxHeight().clickable(role = Role.Button, onClick = onOpenPantry),
-            shape = RoundedCornerShape(20.dp),
-            color = colors.primary,
-        ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Trong tủ hiện có", style = MaterialTheme.typography.bodyMedium, color = colors.onPrimary)
-                Text("$totalCount", style = MaterialTheme.typography.displaySmall.copy(fontSize = 36.sp, fontWeight = FontWeight.ExtraBold), color = colors.onPrimary)
-                Text("nguyên liệu", style = MaterialTheme.typography.bodyMedium, color = colors.onPrimary)
+                Text("$totalCount nguyên liệu", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = colors.onPrimary)
             }
-        }
-        Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PantryBucketButton("Ngăn mát", fridgeCount, colors.primary) { onSelectBucket(PantryOverviewBucket.FRIDGE) }
-            PantryBucketButton("Ngăn đông", freezerCount, colors.primary) { onSelectBucket(PantryOverviewBucket.FREEZER) }
-            PantryBucketButton("Cần dùng ngay", urgentCount, colors.warnText) { onSelectBucket(PantryOverviewBucket.URGENT) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PantryBucketButton("Ngăn mát", fridgeCount, colors.primary, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.FRIDGE) }
+                PantryBucketButton("Ngăn đông", freezerCount, colors.primary, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.FREEZER) }
+                PantryBucketButton("Dùng ngay", urgentCount, colors.cta, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.URGENT) }
+            }
         }
     }
 }
 
 @Composable
-private fun PantryBucketButton(label: String, count: Int, circleColor: Color, onClick: () -> Unit) {
+private fun PantryBucketButton(label: String, count: Int, circleColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val colors = AppTheme.colors
     Surface(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onClick),
+        modifier = modifier.clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(16.dp), color = colors.surface,
-        shadowElevation = 4.dp, border = BorderStroke(1.dp, colors.line),
+        shadowElevation = 4.dp,
     ) {
-        Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text)
-            Surface(shape = CircleShape, color = circleColor, shadowElevation = 3.dp, modifier = Modifier.size(28.dp)) {
+        Column(Modifier.padding(vertical = 10.dp, horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Surface(shape = CircleShape, color = circleColor, shadowElevation = 3.dp, modifier = Modifier.size(32.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(count.toString(), color = if (circleColor == colors.warnText) colors.onCta else colors.onPrimary, fontWeight = FontWeight.Bold)
+                    Text(count.toString(), color = if (circleColor == colors.cta) colors.onCta else colors.onPrimary, fontWeight = FontWeight.ExtraBold)
                 }
             }
+            Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text, maxLines = 1)
         }
     }
 }
@@ -291,6 +288,64 @@ internal fun RecommendationSection(
         } else {
             recommendations.forEach { r ->
                 HomeRecipeRow(r.recipe, r.reason) { onNavigateToRecipe(r.recipe.id) }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DailySpotlightRecommendationSection(
+    hasRecommendations: Boolean,
+    activeSuggestion: RecipeRecommendation?,
+    onDismissSuggestion: (String) -> Unit,
+    onResetDismissedSuggestions: () -> Unit,
+    onNavigateToRecipe: (String) -> Unit,
+    onNavigateToRecipes: () -> Unit,
+    onNavigateToPantry: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("Gợi ý bữa cơm hôm nay", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = colors.text)
+            TextButton(onClick = onNavigateToRecipes) { Text("Xem thêm", color = colors.accentText) }
+        }
+        when {
+            !hasRecommendations -> {
+                Text(emptyRecommendationCopy.message, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+                TextButton(onClick = onNavigateToPantry) { Text("Xem tủ lạnh", color = colors.accentText) }
+            }
+            activeSuggestion == null -> Surface(shape = RoundedCornerShape(20.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line)) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Bạn đã ẩn các gợi ý vừa rồi", Modifier.weight(1f), color = colors.muted)
+                    TextButton(onClick = onResetDismissedSuggestions) { Text("Xem lại", color = colors.accentText) }
+                }
+            }
+            else -> {
+                val suggestion = requireNotNull(activeSuggestion)
+                Surface(
+                    modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { onNavigateToRecipe(suggestion.recipe.id) },
+                    shape = RoundedCornerShape(22.dp), color = colors.surface, shadowElevation = 6.dp, border = BorderStroke(1.dp, colors.line),
+                ) {
+                    Column {
+                        Box(Modifier.fillMaxWidth().height(176.dp)) {
+                            RecipeThumb(suggestion.recipe.id, Modifier.fillMaxSize(), 176.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                            Text(shortReasonLabel(suggestion.reason), Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(999.dp)).background(colors.surface.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 6.dp), color = colors.text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
+                            Surface(Modifier.align(Alignment.TopEnd).padding(8.dp), shape = CircleShape, color = colors.surface.copy(alpha = 0.90f), shadowElevation = 2.dp) {
+                                IconButton(onClick = { onDismissSuggestion(suggestion.recipe.id) }, modifier = Modifier.size(40.dp)) {
+                                    Icon(AppIcons.Close, contentDescription = "Bỏ qua món này", modifier = Modifier.size(18.dp), tint = colors.text)
+                                }
+                            }
+                        }
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            val details = buildList {
+                                suggestion.recipe.minutes?.let { add("$it phút") }
+                                add(if (suggestion.reason == RecommendationReason.READY || suggestion.reason == RecommendationReason.USE_SOON) "Đủ nguyên liệu" else shortReasonLabel(suggestion.reason))
+                            }.joinToString(" · ")
+                            Text(details, style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
             }
         }
     }
