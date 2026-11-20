@@ -7,6 +7,7 @@ import com.loitu.yourrefri.feature.backup.data.PantryBackupRepositoryImpl
 import com.loitu.yourrefri.feature.cooklog.data.CookLogRepository
 import com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel
+import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryRepository
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
@@ -40,6 +41,7 @@ interface AppContainer {
     val recipes: List<Recipe>
 
     fun createPantryGridViewModel(): PantryGridViewModel
+    fun homeViewModelFactory(): ViewModelProvider.Factory
     fun weeklyMealPlanViewModelFactory(): ViewModelProvider.Factory
     fun favoriteRecipesViewModelFactory(): ViewModelProvider.Factory
     fun cookHistoryViewModelFactory(): ViewModelProvider.Factory
@@ -66,6 +68,8 @@ class DefaultAppContainer(context: Context) : AppContainer {
     }
 
     override fun createPantryGridViewModel() = PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
+
+    override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel() }
 
     override fun weeklyMealPlanViewModelFactory() = singleViewModelFactory {
         WeeklyMealPlanViewModel(weeklyMealPlanRepository, clock, timeZone)
