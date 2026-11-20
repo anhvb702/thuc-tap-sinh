@@ -1,114 +1,72 @@
 # HANDOFF: YourRefri
 
-> Cập nhật: **2026-11-17**. Repo `anhvb702/thuc-tap-sinh`; trạng thái mô tả là `origin/main` tại `9dd9433` (merge PR #6, 2026-11-16), cộng PR tài liệu này.
-> Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — Warm Minimalism, dữ liệu chỉ lưu trên thiết bị.
-> Đọc file này đầu tiên, rồi `DECISIONS.md` (quyết định Q1–Q28) và `PLAN.md` (đợt R0–R6). Đối chiếu `git log origin/main` trước khi tin bất kỳ dòng trạng thái nào.
+> Cập nhật: **2026-11-20**. Repo `anhvb702/thuc-tap-sinh`; trạng thái hiện tại là `origin/main` tại **`3d578a7`** (sau PR #65).
+> Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — Warm Minimalism, dữ liệu chỉ lưu trên thiết bị (offline-only SQLDelight).
+> Đọc file này đầu tiên, rồi các quy tắc bắt buộc trong `.agents/rules/` (`vibe-coding-10-stage-workflow.md`, `clean-architecture-mvi.md`, `test-retry-and-bug-isolation.md`), `DECISIONS.md` và `PLAN.md`. Luôn đối chiếu `git log origin/main -n 10` trước khi làm tiếp.
 
-## Cập nhật lượt 2026-11-18: kiểm tra lại các feature
+---
 
-Lượt này đo trên nhánh `feat/zalo-share-reminder-test-now` (đầu `840d488`, có thay đổi chưa commit), không phải `main`. Các số dưới đây không áp dụng cho `main`.
+## 1. Trạng thái hiện tại trên `main` (`3d578a7`)
 
-**Gradle (tuần tự, một tiến trình tại một thời điểm, `--rerun-tasks --max-workers=1`):**
-- `:shared:testDebugUnitTest`: BUILD SUCCESSFUL, 556 test, 0 lỗi, 0 bỏ qua.
-- `:composeApp:testDebugUnitTest`: BUILD SUCCESSFUL, 428 test, 0 lỗi, 0 bỏ qua.
-- `:composeApp:assembleDebug`: BUILD SUCCESSFUL.
+### Sản phẩm & dữ liệu
+- **Danh mục đã mở rộng & đồng bộ ảnh 100%:** **42 nguyên liệu** (gồm cả gia vị `nuoc-mam`, `dau-an`, `nuoc-tuong`) và **30 món ăn Việt Nam** (4 bước/món), toàn bộ có ảnh studio đồng bộ (`AssetCoverageTest` kiểm tra 100%).
+- **Database SQLDelight v9:** Đã có migration `1.sqm`–`8.sqm` (migration 8 thêm bảng `taste_profile` cho Khẩu vị gia đình); sao lưu/khôi phục JSON v2 tương thích ngược v1.
+- **Tủ lạnh (`Pantry`):**
+  - Nhãn phân khu bảo quản **Ngăn mát / Ngăn đông · Cần rã đông trước** kèm nhắc rã đông ở chi tiết món & bước 1 nấu rảnh tay (**PR #58**).
+  - **Món thừa (`+ Món thừa`)**, **Combo đi chợ 1 chạm (`+ Combo`)** có snackbar xác nhận, **Dọn tủ 1 lần** (xác nhận → xoá hết đồ đang có + Hoàn tác 5 giây), sửa lỗi **Khác / Thêm món** lưu đúng vào tủ qua `AddCustomFood(isLeftover = false)` (**PR #59, #60**).
+  - **Nhập giọng nói (Mic):** Đã sửa lỗi deadlock/disable mic bằng cách chuyển `SpeechRecognizer.destroy()` ra khỏi callback đồng bộ qua `Handler(Looper.getMainLooper()).post`, bọc `try/catch`, fallback 1.5s và timeout UI 10s (**PR #60**).
+- **Món ăn, Thực đơn tuần & Quay ngẫu nhiên:**
+  - **Khẩu vị gia đình:** Thẻ cài đặt gọn có thể thu gọn và nút **Lưu khẩu vị** rõ ràng (`1ac558c`).
+  - **Thực đơn tuần:** Cho phép chọn **Bữa trưa / Bữa tối / Cả trưa & tối** (`WeeklyMealOption`) ngay trong bước thiết lập (**PR #61**).
+  - **Quay ngẫu nhiên:** Chỉ quay **các món có thể nấu được** (`cookableRecipes`), xác suất đều, tốc độ quay giảm dần mượt 5.2s (cubic ease-out) + phóng sáng `1.08x` ô trúng; hộp quay chỉ giữ nút **Đóng**; sau khi dừng tự chuyển sang màn hình kết quả **"Nay hữu duyên nấu món này nè!"** kèm ảnh món và 2 nút **Quay lại / Xem cách nấu** (**PR #62**).
+  - **Nấu rảnh tay & thông báo:** Đồng hồ đếm ngược tròn (`CookTimerCard.kt`), ảnh thành phẩm bước cuối, `LruCache<String, ImageBitmap>(64)` cho thumbnail, thông báo heads-up kèm ảnh món và `ReminderPopupBoxDialog` (**PR #46–#57**).
 
-**Tiêu chí "ok":** contract trong `docs/tests/` có dòng Đạt và có mutation Bị bắt. Phân loại dưới đây đọc lại từ contract, không chỉ từ PLAN.
+### Kiến trúc & Quy trình Agent
+- **Clean Architecture + MVI + Manual DI (Giai đoạn 1 & 2 đã merge):**
+  - **PR #63 (`83c9bc3`):** Thêm `.agents/rules/clean-architecture-mvi.md`, base `MviViewModel<S, I, E>` (`core/mvi/MviViewModel.kt`), và tách Manual DI sang `di/AppContainer.kt` (gắn vào Repository interface thay vì `*Impl`; giảm `MainActivity.kt` từ 379 → 287 dòng).
+  - **PR #64 (`0f14d03`):** Refactor feature mẫu **`Home`** theo chuẩn 3 tầng: `:shared/.../home/domain/` (`HomeDashboardData`, `BuildHomeDashboardUseCase`, `PickHomeRandomRecipeUseCase`) + `:composeApp/.../home/presentation/` (`HomeContract`, `HomeViewModel`) + UI mỏng `HomeScreen.kt` (giảm **521 → 162 dòng**, tách thẻ sang `components/HomeSections.kt`).
+- **Quy trình 10 giai đoạn Vibe Coding:**
+  - **PR #65 (`3d578a7`):** Lưu tại `.agents/rules/vibe-coding-10-stage-workflow.md`, ánh xạ rõ vai trò đội ngũ agent hiện tại (Antigravity Tech Lead + Codex CLI `gpt-5.6-luna` + subagents + `.agents/roster.json`) cùng 5 nguyên tắc bắt buộc và mẫu báo cáo 7 mục.
 
-**Đạt (có bằng chứng unit):**
-- W2-02, W3-02, UX-02, UX-03, SW-01c-backup, SW-01c-data.
-- W3-04: số test trong biên bản là số lịch sử tại thời điểm task.
-- P12-03: 7 probe bị bắt; chưa kiểm tra chạm trên emulator.
+---
 
-**Đạt nhưng có ghi chú (cần xử lý trước khi coi là hoàn tất):**
-- W1-08: logic và migration đạt; UI chưa có ảnh hoặc kiểm tra runtime.
-- W2-01: `emptyInputs_areEmpty` không bị mutation nào làm đỏ.
-- W2-04: một mutation (lấy ngày theo UTC, giữ `toInstant(tz)`) vẫn xanh, nằm ngoài bảng 6 dòng. Cần thêm ca gần nửa đêm địa phương.
-- W4-01: `emptyPantry_returnsEmpty` không bị mutation nào làm đỏ; thời gian thao tác ≤30 giây và persistence chưa đo.
-- UX-06: sau mutation có sửa wording nhưng không chạy lại mutation.
+## 2. Bằng chứng kiểm chứng gần nhất (2026-11-20)
 
-**Chưa đạt runtime:**
-- W4-03: ở cỡ chữ 1,3, thẻ "Tủ lạnh hiện có" trên Trang chủ bị chèn (nút "Xem tủ" xuống hai dòng và đè chữ). Chưa sửa. TalkBack chưa kiểm tra.
+- **`scripts/lint-copy.ps1`:** PASS (0 từ cấm, 0 emoji UI).
+- **`:shared:testDebugUnitTest`:** **504 / 504 PASS** (0 lỗi, 0 bỏ qua) — đã xác minh sau PR #64.
+- **`:composeApp:testDebugUnitTest`:** **485 / 485 PASS** (0 lỗi, 0 bỏ qua) — đã xác minh sau PR #64.
+- **Tổng unit test:** **989 / 989 PASS**.
+- **`:composeApp:assembleDebug`:** BUILD SUCCESSFUL trên `main` (`2572af0`, trước 3 PR refactor/rule #63–#65; chưa cài APK mới lên máy ảo vì `adb devices` trống lúc chạy kiểm tra).
 
-**Có một phần:** UX-04, UX-05 (còn dòng "Chưa chạy"), W2-03 (đổi múi giờ chưa kiểm).
+---
 
-**Chưa chạy:** CR-01, PH3-02, PH3-03, W1-07a, SW-01c-wire.
+## 3. Môi trường & Lưu ý kỹ thuật quan trọng
 
-**Thiếu bằng chứng mutation đủ (có dòng Đạt nhưng không đủ bảng mutation):** W1-04, W1-05, W4-02, W5-01, W5-02A, W5-02B, W6-01, W6-02, SW-01a, SW-01b, UX-01, UX-10, QODO-01, P11-01..04, P12-01, P12-02, P12-02R.
+- **Toolchain Windows:**
+  - `JAVA_HOME = C:\Setups\JavaJDK\jdk-21.0.9`
+  - `ANDROID_HOME = C:\Users\anhvb2\AppData\Local\Android\Sdk`
+  - `ADB = C:\Users\anhvb2\AppData\Local\Android\Sdk\platform-tools\adb.exe`
+  - Gradle 8.5, AGP 8.3.2, Kotlin 2.2.20, Compose Multiplatform 1.7.3, compile/target SDK 34, minSdk 24.
+- **Quy tắc bắt buộc khi thao tác repo:**
+  - **Không commit hoặc ghi đè `gradle.properties`** ở root checkout (đang có tinh chỉnh RAM cục bộ của máy).
+  - **Chỉ chạy 1 tiến trình Gradle tại một thời điểm** (`--no-configuration-cache --max-workers=1`).
+  - **Tối đa 3 lần thử** cho mỗi lỗi test/build; quá 3 lần phải dừng khoanh vùng root cause.
+  - Luôn gọi `lint-copy.ps1` kèm `-Path $files` (tránh treo chờ stdin).
+  - Luôn dùng `--body-file` (UTF-8 không BOM) khi tạo PR bằng `gh pr create` trên PowerShell.
+  - Xoá worktree trên Windows khi gặp lỗi đường dẫn dài: `cmd /c "rmdir /s /q \\?\<path>"` rồi `git worktree prune`.
 
-**Không có kết quả trong contract (không tính là xong):** khoảng 25 contract, gồm 4B-*, A-16, W1-01, W1-02, W1-03, W1-06, UX-07, UX-11, UX-12, PH5, SEED-02 và các contract tương tự. Phần lớn task R0–R5 và SW-03 đến SW-14 có code trên nhánh nhưng chưa có contract.
+---
 
-**R6-01a:** phần `:shared` (seam `ReminderSnapshot`) xong, 6 mutation bị bắt; chưa commit. Phần `:composeApp` (loader Android, nối scheduler và receiver, chuyển `AppGraph`) chưa làm. Kiểm tay trên máy chưa làm.
+## 4. Điểm tồn tại & Việc tiếp theo (Ưu tiên)
 
-## Cập nhật lượt 2026-11-13: Batch 4B
-
-- Đã triển khai UI Gacha ở Trang chủ, danh sách đi chợ hằng ngày lưu SharedPreferences, đi chợ cuối tuần mở riêng không khóa, xác nhận theo tuần, badge “Đã nấu”, chọn ngăn, sao chép Zalo, chỉnh sửa Lite recipe và phản hồi rung nhẹ. Contracts: `docs/tests/4B-home-gacha.md`, `docs/tests/4B-daily-shopping-recipe.md`, `docs/tests/4B-weekly-shopping.md`.
-- Đã thêm test Compose cho logic Gacha, checklist, biên tập recipe và tuần; shared repository test có round-trip `upsert` cho Lite recipe. `NoEmojiInUiTest` chỉ miễn đúng chuỗi chúc mừng Gacha.
-- **Chưa xác minh test/build:** `:shared:testDebugUnitTest` dừng trước Gradle vì wrapper không tải được Gradle 8.5 (lỗi khởi tạo SSL trust store); đường dẫn JDK trong hướng dẫn không tồn tại trên máy này. JDK khả dụng là `C:\Setups\JavaJDK\jdk-21.0.9`, Android SDK là `C:\Users\anhvb2\AppData\Local\Android\Sdk`. Cần chạy tuần tự shared/compose tests và sáu mutation khi toolchain khả dụng. Runtime reduced-motion, TalkBack, rung và UI shopping cũng chưa được xác minh.
-
-
-## Đã có trên `main` (đã merge, PR #4–#7)
-
-- **Bốn tab và màn phụ:** Trang chủ, Tủ lạnh, Món ăn, Cài đặt; chi tiết công thức, nấu rảnh tay, hộp "Dùng hết hay còn lại?", màn chúc mừng, lịch sử "Đã nấu" (đợt A: `A-01`–`A-15`; giao diện v2 và chế độ tối: `UI-01`, `UI-02`).
-- **Tủ lạnh:** lưới chạm Có/Hết có Hoàn tác, bộ lọc Ngăn mát/Ngăn đông/Nên dùng sớm, +/− số lượng và đơn vị, sửa hạn ước tính, tìm kiếm, nhập bằng giọng nói (nhận dạng trên thiết bị, chỉ Android 13+), thêm món ngoài danh mục (PR #6). Danh mục 25 nguyên liệu.
-- **Món ăn:** 3 gợi ý hôm nay, bộ lọc ≤ 15/30 phút, nấu ngẫu nhiên, yêu thích, 10 công thức, chế độ ăn.
-- **Thực đơn tuần và đi chợ:** mâm 2 món mỗi ngày, danh sách đi chợ tự trừ đồ đã có, "Đã mua xong · Cất vào tủ". Thiết lập tuần (định hướng, khẩu vị, lần đổi món, món bỏ tick) lưu qua `WeeklyMealPlanViewModel` và SQLDelight (`SW-01a/b/c`, `SW-02`, `UX-11/12`). Danh sách món đã xếp chưa lưu: tính lại từ thiết lập mỗi lần.
-- **Dữ liệu:** 6 migration (`1.sqm`–`6.sqm`, schema v7); sao lưu/khôi phục JSON version 2, đọc được version 1.
-- **Thông báo:** 17:30 ngày thường (bật/tắt), Chủ Nhật giờ riêng mặc định 8:00; tối đa 1 thông báo/ngày; đặt lại sau khởi động máy, đổi giờ, cập nhật app.
-- **Quy trình agent:** `.agents/`, `scripts/orchestrate.ps1`, `scripts/lint-copy.ps1` (PR #4, đã sửa theo review Qodo). Chưa có lần chạy thật của `orchestrate.ps1`. Jev chưa hoạt động theo ghi nhận 2026-11-12 (thiếu `TYPESAFE_API_KEY`), chưa kiểm lại.
-
-## Đã chốt nhưng chưa làm (xem `PLAN.md`, đợt R0–R6)
-
-Mọi mục dưới đây là **đích**, chưa có code. Tài liệu `SPEC.md`, `PRODUCT.md` ghi trạng thái đích kèm nhãn.
-
-| Hiện tại trong app | Đã chốt (nguồn) | Task |
-|---|---|---|
-| Nấu ngẫu nhiên không lọc chế độ ăn | Chế độ ăn là bộ lọc cứng ở mọi nơi gợi ý (Q2) | R0-01 |
-| Nhắc 17:30 cố định, thông báo liệt kê mọi món | Mặc định 16:00, chỉnh được 14:00–20:00, tối đa 3 món (Q5, Q13a) | R0-02 |
-| Hộp hỏi "Dùng hết hay còn lại?" cho từng nguyên liệu | Một chạm trừ hết, nút phụ "Giữ lại đồ còn dư" (Q3) | R1-01 |
-| Chưa có Hoàn tác 5 giây và xóa dòng ghi nhầm | Q10 | R1-02, R1-03 |
-| Một mâm mỗi ngày, ẩn bữa chưa ảnh hưởng thực đơn | Tối đa 2 mâm theo bữa bật; lưu thực đơn đã xếp (Q11, Q12) | SW-03, R2-01 |
-| Tủ lạnh mở ở "Tất cả"; ngăn đông gán cứng 7 id thịt cá | Mặc định "Đồ tươi"; ngăn lưu theo từng món (Q9, Q28) | R4-01, R4-04 |
-| 25 nguyên liệu, 10 công thức | 50–60 nguyên liệu, 25–30 công thức (Q6) | R3 |
-| Chưa có đồ ăn thừa, gia vị, món gia đình tự thêm | Q16–Q20, Q8, Q26 | R4, R5 |
-
-Nút "Nấu thêm phần cơm trưa hôm sau" đã ẩn khỏi UI (`LUNCH_MEAL_PREP_ENABLED = false`, quyết định 2026-11-12); logic và cột lưu còn trong mã.
-
-## Bằng chứng kiểm chứng (có ngày, không phải trạng thái hiện tại)
-
-- 2026-11-13, JDK 21.0.9, đầu nhánh PR #5: `:shared:testDebugUnitTest` 474 test, `:composeApp:testDebugUnitTest` 349 test, `:composeApp:assembleDebug` thành công, 0 lỗi.
-- 2026-11-16, PR #6: `:composeApp:testDebugUnitTest` thành công (351 test).
-- Chưa chạy lại trên `main` sau các merge. PR #7 và PR này chỉ đổi tài liệu.
-- Toolchain giữ nguyên theo `DECISIONS.md`: Gradle 8.5, AGP 8.3.2, compile/target SDK 34, minSdk 24, Kotlin 2.2.20, Compose Multiplatform 1.7.3, lifecycle 2.8.4. `WINDOWS-ROOT` đặt trong `%USERPROFILE%\.gradle\gradle.properties` của máy, không nằm trong repo. Cảnh báo duy nhất khi build: `libandroidx.graphics.path.so` không strip được.
-
-## Runtime còn mở (chưa có bằng chứng trên thiết bị)
-
-- **W2-03:** thông báo thật và đặt lại lịch sau khởi động máy đã đạt trên emulator targetSdk 34 (alarm xuất hiện sau khi broadcast `BOOT_COMPLETED` được giao, khoảng 63 giây sau `sys.boot_completed`; không phải lỗi). **Đổi múi giờ chưa kiểm:** `adb` không giả lập được broadcast. Chưa thử trên máy thật Xiaomi, Oppo, Vivo, Samsung, nơi hệ thống hay chặn nền. Chi tiết `docs/tests/W2-03.md`.
-- **W4-03:** cỡ chữ 1,3 và 2,0, TalkBack, tên món dài, vùng chạm 48dp.
-- **UX-04/05, UX-11/12:** checklist nghiệm thu trên thiết bị.
-- Bằng chứng runtime ngày 2026-11-10 đo trên targetSdk 36, không dùng cho bản hiện tại.
-
-## Rủi ro đã biết (đánh giá 2026-11-17, đọc mã, chưa chạy)
-
-Đây là đánh giá do mô hình viết dựa trên đọc `origin/main` và nguồn web; chưa kiểm chứng bằng chạy app.
-
-1. targetSdk 34 không đủ để phát hành Play (cần API 36); chưa có khóa ký và AAB; bản release hiện chỉ là APK chưa ký.
-2. Bộ lọc chế độ ăn chỉ nhìn nguyên liệu chính, bỏ qua nước mắm, mắm tôm, dầu hào. Không được trình bày như cam kết dị ứng. Cần chuyên gia xem trước khi làm R0-01.
-3. Không có CI; test chỉ chạy cục bộ.
-4. `PantryGridViewModel` tạo bằng `remember` (không qua ViewModelStore) và không bắt lỗi ghi DB.
-5. Thông báo dùng một nguồn "quá ngày ước tính", Trang chủ dùng nguồn khác (lọc 0–2 ngày) nên có thể lệch nhau.
-6. Nấu xong trừ đúng 1 đơn vị mỗi nguyên liệu, kể cả khi đơn vị là gram.
-7. Khảo sát persona trong `docs/ux/` là giả lập, không phải nghiên cứu người dùng thật.
-
-## Việc tiếp theo
-
-1. Quyết định chung: đặt tên và cụm từ thống nhất ("nên dùng trước" và nhãn dải Trang chủ); xem mục "Đề xuất" cuối `DECISIONS.md`.
-2. R0 (lọc chế độ ăn cứng, giờ nhắc), rồi R1, R2 theo `PLAN.md`.
-3. Phiên kiểm chứng trên thiết bị cho các mục "Runtime còn mở" và đưa 3–5 phụ huynh thật dùng thử.
-4. Danh sách nguyên liệu và công thức đợt 1 (R3-02) cần người dùng duyệt tên món trước khi ghi vào bundle.
-
-## Quy trình làm việc
-
-- Mỗi tính năng một nhánh, một PR vào `main` của fork `anhvb702/thuc-tap-sinh`; commit/push/merge chỉ khi được yêu cầu.
-- Vai trò và model: `AGENTS.override.md` (mục "Hạn mức sử dụng"). Contract trước, test đỏ trước, sáu mutation, ghi bằng chứng thật vào `docs/tests/<mã>.md`.
-- Lịch sử chi tiết từng lượt trước 2026-11-17 nằm trong `git log` và các file `docs/tests/`; không chép lại ở đây.
+1. **Cài & kiểm tra runtime trên emulator (`emulator-5554`):** Build lại `:composeApp:assembleDebug` từ `main` (`3d578a7`) và cài APK khi máy ảo bật để kiểm chứng thực tế 7 bản sửa lỗi UX (#60–#62) + màn `Home` MVI (#64).
+2. **Giai đoạn 3 Clean Architecture + MVI (Rã God Screens):**
+   - Tách `PantryGridScreen.kt` (**1.656 dòng**) và `RecipeScreen.kt` (**696 dòng**) theo đúng chuẩn mẫu `Home` (`domain/usecase` + `presentation/Contract & ViewModel` + `ui/components`).
+   - Giảm prop drilling ở `MainScaffold.kt` (**476 dòng**) và chuyển `PantryGridViewModel` sang `ViewModelProvider.Factory` trong `AppContainer`.
+3. **Dọn cấu hình Agent phụ:**
+   - Gỡ trường `reasoning_effort` cũ trong `.codex/agents/*.toml` để hết cảnh báo `Ignoring malformed agent role definition` khi khởi động Codex CLI `v0.167.2`.
+   - Đồng bộ lại tên model trong `.agents/roster.json` nếu muốn kích hoạt script `orchestrate.ps1`.
+4. **Rủi ro phát hành còn mở (kế thừa từ bản trước):**
+   - `targetSdk 34` (cần API 36 + keystore + AAB trước khi lên Google Play).
+   - Bộ lọc chế độ ăn chỉ kiểm nguyên liệu chính (không trình bày như cam kết dị ứng).
+   - Chưa kiểm thực tế trên máy thật Xiaomi/Oppo/Vivo/Samsung cho thông báo nền & TalkBack/cỡ chữ 2.0.
