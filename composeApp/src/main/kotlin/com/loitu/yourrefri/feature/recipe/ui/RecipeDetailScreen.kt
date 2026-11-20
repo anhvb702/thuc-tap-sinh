@@ -254,8 +254,9 @@ private fun ManualCookChecklistDialog(
 ) {
     val colors = AppTheme.colors
     var checkedSteps by rememberSaveable(recipe.id) { mutableStateOf(emptyList<Int>()) }
+    val checkedSet = checkedSteps.toSet()
     val totalSteps = recipe.steps.size
-    val allStepsChecked = totalSteps == 0 || checkedSteps.size == totalSteps
+    val allStepsChecked = canFinishManualCook(checkedSet, totalSteps)
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.86f),
@@ -274,17 +275,17 @@ private fun ManualCookChecklistDialog(
                     IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text) }
                 }
                 LinearProgressIndicator(
-                    progress = { checkedSteps.size.toFloat() / totalSteps.coerceAtLeast(1) },
+                    progress = { manualCookProgress(checkedSet, totalSteps) },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(999.dp)),
                     color = colors.primary,
                     trackColor = colors.surfaceSoft,
                 )
                 LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     itemsIndexed(recipe.steps) { index, step ->
-                        val isChecked = index in checkedSteps
+                        val isChecked = index in checkedSet
                         Surface(
                             modifier = Modifier.fillMaxWidth().clickable(role = Role.Checkbox) {
-                                checkedSteps = if (isChecked) checkedSteps - index else checkedSteps + index
+                                checkedSteps = toggleManualCookStep(checkedSet, index).toList()
                             },
                             shape = RoundedCornerShape(16.dp),
                             color = if (isChecked) colors.surfaceSoft else colors.surface,

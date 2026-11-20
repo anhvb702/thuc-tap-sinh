@@ -338,11 +338,7 @@ internal fun DailySpotlightRecommendationSection(
                         }
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            val details = buildList {
-                                suggestion.recipe.minutes?.let { add("$it phút") }
-                                add(if (suggestion.reason == RecommendationReason.READY || suggestion.reason == RecommendationReason.USE_SOON) "Đủ nguyên liệu" else shortReasonLabel(suggestion.reason))
-                            }.joinToString(" · ")
-                            Text(details, style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

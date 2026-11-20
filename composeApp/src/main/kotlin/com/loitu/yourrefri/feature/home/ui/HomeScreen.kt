@@ -69,7 +69,7 @@ fun HomeScreen(
     val zones = pantryZoneCounts(dashboard.haveItems.map { it.ingredientId })
     var activeBucket by remember { mutableStateOf<PantryOverviewBucket?>(null) }
     var dismissedRecipeIds by remember { mutableStateOf(emptySet<String>()) }
-    val activeSuggestion: RecipeRecommendation? = dashboard.recommendations.firstOrNull { it.recipe.id !in dismissedRecipeIds }
+    val activeSuggestion: RecipeRecommendation? = activeSpotlightSuggestion(dashboard.recommendations, dismissedRecipeIds)
 
     LaunchedEffect(state, recipes, meal, tasteProfile) {
         homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
@@ -135,7 +135,7 @@ fun HomeScreen(
             hasRecommendations = dashboard.recommendations.isNotEmpty(),
             activeSuggestion = activeSuggestion,
             onDismissSuggestion = { dismissedRecipeIds = dismissedRecipeIds + it },
-            onResetDismissedSuggestions = { dismissedRecipeIds = emptySet() },
+            onResetDismissedSuggestions = { dismissedRecipeIds = resetDismissedSuggestions() },
             onNavigateToRecipe = onNavigateToRecipe,
             onNavigateToRecipes = onNavigateToRecipes,
             onNavigateToPantry = onNavigateToPantry,

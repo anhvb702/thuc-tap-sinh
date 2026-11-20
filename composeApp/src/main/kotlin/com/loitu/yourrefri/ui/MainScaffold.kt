@@ -515,7 +515,12 @@ fun MainScaffold(
                         showGlobalRandomWheel = globalRandomPick != null
                     }
                 },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = if (currentTab == NavTab.RECIPES && openedRecipeId != null && cookDone == null && handsFreeRecipe == null) 88.dp else 16.dp,
+                    ),
             )
             if (showWeeklyOverlay) FloatingOverlayDialog("Thực đơn cả tuần", { showWeeklyOverlay = false }) {
                 WeeklyMealPlanSection(
