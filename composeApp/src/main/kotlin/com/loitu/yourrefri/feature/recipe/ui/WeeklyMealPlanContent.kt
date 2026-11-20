@@ -31,6 +31,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,12 +102,20 @@ internal fun WeeklyMealPlanSection(
     modifier: Modifier = Modifier,
     onConfirmWeek: () -> Unit = {},
     onNavigate: (RecipeScreenMode) -> Unit = {},
+    includeLunchMealPrep: Boolean = false,
+    onIncludeLunchMealPrepChange: (Boolean) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     var openedDay by remember { mutableStateOf<Int?>(null) }
     var goalMenuOpen by remember { mutableStateOf(false) }
     var preferenceMenuOpen by remember { mutableStateOf(false) }
     var weekConfirmed by rememberSaveable { mutableStateOf(false) }
+    var selectedMealOption by rememberSaveable {
+        mutableStateOf(if (includeLunchMealPrep) WeeklyMealOption.BOTH else WeeklyMealOption.DINNER)
+    }
+    LaunchedEffect(includeLunchMealPrep) {
+        if (includeLunchMealPrep) selectedMealOption = WeeklyMealOption.BOTH
+    }
     Column(modifier.fillMaxWidth()) {
         Surface(
             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -171,13 +180,40 @@ internal fun WeeklyMealPlanSection(
                 }
             }
         }
+        Text("Chọn bữa trong ngày", style = MaterialTheme.typography.labelLarge, color = colors.text, modifier = Modifier.padding(top = 10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            WeeklyMealOption.entries.forEach { option ->
+                val selected = option == selectedMealOption
+                Surface(
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).clickable {
+                        selectedMealOption = option
+                        weekConfirmed = false
+                        onIncludeLunchMealPrepChange(option.includesLunchPrep)
+                    },
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (selected) colors.primarySoft else colors.surface,
+                    border = BorderStroke(1.dp, if (selected) colors.primary else colors.line),
+                ) {
+                    Text(
+                        text = option.labelVi,
+                        color = if (selected) colors.accentText else colors.text,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 14.dp),
+                    )
+                }
+            }
+        }
         plan.forEach { day ->
             val isExpanded = openedDay == day.dayIndex
             Card(Modifier.fillMaxWidth().padding(vertical = 6.dp), colors = CardDefaults.cardColors(containerColor = colors.surface), shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, colors.line)) {
                 Column(Modifier.padding(14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         val dayTitle = weekStart?.let { dayDateLabel(it, day.dayIndex, day.dayLabelVi) } ?: day.dayLabelVi
-                        Text(dayMealCardHeader(dayTitle, day.mealTypeVi),style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
+                        Text(dayMealCardHeader(dayTitle, mealOptionDisplayLabel(selectedMealOption)),style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = colors.accentText)
                         val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
                         Text(totalMinutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     }
