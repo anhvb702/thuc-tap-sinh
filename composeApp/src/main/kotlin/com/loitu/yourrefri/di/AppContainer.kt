@@ -42,6 +42,7 @@ interface AppContainer {
     val recipes: List<Recipe>
 
     fun createPantryGridViewModel(): PantryGridViewModel
+    fun pantryGridViewModelFactory(): ViewModelProvider.Factory
     fun homeViewModelFactory(): ViewModelProvider.Factory
     fun recipeViewModelFactory(): ViewModelProvider.Factory
     fun weeklyMealPlanViewModelFactory(): ViewModelProvider.Factory
@@ -70,6 +71,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
     }
 
     override fun createPantryGridViewModel() = PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
+
+    override fun pantryGridViewModelFactory() = singleViewModelFactory {
+        PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
+    }
 
     override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel() }
 

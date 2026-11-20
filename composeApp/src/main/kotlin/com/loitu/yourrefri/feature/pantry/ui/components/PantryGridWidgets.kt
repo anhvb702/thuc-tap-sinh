@@ -1,0 +1,747 @@
+package com.loitu.yourrefri.feature.pantry.ui
+
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.core.content.ContextCompat
+import com.loitu.yourrefri.ui.components.ChunkyButton
+import com.loitu.yourrefri.ui.components.FoodThumb
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.loitu.yourrefri.feature.pantry.logic.PantryCell
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.feature.pantry.logic.SHELF_DAY_OPTIONS
+import com.loitu.yourrefri.ui.theme.AppIcons
+import com.loitu.yourrefri.ui.theme.AppTheme
+
+@Composable
+internal fun QuickActionButton(label: String, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.heightIn(min = 48.dp),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, colors.line),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.primary),
+    ) {
+        Text(label, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Chip lọc Tất cả | Ngăn mát | Ngăn đông có icon; chữ xuống dòng khi cỡ chữ lớn thay vì bị cắt. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun StorageSegmentedControl(
+    selected: StorageTab,
+    allCount: Int,
+    soonCount: Int,
+    onSelect: (StorageTab) -> Unit,
+) {
+    val colors = AppTheme.colors
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        StorageTab.entries.forEach { tab ->
+            val isSelected = tab == selected
+            val label = when (tab) {
+                StorageTab.ALL -> "Tất cả"
+                StorageTab.FRIDGE -> "Ngăn mát"
+                StorageTab.FREEZER -> "Ngăn đông"
+                StorageTab.SOON -> PantryScreenCopy.soonChipLabel(soonCount)
+            }
+            val icon = when (tab) {
+                StorageTab.ALL -> null
+                StorageTab.FRIDGE -> AppIcons.Fridge
+                StorageTab.FREEZER -> AppIcons.Snowflake
+                StorageTab.SOON -> AppIcons.Clock
+            }
+            val contentColor = if (isSelected) colors.onPrimary else colors.text
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isSelected) colors.primary else colors.surface)
+                    .border(1.dp, if (isSelected) colors.primary else colors.line, RoundedCornerShape(16.dp))
+                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(tab) })
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (icon != null) {
+                    Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(18.dp))
+                }
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = contentColor,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PantryCategoryDropbar(
+    selected: PantryCategory,
+    onSelect: (PantryCategory) -> Unit,
+) {
+    val colors = AppTheme.colors
+    var expanded by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(16.dp),
+            color = colors.surface,
+            border = BorderStroke(1.dp, colors.line),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(selected.labelVi, color = colors.text, modifier = Modifier.weight(1f))
+                Icon(AppIcons.ChevronDown, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            PantryCategory.entries.forEach { category ->
+                DropdownMenuItem(
+                    text = { Text(category.labelVi, color = colors.text) },
+                    onClick = { onSelect(category); expanded = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Tiêu đề nhóm: icon + "Rau củ (6)". */
+@Composable
+internal fun CategoryHeader(group: PantryCategoryGroup) {
+    val colors = AppTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(categoryIconFor(group.key), contentDescription = null, tint = colors.accentText, modifier = Modifier.size(22.dp))
+        Text(
+            text = group.title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = colors.text,
+        )
+    }
+}
+
+internal fun categoryIconFor(key: String) = when (key) {
+    "rau-cu" -> AppIcons.Leaf
+    "thit" -> AppIcons.Meat
+    "trai-cay" -> AppIcons.Tomato
+    "sua-trung" -> AppIcons.Milk
+    "khac-dau-nam" -> AppIcons.Tofu
+    else -> AppIcons.Utensils
+}
+
+/** Thanh hành động nổi ở đáy: hai nút dạng viên thuốc cao >= 52dp. */
+@Composable
+internal fun PantryActionBar(
+    voiceAvailable: Boolean,
+    onManual: () -> Unit,
+    onVoice: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AppTheme.colors
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ActionPill(
+            label = PantryActionCopy.manual,
+            icon = AppIcons.Keyboard,
+            container = colors.surfaceSoft,
+            content = colors.text,
+            borderColor = colors.line,
+            description = PantryScreenCopy.addFoodDescription,
+            onClick = onManual,
+            modifier = Modifier.weight(1f),
+        )
+        if (voiceAvailable) {
+            ActionPill(
+                label = PantryActionCopy.voice,
+                icon = AppIcons.Mic,
+                container = colors.cta,
+                content = colors.onCta,
+                borderColor = colors.cta,
+                description = PantryActionCopy.voiceDescription,
+                onClick = onVoice,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+internal fun ActionPill(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    container: Color,
+    content: Color,
+    borderColor: Color,
+    description: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .heightIn(min = 52.dp)
+            .clip(RoundedCornerShape(50))
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        shape = RoundedCornerShape(50),
+        color = container,
+        shadowElevation = 4.dp,
+        border = BorderStroke(1.dp, borderColor),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(22.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = content,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.weight(1f, fill = false),
+            )
+        }
+    }
+}
+
+/** Bảng nhỏ "Đang nghe...": chữ nghe được hiện dần, có Dừng / Hủy. Không tự thêm món nào. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun VoiceSheet(
+    phase: VoicePhase,
+    partial: String,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
+    onRetry: () -> Unit,
+    onManual: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    ModalBottomSheet(
+        onDismissRequest = onCancel,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.background,
+        contentColor = colors.text,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(AppIcons.Mic, contentDescription = null, tint = colors.ctaText, modifier = Modifier.size(28.dp))
+                Text(
+                    text = when (phase) {
+                        VoicePhase.LISTENING -> VOICE_LISTENING_TITLE
+                        VoicePhase.NOT_HEARD -> VOICE_NOT_HEARD
+                        else -> VOICE_UNAVAILABLE_NOW
+                    },
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = colors.text,
+                )
+            }
+            if (phase == VoicePhase.LISTENING) {
+                Text(
+                    text = partial.ifBlank { VOICE_LISTENING_HINT },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (partial.isBlank()) colors.muted else colors.text,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(colors.surface)
+                        .border(1.dp, colors.line, RoundedCornerShape(16.dp))
+                        .padding(16.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+                Button(
+                    onClick = onStop,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                ) { Text("Dừng", fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Hủy", color = colors.muted)
+                }
+            } else {
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                ) { Text("Nói lại", fontWeight = FontWeight.Bold) }
+                TextButton(onClick = onManual, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Chọn thủ công", color = colors.accentText)
+                }
+                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Đóng", color = colors.muted)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+/**
+ * Hàng thực phẩm: khung ảnh 48dp, tên, hạn ước tính và bộ đếm − / + tròn 48dp.
+ * Chạm vào tên để đổi trạng thái có / hết; "Sửa hạn" và "Đổi đơn vị" giữ vùng chạm 48dp.
+ */
+@Composable
+internal fun WarmFoodCard(
+    cell: PantryCell,
+    quantity: Int,
+    selected: Boolean = false,
+    onTap: () -> Unit,
+    onEditShelf: () -> Unit,
+    onEditUnit: () -> Unit,
+    onIncreaseQty: () -> Unit,
+    onDecreaseQty: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    val cardCopy = pantryCardCopy(cell.have, quantity)
+    val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = if (cell.have) colors.surface else Color.Transparent,
+        border = BorderStroke(2.dp, if (selected) colors.primary else if (cell.have) colors.line else colors.primarySoft),
+    ) {
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onTap)
+                    .semantics {
+                        contentDescription = if (cell.have) {
+                            "Đánh dấu hết ${cell.nameVi}"
+                        } else {
+                            "Đánh dấu có ${cell.nameVi}"
+                        }
+                    },
+            ) {
+                FoodThumb(
+                    ingredientId = cell.ingredientId,
+                    size = 36.dp,
+                    shape = RoundedCornerShape(10.dp),
+                    urgent = urgent,
+                    modifier = Modifier.alpha(if (cell.have) 1f else 0.55f),
+                )
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = cell.nameVi,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (cell.have) colors.text else colors.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (cardCopy.showEstimatedStatus) {
+                        cell.daysLeft?.let { days ->
+                            Text(
+                                text = pantryRowStatus(days),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
+                                ),
+                                color = if (urgent) colors.ctaText else colors.accentText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = cardCopy.statusLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.muted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+
+            if (cell.have) {
+                QuantityStepper(
+                    name = cell.nameVi,
+                    quantity = quantity,
+                    unit = cell.unit,
+                    onDecrease = onDecreaseQty,
+                    onIncrease = onIncreaseQty,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Sửa hạn",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.accentText,
+                        modifier = Modifier
+                            .clickable(onClick = onEditShelf)
+                            .padding(vertical = 2.dp)
+                            .semantics { contentDescription = "Sửa hạn ước tính cho ${cell.nameVi}" },
+                    )
+                    Text(
+                        text = cell.unit,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.muted,
+                        modifier = Modifier
+                            .clickable(onClick = onEditUnit)
+                            .padding(vertical = 2.dp)
+                            .semantics {
+                                contentDescription = "Đổi đơn vị số lượng ${cell.nameVi}, hiện là ${cell.unit}"
+                            },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun QuantityStepper(
+    name: String,
+    quantity: Int,
+    unit: String,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AppTheme.colors
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(colors.primarySoft)
+                .clickable(role = Role.Button, onClick = onDecrease)
+                .semantics {
+                    contentDescription = if (quantity > 1) "Giảm số lượng $name" else "Đánh dấu hết $name"
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(AppIcons.Minus, contentDescription = null, tint = colors.text, modifier = Modifier.size(16.dp))
+        }
+        Text(
+            text = "$quantity $unit",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = colors.text,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 4.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(colors.primarySoft)
+                .clickable(role = Role.Button, onClick = onIncrease)
+                .semantics { contentDescription = "Tăng số lượng $name" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(AppIcons.Plus, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
+        }
+    }
+}
+
+@Composable
+internal fun ShelfDayOption(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 4.dp),
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = selected,
+                onClick = null,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = colors.primary,
+                    unselectedColor = colors.muted,
+                ),
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.text,
+                modifier = Modifier.padding(start = 12.dp)
+            )
+        }
+    }
+}
+
+/** Ô chạm trong lưới chọn món: icon nét trong vòng tròn 36dp và tên món (không cắt). */
+@Composable
+internal fun QuickAddTile(
+    name: String,
+    iconId: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AppTheme.colors
+    Surface(
+        modifier = modifier
+            .heightIn(min = 88.dp)
+            .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onClick() })
+            .semantics { contentDescription = quickAddTileDescription(name, selected) },
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) colors.primarySoft else colors.surfaceSoft,
+        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) colors.primary else colors.line),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            if (selected) {
+                Box(
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(colors.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Check,
+                        contentDescription = null,
+                        tint = colors.accentText,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            } else {
+                // Ảnh món hoặc icon riêng (FoodThumb); chưa có thì icon nhóm.
+                FoodThumb(ingredientId = iconId, size = 36.dp, shape = CircleShape)
+            }
+            Text(
+                text = name,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.text,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+/** Phần "Hạn dùng ước tính": mặc định theo gợi ý, hoặc số ngày áp dụng cho các món đã chọn. */
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+internal fun AddFoodEstimateSection(
+    state: PantryGridState,
+    query: String,
+    selectedIds: Set<String>,
+    days: Int?,
+    onDays: (Int?) -> Unit,
+) {
+    val colors = AppTheme.colors
+    val selectedIngredient = selectedIds.singleOrNull()?.let { id -> state.ingredients.firstOrNull { it.id == id } }
+    val matched = selectedIngredient
+        ?: if (selectedIds.isEmpty()) quickAddMatch(state.ingredients, query) else null
+    val chipColors = FilterChipDefaults.filterChipColors(
+        containerColor = colors.surface,
+        labelColor = colors.text,
+        selectedContainerColor = colors.primary,
+        selectedLabelColor = colors.onPrimary,
+        disabledContainerColor = colors.surface,
+        disabledLabelColor = colors.muted,
+    )
+    Text(
+        AddFoodSheetCopy.estimateHeader,
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        color = colors.text,
+    )
+    Text(
+        text = when {
+            selectedIds.size > 1 -> days?.let { "Áp dụng khoảng $it ngày cho các món đã chọn." }
+                ?: "Mỗi món dùng hạn gợi ý riêng."
+            matched == null -> "Chọn món để xem hạn dùng gợi ý."
+            days != null -> "Hạn đã chọn: khoảng $days ngày"
+            else -> "Hạn dùng theo gợi ý đang được chọn."
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.accentText,
+        modifier = Modifier.padding(top = 2.dp),
+    )
+    FlowRow(
+        modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (selectedIds.size <= 1) {
+            quickAddEstimateOption(matched, days)?.let { option ->
+                FilterChip(
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    selected = option.selected,
+                    onClick = { onDays(option.daysOnSelect) },
+                    label = { Text(option.label) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = chipColors,
+                )
+            }
+        } else if (days != null) {
+            FilterChip(
+                modifier = Modifier.heightIn(min = 48.dp),
+                selected = false,
+                onClick = { onDays(null) },
+                label = { Text("Theo gợi ý riêng từng món") },
+                shape = RoundedCornerShape(16.dp),
+                colors = chipColors,
+            )
+        }
+        quickAddCustomDays(matched).forEach { d ->
+            FilterChip(
+                modifier = Modifier.heightIn(min = 48.dp),
+                selected = days == d,
+                onClick = { onDays(d) },
+                label = { Text(if (selectedIds.size > 1) "$d ngày · cho tất cả" else "$d ngày") },
+                shape = RoundedCornerShape(16.dp),
+                colors = chipColors,
+            )
+        }
+    }
+}
+
+internal enum class VoicePhase { IDLE, LISTENING, NOT_HEARD, ERROR }
+
+/** Chữ của ô tìm trên màn Tủ lạnh. */
+internal object PantrySearchCopy {
+    const val openDescription = "Tìm món trong tủ"
+    const val closeDescription = "Đóng ô tìm"
+    const val clearDescription = "Xóa chữ đã gõ"
+    const val placeholder = "Tìm món, ví dụ: cà chua"
+    const val notFound = "Chưa thấy món này, mình thêm vào tủ nhé?"
+    const val addAction = "Thêm vào tủ"
+    const val notFoundSectionTitle = "Không thấy món bạn cần?"
+}
+
+internal object PantryActionCopy {
+    const val manual = "Thêm thủ công"
+    const val voice = "Thêm bằng giọng nói"
+    const val voiceDescription = "Thêm thực phẩm bằng giọng nói"
+}
+
+internal const val VOICE_MIC_TITLE = "Bật micro nhé?"
+internal const val VOICE_MIC_EXPLAIN = "Mình cần micro để nghe tên món, âm thanh không rời khỏi máy."
+internal const val VOICE_MIC_DENIED = "Chưa bật micro, mình vẫn thêm thủ công được nhé"
+internal const val VOICE_LISTENING_TITLE = "Đang nghe..."
+internal const val VOICE_LISTENING_HINT = "Bạn nói tên món, ví dụ: cà chua, trứng gà và hành lá"
+internal const val VOICE_UNAVAILABLE_NOW = "Máy chưa nghe được lúc này, mình vẫn thêm thủ công được nhé"
+internal const val VOICE_ALREADY_HAVE = "Những món này đã có trong tủ rồi nhé"
+
+internal fun voiceHeardLine(heard: String): String = "Mình nghe được: $heard"
+
