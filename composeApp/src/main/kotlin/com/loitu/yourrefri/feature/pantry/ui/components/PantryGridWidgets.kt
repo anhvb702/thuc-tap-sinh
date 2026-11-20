@@ -1,9 +1,24 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridItemSpanScope
@@ -41,16 +56,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -82,11 +95,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -129,40 +146,236 @@ internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onTogg
     }
 }
 
+internal enum class PantryAddFeature(val title: String, val description: String, val icon: ImageVector) {
+    INGREDIENT("Thêm nguyên liệu", "Chọn nhanh rau, thịt, gia vị từ danh mục", AppIcons.Leaf),
+    OTHER("Thêm món khác", "Tự nhập tên món chưa có trong danh sách", AppIcons.Pencil),
+    LEFTOVER("Cất món thừa", "Lưu đồ ăn dư, hạn ước tính 2 ngày", AppIcons.Bowl),
+    COMBO("Thêm combo đi chợ", "Bỏ nhanh gói đồ quen thuộc vào tủ", AppIcons.Cart),
+    VOICE("Nói để thêm", "Đọc tên nguyên liệu bằng giọng nói", AppIcons.Mic),
+}
+
 @Composable
-internal fun PantryAddMenu(
+internal fun PantryAddSpeedDial(
+    open: Boolean,
     voiceAvailable: Boolean,
-    onAddIngredient: () -> Unit,
-    onAddOther: () -> Unit,
-    onLeftover: () -> Unit,
-    onCombo: () -> Unit,
-    onVoice: () -> Unit,
+    onOpenChange: (Boolean) -> Unit,
+    onFeature: (PantryAddFeature) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        PantryAddMenuItem("Thêm nguyên liệu", onAddIngredient)
-        PantryAddMenuItem("Thêm món khác", onAddOther)
-        PantryAddMenuItem("Cất món thừa", onLeftover)
-        PantryAddMenuItem("Thêm combo đi chợ", onCombo)
-        if (voiceAvailable) PantryAddMenuItem("Nói để thêm", onVoice)
+    val colors = AppTheme.colors
+    val features = remember(voiceAvailable) {
+        PantryAddFeature.entries.filter { voiceAvailable || it != PantryAddFeature.VOICE }
+    }
+    var focusedIndex by remember(voiceAvailable) { mutableStateOf<Int?>(null) }
+    var dragging by remember(voiceAvailable) { mutableStateOf(false) }
+    val changeOpen by rememberUpdatedState(onOpenChange)
+    val launchFeature by rememberUpdatedState(onFeature)
+    val radiusPx = with(LocalDensity.current) { 148.dp.toPx() }
+    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val offsets = remember(features, radiusPx) {
+        radialFanAnglesDegrees(features.size).map { radialFanOffset(it, radiusPx) }
+    }
+    val fan = updateTransition(open, label = "pantry add fan")
+    val rotation by animateFloatAsState(
+        targetValue = if (open) 45f else 0f,
+        animationSpec = if (animatorsEnabled) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
+        label = "pantry add rotation",
+    )
+
+    DisposableEffect(radiusPx, voiceAvailable) {
+        onDispose { dragging = false }
+    }
+
+    fun setOpen(value: Boolean) {
+        dragging = false
+        focusedIndex = null
+        changeOpen(value)
+    }
+
+    fun activate(index: Int) {
+        setOpen(false)
+        launchFeature(features[index])
+    }
+
+    Box(modifier) {
+        AnimatedVisibility(
+            visible = open,
+            modifier = Modifier.matchParentSize(),
+            enter = fadeIn(if (animatorsEnabled) tween(180) else snap()),
+            exit = fadeOut(if (animatorsEnabled) tween(160) else snap()),
+        ) {
+            Box(
+                Modifier.fillMaxSize()
+                    .background(colors.text.copy(alpha = 0.28f))
+                    .clickable(enabled = open, onClickLabel = "Đóng menu thêm món") { setOpen(false) },
+            )
+        }
+        features.forEachIndexed { index, feature ->
+            val progress by fan.animateFloat(
+                transitionSpec = {
+                    when {
+                        !animatorsEnabled -> snap()
+                        targetState -> tween(durationMillis = 240, delayMillis = index * 30)
+                        else -> tween(durationMillis = 170, delayMillis = (features.lastIndex - index) * 20)
+                    }
+                },
+                label = feature.title,
+            ) { if (it) 1f else 0f }
+            if (open || fan.currentState || fan.isRunning) {
+                val focused = focusedIndex == index
+                val scale by animateFloatAsState(
+                    targetValue = if (focused) 1.18f else 1f,
+                    animationSpec = if (animatorsEnabled) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
+                    label = "pantry petal scale",
+                )
+                val dim by animateFloatAsState(
+                    targetValue = if (focusedIndex != null && !focused) 0.65f else 1f,
+                    animationSpec = if (animatorsEnabled) tween(140) else snap(),
+                    label = "pantry petal opacity",
+                )
+                val offset = offsets[index]
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                        .padding(end = 20.dp, bottom = 20.dp)
+                        .size(48.dp)
+                        .graphicsLayer {
+                            translationX = offset.x * progress
+                            translationY = offset.y * progress
+                            scaleX = scale * (0.75f + 0.25f * progress)
+                            scaleY = scaleX
+                            alpha = dim * progress
+                        },
+                    onClick = {
+                        val decision = resolveRadialTap(focusedIndex, index)
+                        focusedIndex = decision.focusedIndex
+                        if (decision.outcome == RadialTapOutcome.TRIGGER) activate(index)
+                    },
+                    enabled = open && !dragging,
+                    shape = CircleShape,
+                    color = if (focused) colors.primary else colors.surface,
+                    contentColor = if (focused) colors.onPrimary else colors.primary,
+                    border = BorderStroke(1.dp, if (focused) colors.primary else colors.line),
+                    shadowElevation = if (focused) 8.dp else 2.dp,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(feature.icon, contentDescription = feature.title, modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = open,
+            modifier = Modifier.align(Alignment.BottomEnd)
+                .padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 232.dp),
+            enter = fadeIn(if (animatorsEnabled) tween(180) else snap()),
+            exit = fadeOut(if (animatorsEnabled) tween(140) else snap()),
+        ) {
+            AnimatedContent(
+                targetState = focusedIndex,
+                transitionSpec = {
+                    if (animatorsEnabled) fadeIn(tween(180)) togetherWith fadeOut(tween(100))
+                    else fadeIn(snap()) togetherWith fadeOut(snap())
+                },
+                contentAlignment = Alignment.BottomEnd,
+                label = "pantry add preview",
+            ) { index ->
+                val feature = index?.let(features::getOrNull)
+                if (index == null || feature == null) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = colors.surface) {
+                        Text(
+                            "Chạm cánh quạt để xem",
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.text,
+                        )
+                    }
+                } else {
+                    PantryAddFeaturePreview(feature, dragging, open && index == focusedIndex) {
+                        activate(index)
+                    }
+                }
+            }
+        }
+        FloatingActionButton(
+            onClick = { setOpen(!open) },
+            modifier = Modifier.align(Alignment.BottomEnd)
+                .padding(end = 16.dp, bottom = 16.dp)
+                .size(56.dp)
+                .pointerInput(radiusPx, voiceAvailable) {
+                    detectDragGestures(
+                        onDragStart = { setOpen(true); dragging = true },
+                        onDragEnd = {
+                            if (dragging) focusedIndex?.let(::activate)
+                            dragging = false
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            focusedIndex = null
+                        },
+                    ) { change, _ ->
+                        // Pointer positions remain local to the FAB even after the finger leaves it.
+                        focusedIndex = resolveRadialHitIndex(
+                            dragX = change.position.x - size.width / 2f,
+                            dragY = change.position.y - size.height / 2f,
+                            count = features.size,
+                            radiusPx = radiusPx,
+                        )
+                    }
+                },
+            shape = CircleShape,
+            containerColor = colors.primary,
+            contentColor = colors.onPrimary,
+        ) {
+            Icon(
+                AppIcons.Add,
+                contentDescription = if (open) "Đóng menu thêm món" else "Thêm vào tủ",
+                modifier = Modifier.graphicsLayer { rotationZ = rotation },
+            )
+        }
     }
 }
 
 @Composable
-private fun PantryAddMenuItem(label: String, onClick: () -> Unit) {
+private fun PantryAddFeaturePreview(
+    feature: PantryAddFeature,
+    dragging: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
     val colors = AppTheme.colors
-    OutlinedButton(
+    Surface(
         onClick = onClick,
+        enabled = enabled && !dragging,
         modifier = Modifier.heightIn(min = 48.dp),
         shape = RoundedCornerShape(16.dp),
+        color = colors.surface,
         border = BorderStroke(1.dp, colors.line),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.text),
+        shadowElevation = 6.dp,
     ) {
-        Text(label, fontWeight = FontWeight.SemiBold)
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(
+                    feature.icon, contentDescription = null, tint = colors.onPrimary,
+                    modifier = Modifier.size(32.dp).background(colors.primary, CircleShape).padding(6.dp),
+                )
+                Text(feature.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = colors.text)
+            }
+            Text(
+                feature.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    if (dragging) "Thả để mở" else "Chạm để mở",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colors.accentText,
+                )
+                Icon(AppIcons.ArrowRight, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(14.dp))
+            }
+        }
     }
 }
 

@@ -6,14 +6,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -25,17 +19,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
-import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -161,38 +152,27 @@ fun PantryGridScreen(
                 )
             },
         )
-        if (addMenuOpen) {
-            Box(
-                Modifier.matchParentSize().background(colors.text.copy(alpha = 0.22f))
-                    .clickable(onClickLabel = "Đóng menu thêm món") { addMenuOpen = false },
-            )
-            PantryAddMenu(
-                voiceAvailable = voiceAvailable,
-                onAddIngredient = { addMenuOpen = false; openAdd(choice = AddChoice.ADD_INGREDIENT) },
-                onAddOther = { addMenuOpen = false; openAdd(choice = AddChoice.ADD_OTHER) },
-                onLeftover = { addMenuOpen = false; showLeftover = true },
-                onCombo = { addMenuOpen = false; showCombo = true },
-                onVoice = {
-                    addMenuOpen = false
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                        startListening()
-                    } else {
-                        showMicExplain = true
+        PantryAddSpeedDial(
+            open = addMenuOpen,
+            voiceAvailable = voiceAvailable,
+            onOpenChange = { addMenuOpen = it },
+            onFeature = { feature ->
+                when (feature) {
+                    PantryAddFeature.INGREDIENT -> openAdd(choice = AddChoice.ADD_INGREDIENT)
+                    PantryAddFeature.OTHER -> openAdd(choice = AddChoice.ADD_OTHER)
+                    PantryAddFeature.LEFTOVER -> showLeftover = true
+                    PantryAddFeature.COMBO -> showCombo = true
+                    PantryAddFeature.VOICE -> {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                            startListening()
+                        } else {
+                            showMicExplain = true
+                        }
                     }
-                },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 80.dp),
-            )
-        }
-        FloatingActionButton(
-            onClick = { addMenuOpen = !addMenuOpen },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp).size(56.dp),
-            shape = CircleShape,
-            containerColor = colors.primary,
-            contentColor = colors.onPrimary,
-        ) {
-            if (addMenuOpen) Icon(AppIcons.Close, contentDescription = "Đóng menu thêm món")
-            else Icon(AppIcons.Add, contentDescription = "Thêm vào tủ")
-        }
+                }
+            },
+            modifier = Modifier.matchParentSize(),
+        )
     }
     allCells.firstOrNull { it.ingredientId == quantityEditorId && it.have }?.let { cell ->
         QuantityInputDialog(
