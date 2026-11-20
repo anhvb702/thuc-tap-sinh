@@ -8,6 +8,8 @@ import com.loitu.yourrefri.feature.cooklog.data.CookLogRepository
 import com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
+import com.loitu.yourrefri.feature.home.data.HomeWeatherRepository
+import com.loitu.yourrefri.feature.home.data.OpenMeteoWeatherRepository
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryRepository
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
@@ -56,6 +58,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val db = createDatabase(DriverFactory(appContext).create())
     private val clock = Clock.System
     private val timeZone = TimeZone.currentSystemDefault()
+    private val weatherRepository: HomeWeatherRepository = OpenMeteoWeatherRepository()
 
     override val pantryRepository: PantryRepository = PantryRepositoryImpl(db, clock, timeZone, Dispatchers.IO)
     override val weeklyMealPlanRepository: WeeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO)
@@ -76,7 +79,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
         PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
     }
 
-    override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel() }
+    override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel(weatherRepository = weatherRepository) }
 
     override fun recipeViewModelFactory() = singleViewModelFactory { RecipeViewModel() }
 

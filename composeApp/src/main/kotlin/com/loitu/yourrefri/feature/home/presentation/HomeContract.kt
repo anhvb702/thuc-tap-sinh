@@ -1,6 +1,8 @@
 package com.loitu.yourrefri.feature.home.presentation
 
 import com.loitu.yourrefri.feature.home.domain.model.HomeDashboardData
+import com.loitu.yourrefri.feature.home.domain.model.HomeWeather
+import com.loitu.yourrefri.feature.home.domain.model.WeatherCity
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -13,6 +15,9 @@ data class HomeUiState(
     val randomPick: RandomRecipePick? = null,
     val showRandomWheel: Boolean = false,
     val showNoCookableDialog: Boolean = false,
+    val weatherCity: WeatherCity = WeatherCity.HANOI,
+    val weather: HomeWeather? = null,
+    val weatherLoading: Boolean = false,
 )
 
 sealed interface HomeIntent {
@@ -27,6 +32,8 @@ sealed interface HomeIntent {
     data object DismissRandomWheel : HomeIntent
     data object DismissNoCookableDialog : HomeIntent
     data class SelectRandomRecipe(val recipeId: String) : HomeIntent
+    data object LoadWeather : HomeIntent
+    data object ToggleWeatherCity : HomeIntent
 }
 
 sealed interface HomeEffect {

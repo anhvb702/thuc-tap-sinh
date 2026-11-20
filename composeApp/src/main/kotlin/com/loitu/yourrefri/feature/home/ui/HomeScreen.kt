@@ -1,12 +1,14 @@
 package com.loitu.yourrefri.feature.home.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -25,6 +27,7 @@ import com.loitu.yourrefri.feature.home.presentation.HomeEffect
 import com.loitu.yourrefri.feature.home.presentation.HomeIntent
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
 import com.loitu.yourrefri.feature.home.logic.homeGreeting
+import com.loitu.yourrefri.feature.home.domain.model.formatHomeWeatherLine
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
@@ -68,6 +71,9 @@ fun HomeScreen(
         homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
     }
     LaunchedEffect(homeViewModel) {
+        homeViewModel.onIntent(HomeIntent.LoadWeather)
+    }
+    LaunchedEffect(homeViewModel) {
         homeViewModel.effects.collect { effect ->
             when (effect) {
                 is HomeEffect.OpenRecipeDetail -> onNavigateToRecipe(effect.recipeId)
@@ -108,7 +114,11 @@ fun HomeScreen(
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        HomeHeader(greeting = greetingText(state.hourOfDay), meal = meal)
+        HomeHeader(
+            greeting = greetingText(state.hourOfDay),
+            weatherLine = formatHomeWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
+            onWeatherClick = { homeViewModel.onIntent(HomeIntent.ToggleWeatherCity) },
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MealSlot.entries.forEach { option ->
                 PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
@@ -152,11 +162,17 @@ fun HomeScreen(
     }
 }
 @Composable
-private fun HomeHeader(greeting: String, meal: MealSlot) {
+private fun HomeHeader(greeting: String, weatherLine: String, onWeatherClick: () -> Unit) {
     val colors = AppTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = "BẾP NHÀ", style = MaterialTheme.typography.labelMedium, color = colors.accentText)
-        Text(text = greeting, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-        Text(text = MealCopy.heading(meal), style = MaterialTheme.typography.headlineMedium, color = colors.text)
+        Text(text = greeting, style = MaterialTheme.typography.headlineMedium, color = colors.text)
+        Text(
+            text = weatherLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.muted,
+            modifier = Modifier
+                .heightIn(min = 36.dp)
+                .clickable(onClick = onWeatherClick),
+        )
     }
 }
