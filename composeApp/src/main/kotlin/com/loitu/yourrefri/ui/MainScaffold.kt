@@ -55,7 +55,6 @@ import com.loitu.yourrefri.feature.recipe.ui.RecipeDetailScreen
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreen
 import com.loitu.yourrefri.feature.recipe.ui.HandsFreeCookScreen
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
-import com.loitu.yourrefri.feature.recipe.ui.CookLeftoverDialog
 import com.loitu.yourrefri.feature.recipe.ui.findRecipeById
 import com.loitu.yourrefri.feature.recipe.ui.ingredientsToConsume
 import com.loitu.yourrefri.feature.recipe.ui.CookDone
@@ -243,29 +242,13 @@ fun MainScaffold(
     }
 
     // Nấu rảnh tay xong: trừ nguyên liệu như nút "Nấu xong" ở màn công thức, rồi hiện màn chúc mừng (có Hoàn tác).
-    // Phần người dùng đánh dấu "còn lại" ở lại trong tủ và không bị hoàn tác.
     fun finishHandsFree(recipe: Recipe, kept: Set<String>) {
         val ids = ingredientsToConsume(recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds, kept)
         completeCook(recipe, ids)
     }
 
-    // Bấm "Kết thúc" ở chế độ rảnh tay: có nguyên liệu sắp trừ thì hỏi "Dùng hết hay còn lại?" trước.
-    var leftoverRecipe by remember { mutableStateOf<Recipe?>(null) }
     fun requestFinishHandsFree(recipe: Recipe) {
-        val candidates = recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds
-        if (candidates.isEmpty()) finishHandsFree(recipe, emptySet()) else leftoverRecipe = recipe
-    }
-    leftoverRecipe?.let { pending ->
-        val names = state.ingredients.associate { it.id to it.nameVi }
-        val candidates = recipeCookPresentation(pending, state, callbackAvailable = true).ingredientIds.distinct()
-        CookLeftoverDialog(
-            ingredients = candidates.map { it to (names[it] ?: it) },
-            onConfirm = { kept ->
-                leftoverRecipe = null
-                finishHandsFree(pending, kept)
-            },
-            onDismiss = { leftoverRecipe = null },
-        )
+        finishHandsFree(recipe, emptySet())
     }
     if (showReminderPopup) {
         val popupData = remember(state, state.today) { buildReminderPopupData(state, state.today.dayOfYear) }

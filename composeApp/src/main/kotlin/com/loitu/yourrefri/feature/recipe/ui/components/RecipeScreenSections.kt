@@ -26,6 +26,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,18 +70,13 @@ internal fun RecipeCookConfirmationHost(
     onResult: (String, String) -> Unit,
 ) {
     if (!showConfirmation || pendingRecipe == null) return
-    if (callbackAvailable && !presentation?.ingredientIds.isNullOrEmpty()) {
-        val names = state.ingredients.associate { it.id to it.nameVi }
-        CookLeftoverDialog(
-            ingredients = presentation!!.ingredientIds.distinct().map { it to (names[it] ?: it) },
-            onConfirm = { kept ->
-                val consumed = ingredientsToConsume(presentation.ingredientIds, kept)
-                onCookRecipe?.invoke(pendingRecipe, consumed)
-                onResult(pendingRecipe.id, cookResultMessage(consumed.mapNotNull(names::get)))
-                onDismiss()
-            },
-            onDismiss = onDismiss,
-        )
+    if (onCookRecipe != null && presentation != null) {
+        LaunchedEffect(showConfirmation, pendingRecipe) {
+            onCookRecipe(pendingRecipe, presentation.ingredientIds)
+            val names = state.ingredients.associate { it.id to it.nameVi }
+            onResult(pendingRecipe.id, cookResultMessage(presentation.ingredientIds.mapNotNull(names::get)))
+            onDismiss()
+        }
     } else {
         AlertDialog(
             onDismissRequest = onDismiss,

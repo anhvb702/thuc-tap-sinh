@@ -102,14 +102,11 @@ fun RecipeDetailScreen(
     val host = snackbarHostState ?: localHost
     val scope = rememberCoroutineScope()
     var showManualChecklist by remember(recipe.id) { mutableStateOf(false) }
-    var showLeftover by remember(recipe.id) { mutableStateOf(false) }
-    val candidateIds = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds }
-    val namesById = remember(state.ingredients) { state.ingredients.associate { it.id to it.nameVi } }
+    val presentation = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true) }
 
-    // Chụp tủ TRƯỚC khi nấu để hoàn tác đúng trạng thái cũ; phần "còn lại" không bị trừ nên cũng không bị hoàn tác.
-    fun finishCook(kept: Set<String>) {
+    fun finishCook() {
         val before = state
-        val ids = ingredientsToConsume(candidateIds, kept)
+        val ids = presentation.ingredientIds
         onCook(ids)
         if (!showDoneSnackbar) return
         val undo = cookUndoActions(before, ids)
@@ -122,23 +119,13 @@ fun RecipeDetailScreen(
             if (result == SnackbarResult.ActionPerformed) onUndo(undo)
         }
     }
-    if (showLeftover) {
-        CookLeftoverDialog(
-            ingredients = candidateIds.distinct().map { it to (namesById[it] ?: it) },
-            onConfirm = { kept ->
-                showLeftover = false
-                finishCook(kept)
-            },
-            onDismiss = { showLeftover = false },
-        )
-    }
     if (showManualChecklist) {
         ManualCookChecklistDialog(
             recipe = recipe,
             onDismiss = { showManualChecklist = false },
             onDone = {
                 showManualChecklist = false
-                if (candidateIds.isEmpty()) finishCook(emptySet()) else showLeftover = true
+                finishCook()
             },
         )
     }
