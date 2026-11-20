@@ -93,7 +93,12 @@ fun RecipeScreen(
     LaunchedEffect(recipeViewModel) { recipeViewModel.effects.collect { effect -> if (effect is RecipeEffect.OpenRecipeDetail) onOpenRecipe?.invoke(effect.recipeId) } }
     LaunchedEffect(initialRecipeId) { if (shouldClearDurationForRequest(initialRecipeId)) recipeViewModel.onIntent(RecipeIntent.SelectDuration(null)) }
     LaunchedEffect(state.pantry.isNotEmpty()) { if (pantrySnapshot.pantry.isEmpty() && state.pantry.isNotEmpty()) pantrySnapshot = state }
-    val weeklyPlan = remember(recipes, pantrySnapshot, goal, preferences, swaps, tasteProfile) { buildWeeklyMealPlan(recipes, pantrySnapshot, goal, preferences, swaps, tasteProfile) }
+    val weeklyPlan = remember(recipes, pantrySnapshot, goal, preferences, swaps, tasteProfile, weeklyIncludeLunchMealPrep) {
+        buildWeeklyMealPlan(
+            recipes, pantrySnapshot, goal, preferences, swaps, tasteProfile,
+            separateLunchAndDinner = weeklyIncludeLunchMealPrep ?: false,
+        )
+    }
     val shopping = remember(weeklyPlan, state, preferences, weeklyIncludeLunchMealPrep) { buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: LUNCH_MEAL_PREP_ENABLED) }
     val recommendationIds = recipeState.catalog.recommendations.map { it.recipe.id }
     val resolvedInitialRecipeId = resolveInitialRecipeId(initialRecipeId, recommendationIds)

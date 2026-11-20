@@ -8,13 +8,15 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -48,17 +50,17 @@ internal fun GlobalFloatingActionButtons(
 ) {
     val colors = AppTheme.colors
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End) {
-        GlobalFloatingActionButton(AppIcons.Calendar, "Lên thực đơn cả tuần", colors.primary, colors.onPrimary, onOpenWeeklyPlan)
-        GlobalFloatingActionButton(AppIcons.Wheel, "Nấu ngẫu nhiên", colors.cta, colors.onCta, onOpenRandomWheel)
+        GlobalFloatingActionButton(AppIcons.Calendar, "Thực đơn", colors.primary, colors.onPrimary, onOpenWeeklyPlan)
+        GlobalFloatingActionButton(AppIcons.Wheel, "Quay món", colors.cta, colors.onCta, onOpenRandomWheel)
     }
 }
 
 @Composable
 private fun GlobalFloatingActionButton(
     icon: ImageVector,
-    description: String,
+    label: String,
     containerColor: Color,
-    iconColor: Color,
+    contentColor: Color,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -72,17 +74,25 @@ private fun GlobalFloatingActionButton(
         onClick = onClick,
         interactionSource = interaction,
         modifier = Modifier
-            .size(56.dp)
+            .heightIn(min = 44.dp)
             .semantics { role = Role.Button }
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             },
-        shape = CircleShape,
+        shape = RoundedCornerShape(999.dp),
         shadowElevation = 6.dp,
         color = containerColor,
+        contentColor = contentColor,
     ) {
-        Icon(icon, contentDescription = description, tint = iconColor, modifier = Modifier.padding(16.dp))
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+        }
     }
 }
 

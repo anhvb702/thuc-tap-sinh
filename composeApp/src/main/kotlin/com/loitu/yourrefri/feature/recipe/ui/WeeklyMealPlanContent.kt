@@ -27,7 +27,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -116,35 +115,30 @@ internal fun WeeklyMealPlanSection(
     var goalMenuOpen by remember { mutableStateOf(false) }
     var preferenceMenuOpen by remember { mutableStateOf(false) }
     var weekConfirmed by rememberSaveable { mutableStateOf(false) }
-    var selectedMealOption by rememberSaveable {
-        mutableStateOf(if (includeLunchMealPrep) WeeklyMealOption.BOTH else WeeklyMealOption.DINNER)
-    }
-    LaunchedEffect(includeLunchMealPrep) {
-        if (includeLunchMealPrep) selectedMealOption = WeeklyMealOption.BOTH
-    }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth().selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            WeeklyMealOption.entries.forEach { option ->
-                val selected = option == selectedMealOption
+            listOf(false to "1 bữa / ngày", true to "Trưa & Tối riêng").forEach { (separateMeals, label) ->
+                val selected = includeLunchMealPrep == separateMeals
                 Surface(
-                    modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                    modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(16.dp),
                     color = if (selected) colors.primarySoft else colors.surface,
                     border = BorderStroke(1.dp, if (selected) colors.primary else colors.line),
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).selectable(selected = selected, role = Role.RadioButton) {
-                            selectedMealOption = option
-                            weekConfirmed = false
-                            onIncludeLunchMealPrepChange(option.includesLunchPrep)
-                        }.padding(horizontal = 4.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                            .selectable(selected = selected, role = Role.RadioButton) {
+                                weekConfirmed = false
+                                onIncludeLunchMealPrepChange(separateMeals)
+                            }
+                            .padding(horizontal = 4.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = compactMealOptionLabel(option),
+                            text = label,
                             color = if (selected) colors.accentText else colors.text,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
@@ -225,7 +219,7 @@ internal fun WeeklyMealPlanSection(
             ) {
                 Column(Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) {
                     val dayTitle = compactDayTitle(day.dayLabelVi, weekStart, day.dayIndex)
-                    val totalMinutes = listOfNotNull(day.recipe.minutes, day.sideRecipe?.minutes).maxOrNull()
+                    val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = dayTitle,
@@ -249,7 +243,25 @@ internal fun WeeklyMealPlanSection(
                             )
                         }
                     }
-                    day.dishes.forEach { dish -> CompactDishRow(dish, onRequestCook) }
+                    day.lunchRecipe?.let { lunch ->
+                        Text(
+                            text = "Trưa",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accentText,
+                        )
+                        CompactDishRow(lunch, onRequestCook)
+                        day.lunchSideRecipe?.let { CompactDishRow(it, onRequestCook) }
+                        Text(
+                            text = "Tối",
+                            modifier = Modifier.padding(top = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colors.accentText,
+                        )
+                    }
+                    CompactDishRow(day.recipe, onRequestCook)
+                    day.sideRecipe?.let { CompactDishRow(it, onRequestCook) }
                 }
             }
         }

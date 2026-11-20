@@ -199,8 +199,15 @@ fun MainScaffold(
     val visibleRecipes = remember(recipes, dietRestriction, dietTooStrict, state.ingredients) {
         if (dietTooStrict) recipes else filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
     }
-    val globalWeeklyPlan = remember(visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences, weeklyMealPlanState.swappedOffsets, tasteProfile) {
-        buildWeeklyMealPlan(visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences, weeklyMealPlanState.swappedOffsets, tasteProfile)
+    val globalWeeklyPlan = remember(
+        visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences,
+        weeklyMealPlanState.swappedOffsets, tasteProfile, weeklyMealPlanState.includeLunchMealPrep,
+    ) {
+        buildWeeklyMealPlan(
+            visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences,
+            weeklyMealPlanState.swappedOffsets, tasteProfile,
+            separateLunchAndDinner = weeklyMealPlanState.includeLunchMealPrep,
+        )
     }
     val globalShopping = remember(globalWeeklyPlan, state, weeklyMealPlanState.preferences, weeklyMealPlanState.includeLunchMealPrep) {
         buildWeeklyShoppingList(globalWeeklyPlan, state, weeklyMealPlanState.preferences, includeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep)
