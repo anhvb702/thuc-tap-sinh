@@ -415,6 +415,10 @@ fun MainScaffold(
                     weeklyPreferences = weeklyMealPlanState.preferences,
                     weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
                     weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
+                    weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
+                    onWeeklyIncludeLunchMealPrepChange = { enabled ->
+                        onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
+                    },
                     onModeChange = { requestedRecipeMode = it },
                     onBackHome = { currentTab = NavTab.HOME },
                     onOpenRecipe = { openedRecipeId = it },

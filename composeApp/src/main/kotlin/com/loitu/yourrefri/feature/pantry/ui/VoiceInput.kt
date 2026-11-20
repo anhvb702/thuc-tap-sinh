@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -52,12 +54,15 @@ private class OnDeviceVoiceSession(
     private val onResult: (String) -> Unit,
     private val onFailure: (VoiceFailure) -> Unit,
 ) : VoiceSession {
-    private var recognizer: SpeechRecognizer? = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var recognizer: SpeechRecognizer? = null
     private var lastPartial = ""
     private var finished = false
 
     init {
-        recognizer?.setRecognitionListener(
+        try {
+            recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+            recognizer?.setRecognitionListener(
             object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
                 override fun onBeginningOfSpeech() {}
@@ -83,37 +88,56 @@ private class OnDeviceVoiceSession(
                         SpeechRecognizer.ERROR_NO_MATCH,
                         SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> finish(lastPartial)
                         else -> {
-                            finished = true
-                            onFailure(VoiceFailure.UNAVAILABLE)
+                            finishFailure(VoiceFailure.UNAVAILABLE)
                         }
                     }
                 }
             },
-        )
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            )
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+            }
+            recognizer?.startListening(intent)
+        } catch (_: Exception) {
+            recognizer = null
+            finishFailure(VoiceFailure.UNAVAILABLE)
         }
-        recognizer?.startListening(intent)
     }
 
     private fun finish(text: String) {
         if (finished) return
         finished = true
         if (text.isBlank()) onFailure(VoiceFailure.NOTHING_HEARD) else onResult(text)
+        mainHandler.post { destroyNow() }
+    }
+
+    private fun finishFailure(failure: VoiceFailure) {
+        if (finished) return
+        finished = true
+        onFailure(failure)
+        mainHandler.post { destroyNow() }
     }
 
     private fun firstText(bundle: Bundle?): String? =
         bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }
 
     override fun stop() {
-        recognizer?.stopListening()
+        try {
+            recognizer?.stopListening()
+        } catch (_: Exception) {
+        }
+        mainHandler.postDelayed({ if (!finished) finish(lastPartial) }, 1_500)
     }
 
     override fun destroy() {
+        mainHandler.post { destroyNow() }
+    }
+
+    private fun destroyNow() {
         finished = true
         recognizer?.let {
             try {

@@ -262,8 +262,8 @@ fun RecipeScreen(
         )
     }
 
-    val shopping = remember(weeklyPlan, state, preferences) {
-        buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = LUNCH_MEAL_PREP_ENABLED)
+    val shopping = remember(weeklyPlan, state, preferences, weeklyIncludeLunchMealPrep) {
+        buildWeeklyShoppingList(weeklyPlan, state, preferences, includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: LUNCH_MEAL_PREP_ENABLED)
     }
     val recommendations = recommendRecipes(recipes, state, tasteProfile = tasteProfile)
     val recommendationIds = recommendations.map { it.recipe.id }
@@ -324,6 +324,11 @@ fun RecipeScreen(
                     showCookConfirmation = true
                 },
                 updatedRecipeResult = updatedRecipeResult,
+                includeLunchMealPrep = weeklyIncludeLunchMealPrep ?: false,
+                onIncludeLunchMealPrepChange = { enabled ->
+                    if (onWeeklyAction != null) onWeeklyAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
+                    else onWeeklyIncludeLunchMealPrepChange?.invoke(enabled)
+                },
                 onNavigate = {
                     updateMode(it)
                     // Mở từ nút xác nhận ở cuối trang: đưa danh sách về đầu để thấy tiêu đề.

@@ -49,6 +49,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -147,7 +148,7 @@ fun PantryGridScreen(
     var addChoice by remember { mutableStateOf(AddChoice.ADD_INGREDIENT) }
     var selectedGroup by remember { mutableStateOf<String?>(null) }
     var selectedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var batchMode by remember { mutableStateOf(false) }
+    var showClearDialog by remember { mutableStateOf(false) }
     var showComboDialog by remember { mutableStateOf(false) }
     var showLeftoverDialog by remember { mutableStateOf(false) }
     // "Mình nghe được: ..." chỉ hiện trong bảng thêm món khi mở từ giọng nói.
@@ -168,7 +169,6 @@ fun PantryGridScreen(
         }
     }
     LaunchedEffect(searchOpen) { if (searchOpen) searchFocus.requestFocus() }
-
     fun dismissAddFoodDialog() {
         showAddDialog = false
         newFoodName = ""
@@ -210,18 +210,15 @@ fun PantryGridScreen(
         }
     }
 
-    fun clearBatch() {
-        val ids = selectedIds
-        if (ids.isEmpty()) return
-        batchClearActions(ids, state).forEach(onAction)
-        batchMode = false
-        selectedIds = emptySet()
+    fun clearAll() {
+        val actions = clearAllPantryActions(state)
+        actions.forEach(onAction)
         val host = snackbarHostState ?: return
         scope.launch {
             host.currentSnackbarData?.dismiss()
             val snackbar = launch {
-                if (host.showSnackbar("Đã dọn ${ids.size} món khỏi tủ", "Hoàn tác", duration = SnackbarDuration.Indefinite) == SnackbarResult.ActionPerformed) {
-                    ids.forEach { onAction(PantryGridAction.Tap(it)) }
+                if (host.showSnackbar("Đã dọn hết ${actions.size} món khỏi tủ", "Hoàn tác", duration = SnackbarDuration.Indefinite) == SnackbarResult.ActionPerformed) {
+                    actions.forEach(onAction)
                 }
             }
             delay(5_000)
@@ -232,6 +229,16 @@ fun PantryGridScreen(
     fun endVoiceSession() {
         sessionHolder[0]?.destroy()
         sessionHolder[0] = null
+    }
+
+    LaunchedEffect(voicePhase) {
+        if (voicePhase == VoicePhase.LISTENING) {
+            delay(10_000)
+            if (voicePhase == VoicePhase.LISTENING) {
+                endVoiceSession()
+                voicePhase = VoicePhase.NOT_HEARD
+            }
+        }
     }
 
     fun handleVoiceText(text: String) {
@@ -457,25 +464,12 @@ fun PantryGridScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            QuickActionButton("Dọn tủ", batchMode) {
-                batchMode = !batchMode
-                if (!batchMode) selectedIds = emptySet()
+            QuickActionButton("Dọn tủ") {
+                val count = clearAllPantryActions(state).size
+                if (count == 0) showNote("Tủ nhà mình đang trống rồi.") else showClearDialog = true
             }
-            QuickActionButton("+ Combo", false) { showComboDialog = true }
-            QuickActionButton("+ Món thừa", false) { showLeftoverDialog = true }
-        }
-        if (batchMode) {
-            Surface(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                shape = RoundedCornerShape(16.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line),
-            ) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 16.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Đã dùng hết (${selectedIds.size})", color = colors.text, modifier = Modifier.weight(1f))
-                    TextButton(onClick = ::clearBatch, enabled = selectedIds.isNotEmpty(), modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("Dọn", color = colors.accentText)
-                    }
-                }
-            }
+            QuickActionButton("+ Combo") { showComboDialog = true }
+            QuickActionButton("+ Món thừa") { showLeftoverDialog = true }
         }
 
         val filteredByLocation = presentation.visibleCells
@@ -558,11 +552,8 @@ fun PantryGridScreen(
                 quantity = cell.quantity,
                 selected = cell.ingredientId in selectedIds,
                 onTap = {
-                    if (batchMode) selectedIds = toggleBatchSelection(selectedIds, cell.ingredientId)
-                    else {
-                        if (tapMarksOut(cell.have)) offerUndo(cell)
-                        onAction(PantryGridAction.Tap(cell.ingredientId))
-                    }
+                    if (tapMarksOut(cell.have)) offerUndo(cell)
+                    onAction(PantryGridAction.Tap(cell.ingredientId))
                 },
                 onEditShelf = { onAction(PantryGridAction.OpenShelfEditor(cell.ingredientId)) },
                 onEditUnit = { onAction(PantryGridAction.OpenUnitEditor(cell.ingredientId)) },
@@ -607,14 +598,43 @@ fun PantryGridScreen(
     if (showComboDialog) {
         GroceryComboDialog(
             combos = GROCERY_COMBOS,
-            onPick = { combo -> comboActionsFor(combo, state).forEach(onAction); showComboDialog = false },
+            onPick = { combo ->
+                val actions = comboActionsFor(combo, state)
+                actions.forEach(onAction)
+                showComboDialog = false
+                showNote("Đã thêm gói ${combo.titleVi} (${actions.size} món) vào tủ")
+            },
             onDismiss = { showComboDialog = false },
+        )
+    }
+    if (showClearDialog) {
+        val count = clearAllPantryActions(state).size
+        AlertDialog(
+            onDismissRequest = { showClearDialog = false },
+            containerColor = colors.surface,
+            title = { Text("Dọn hết tủ lạnh?", color = colors.text) },
+            text = { Text("Đánh dấu hết toàn bộ $count món đang có trong tủ? Bạn vẫn có thể Hoàn tác ngay sau đó.", color = colors.muted) },
+            confirmButton = {
+                Button(
+                    onClick = { showClearDialog = false; clearAll() },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
+                ) { Text("Dọn hết tủ") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearDialog = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Hủy", color = colors.muted)
+                }
+            },
         )
     }
     if (showLeftoverDialog) {
         QuickLeftoverDialog(
             onSave = { name ->
-                if (name.isNotBlank()) onAction(PantryGridAction.AddCustomFood(name, shelfDays = 2))
+                if (name.isNotBlank()) {
+                    onAction(PantryGridAction.AddCustomFood(name, shelfDays = 2, group = "khac", kind = "leftover", isLeftover = true))
+                    showNote("Đã cất $name vào Đồ ăn thừa")
+                }
                 showLeftoverDialog = false
             },
             onDismiss = { showLeftoverDialog = false },
@@ -767,7 +787,9 @@ fun PantryGridScreen(
         val confirmActions = if (isOther) {
             // "Khác / Thêm món": chỉ thêm món mới ngoài danh mục, chặn tên trùng.
             val customId = if (canAddOther(newFoodName, existingNames)) customFoodId(newFoodName) else null
-            listOfNotNull(customId?.let { PantryGridAction.AddIngredient(it, newFoodDays) })
+            listOfNotNull(customId?.let {
+                PantryGridAction.AddCustomFood(name = newFoodName.trim(), shelfDays = newFoodDays ?: 3, group = "khac", kind = "fresh", isLeftover = false)
+            })
         } else {
             ingredientOnlyConfirmActions(state, selectedIds, newFoodName, newFoodDays)
         }
@@ -946,6 +968,7 @@ fun PantryGridScreen(
                         onClick = {
                             if (confirmActions.isNotEmpty()) {
                                 confirmActions.forEach(onAction)
+                                if (isOther) showNote("Đã thêm ${newFoodName.trim()} vào tủ")
                                 dismissAddFoodDialog()
                             } else {
                                 addFoodError = true
@@ -989,21 +1012,16 @@ fun PantryGridScreen(
 }
 
 @Composable
-private fun QuickActionButton(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun QuickActionButton(label: String, onClick: () -> Unit) {
     val colors = AppTheme.colors
-    TextButton(
+    OutlinedButton(
         onClick = onClick,
         modifier = Modifier.heightIn(min = 48.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = if (selected) colors.onPrimary else colors.primary),
+        border = BorderStroke(1.dp, colors.line),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.primary),
     ) {
-        Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = if (selected) colors.primary else colors.surface,
-            border = BorderStroke(1.dp, if (selected) colors.primary else colors.line),
-        ) {
-            Text(label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp), fontWeight = FontWeight.SemiBold)
-        }
+        Text(label, fontWeight = FontWeight.SemiBold)
     }
 }
 
