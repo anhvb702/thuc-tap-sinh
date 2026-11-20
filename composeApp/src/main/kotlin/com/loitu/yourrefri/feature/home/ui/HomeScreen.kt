@@ -28,7 +28,6 @@ import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.home.presentation.HomeEffect
 import com.loitu.yourrefri.feature.home.presentation.HomeIntent
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
-import com.loitu.yourrefri.feature.home.logic.homeGreeting
 import com.loitu.yourrefri.feature.home.domain.model.formatHomeWeatherLine
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
@@ -62,6 +61,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     homeViewModel: HomeViewModel = remember { HomeViewModel() },
+    userName: String = DEFAULT_USER_NAME,
 ) {
     val colors = AppTheme.colors
     val homeState by homeViewModel.state.collectAsState()
@@ -119,7 +119,7 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         HomeHeader(
-            greeting = greetingText(state.hourOfDay),
+            greeting = userGreetingText(userName),
             weatherLine = formatHomeWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
             onWeatherClick = { homeViewModel.onIntent(HomeIntent.ToggleWeatherCity) },
         )
@@ -148,11 +148,6 @@ fun HomeScreen(
                 onClick = onNavigateToHistory,
             )
         }
-        Text(
-            text = "Chỉ trên máy bạn · Không cần tài khoản",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.muted,
-        )
     }
     activeBucket?.let { bucket ->
         val items = when (bucket) {

@@ -21,3 +21,7 @@ internal fun spotlightSubtitle(suggestion: RecipeRecommendation): String = build
 }.joinToString(" · ")
 
 internal fun resetDismissedSuggestions(): Set<String> = emptySet()
+
+internal const val DEFAULT_USER_NAME = "Andy"
+
+internal fun userGreetingText(userName: String = DEFAULT_USER_NAME): String = "Chào ${userName.trim().ifEmpty { DEFAULT_USER_NAME }}"

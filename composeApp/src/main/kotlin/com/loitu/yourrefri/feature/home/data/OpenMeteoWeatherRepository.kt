@@ -25,8 +25,9 @@ class OpenMeteoWeatherRepository(
                     "&current=temperature_2m,weather_code&timezone=auto",
             ).openConnection() as HttpURLConnection
             try {
-                connection.connectTimeout = 3500
-                connection.readTimeout = 3500
+                connection.connectTimeout = 6000
+                connection.readTimeout = 6000
+                connection.setRequestProperty("User-Agent", "YourRefri/1.0")
                 connection.requestMethod = "GET"
                 val current = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
                     .getJSONObject("current")

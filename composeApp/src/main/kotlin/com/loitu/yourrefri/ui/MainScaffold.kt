@@ -146,6 +146,7 @@ fun MainScaffold(
     modifier: Modifier = Modifier,
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
+    homeViewModel: com.loitu.yourrefri.feature.home.presentation.HomeViewModel? = null,
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var showWeeklyOverlay by remember { mutableStateOf(false) }
@@ -368,6 +369,7 @@ fun MainScaffold(
                 Crossfade(targetState = currentTab, animationSpec = tween(180), label = "mainTabCrossfade") { tab ->
                     when (tab) {
                         NavTab.HOME -> HomeScreen(
+                            homeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() },
                             state = state,
                             recipes = visibleRecipes,
                             onNavigateToPantry = { currentTab = NavTab.PANTRY },

@@ -68,4 +68,11 @@ class HomeSpotlightAndManualCookTest {
         assertEquals(1f, manualCookProgress(emptySet(), 0))
         assertTrue(canFinishManualCook(emptySet(), -1))
     }
+
+    @Test
+    fun userGreetingText_defaultsToAndyAndTrimsCustomName() {
+        assertEquals("Chào Andy", userGreetingText())
+        assertEquals("Chào Andy", userGreetingText("   "))
+        assertEquals("Chào Minh", userGreetingText("  Minh  "))
+    }
 }
