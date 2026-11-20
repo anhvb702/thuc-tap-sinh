@@ -2,18 +2,50 @@ package com.loitu.yourrefri.feature.pantry.ui
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class PantryGridFiltersTest {
     @Test
     fun initialFilters_showFullCatalogAndAllLocations() {
-        assertEquals(PantryGridFilters(StorageTab.ALL, presentOnly = false), PantryGridFilters())
+        val filters = PantryGridFilters()
+        assertEquals(StorageTab.ALL, filters.storageTab)
+        assertEquals(false, filters.presentOnly)
+        assertEquals(setOf(PantryCategory.UNPROCESSED, PantryCategory.PROCESSED, PantryCategory.SPICE), filters.selectedCategories)
+        assertEquals(listOf("Chưa chế biến", "Đã chế biến", "Gia vị"), PantryCategory.entries.map { it.labelVi })
     }
 
     @Test
     fun showAllItems_resetsLocationAndPresenceFilter() {
-        val filtered = PantryGridFilters(StorageTab.FREEZER, presentOnly = true)
+        val filtered = PantryGridFilters(StorageTab.FREEZER, presentOnly = true, selectedCategories = emptySet())
 
-        assertEquals(PantryGridFilters(StorageTab.ALL, presentOnly = false), filtered.showAllItems())
+        assertEquals(PantryGridFilters(), filtered.showAllItems())
+    }
+
+    @Test
+    fun pantryStatusSwitchLabel_dependsOnlyOnPresence() {
+        assertEquals("Đang có", pantryStatusSwitchLabel(true))
+        assertEquals("Tất cả", pantryStatusSwitchLabel(false))
+    }
+
+    @Test
+    fun parseDirectQuantityInput_trimsAndKeepsZeroAndPositiveIntegers() {
+        assertEquals(0, parseDirectQuantityInput(" 0 "))
+        assertEquals(3, parseDirectQuantityInput(" 003 "))
+        assertEquals(999, parseDirectQuantityInput("999"))
+    }
+
+    @Test
+    fun parseDirectQuantityInput_clampsToTheRequestedMaximumEvenForLargeIntegers() {
+        assertEquals(999, parseDirectQuantityInput("1000"))
+        assertEquals(999, parseDirectQuantityInput("999999999999999999999999"))
+        assertEquals(12, parseDirectQuantityInput("27", maxQuantity = 12))
+    }
+
+    @Test
+    fun parseDirectQuantityInput_rejectsBlankNegativeAndNonIntegerInput() {
+        listOf("", "  ", "-1", "1.5", "2e3", "1 2", "3 phần").forEach {
+            assertNull(parseDirectQuantityInput(it), it)
+        }
     }
 
     @Test

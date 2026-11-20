@@ -508,6 +508,7 @@ class PantryGridReducerTest {
         is AddIngredient -> null
         is IncreaseQuantity -> null
         is DecreaseQuantity -> null
+        is PantryGridAction.SetQuantity -> null
         is ConsumeIngredient -> null
         is OpenShelfEditor -> null
         is PickShelfDays -> null

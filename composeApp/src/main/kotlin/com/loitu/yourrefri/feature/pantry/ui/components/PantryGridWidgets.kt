@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -91,6 +92,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,107 +104,65 @@ import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
 @Composable
-internal fun QuickActionButton(label: String, onClick: () -> Unit) {
+internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onToggle: (PantryCategory) -> Unit) {
+    val colors = AppTheme.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        PantryCategory.entries.forEach { category ->
+            val selected = category in selectedCategories
+            val shape = RoundedCornerShape(16.dp)
+            Box(
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
+                    .background(if (selected) colors.primary else colors.surface)
+                    .border(1.dp, if (selected) colors.primary else colors.line, shape)
+                    .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle(category) })
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = category.labelVi,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) colors.onPrimary else colors.text,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun PantryAddMenu(
+    voiceAvailable: Boolean,
+    onAddIngredient: () -> Unit,
+    onAddOther: () -> Unit,
+    onLeftover: () -> Unit,
+    onCombo: () -> Unit,
+    onVoice: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        PantryAddMenuItem("Thêm nguyên liệu", onAddIngredient)
+        PantryAddMenuItem("Thêm món khác", onAddOther)
+        PantryAddMenuItem("Cất món thừa", onLeftover)
+        PantryAddMenuItem("Thêm combo đi chợ", onCombo)
+        if (voiceAvailable) PantryAddMenuItem("Nói để thêm", onVoice)
+    }
+}
+
+@Composable
+private fun PantryAddMenuItem(label: String, onClick: () -> Unit) {
     val colors = AppTheme.colors
     OutlinedButton(
         onClick = onClick,
         modifier = Modifier.heightIn(min = 48.dp),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, colors.line),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.primary),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = colors.surface, contentColor = colors.text),
     ) {
         Text(label, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-/** Chip lọc Tất cả | Ngăn mát | Ngăn đông có icon; chữ xuống dòng khi cỡ chữ lớn thay vì bị cắt. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-internal fun StorageSegmentedControl(
-    selected: StorageTab,
-    allCount: Int,
-    soonCount: Int,
-    onSelect: (StorageTab) -> Unit,
-) {
-    val colors = AppTheme.colors
-    FlowRow(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        StorageTab.entries.forEach { tab ->
-            val isSelected = tab == selected
-            val label = when (tab) {
-                StorageTab.ALL -> "Tất cả"
-                StorageTab.FRIDGE -> "Ngăn mát"
-                StorageTab.FREEZER -> "Ngăn đông"
-                StorageTab.SOON -> PantryScreenCopy.soonChipLabel(soonCount)
-            }
-            val icon = when (tab) {
-                StorageTab.ALL -> null
-                StorageTab.FRIDGE -> AppIcons.Fridge
-                StorageTab.FREEZER -> AppIcons.Snowflake
-                StorageTab.SOON -> AppIcons.Clock
-            }
-            val contentColor = if (isSelected) colors.onPrimary else colors.text
-            Row(
-                modifier = Modifier
-                    .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isSelected) colors.primary else colors.surface)
-                    .border(1.dp, if (isSelected) colors.primary else colors.line, RoundedCornerShape(16.dp))
-                    .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(tab) })
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                if (icon != null) {
-                    Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(18.dp))
-                }
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = contentColor,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun PantryCategoryDropbar(
-    selected: PantryCategory,
-    onSelect: (PantryCategory) -> Unit,
-) {
-    val colors = AppTheme.colors
-    var expanded by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable { expanded = true },
-            shape = RoundedCornerShape(16.dp),
-            color = colors.surface,
-            border = BorderStroke(1.dp, colors.line),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(selected.labelVi, color = colors.text, modifier = Modifier.weight(1f))
-                Icon(AppIcons.ChevronDown, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
-            }
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            PantryCategory.entries.forEach { category ->
-                DropdownMenuItem(
-                    text = { Text(category.labelVi, color = colors.text) },
-                    onClick = { onSelect(category); expanded = false },
-                    modifier = Modifier.heightIn(min = 48.dp),
-                )
-            }
-        }
     }
 }
 
@@ -395,6 +355,7 @@ internal fun WarmFoodCard(
     onTap: () -> Unit,
     onEditShelf: () -> Unit,
     onEditUnit: () -> Unit,
+    onEditQuantity: () -> Unit,
     onIncreaseQty: () -> Unit,
     onDecreaseQty: () -> Unit,
 ) {
@@ -408,12 +369,13 @@ internal fun WarmFoodCard(
         color = if (cell.have) colors.surface else Color.Transparent,
         border = BorderStroke(2.dp, if (selected) colors.primary else if (cell.have) colors.line else colors.primarySoft),
     ) {
-        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 48.dp)
                     .clickable(onClick = onTap)
                     .semantics {
                         contentDescription = if (cell.have) {
@@ -469,6 +431,7 @@ internal fun WarmFoodCard(
                     unit = cell.unit,
                     onDecrease = onDecreaseQty,
                     onIncrease = onIncreaseQty,
+                    onEdit = onEditQuantity,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(
@@ -476,26 +439,18 @@ internal fun WarmFoodCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "Sửa hạn",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                        color = colors.accentText,
-                        modifier = Modifier
-                            .clickable(onClick = onEditShelf)
-                            .padding(vertical = 2.dp)
+                    TextButton(
+                        onClick = onEditShelf,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                             .semantics { contentDescription = "Sửa hạn ước tính cho ${cell.nameVi}" },
-                    )
-                    Text(
-                        text = cell.unit,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-                        color = colors.muted,
-                        modifier = Modifier
-                            .clickable(onClick = onEditUnit)
-                            .padding(vertical = 2.dp)
-                            .semantics {
-                                contentDescription = "Đổi đơn vị số lượng ${cell.nameVi}, hiện là ${cell.unit}"
-                            },
-                    )
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text("Sửa hạn", style = MaterialTheme.typography.labelSmall, color = colors.accentText) }
+                    TextButton(
+                        onClick = onEditUnit,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                            .semantics { contentDescription = "Đổi đơn vị số lượng ${cell.nameVi}, hiện là ${cell.unit}" },
+                        contentPadding = PaddingValues(0.dp),
+                    ) { Text("Đổi đơn vị", style = MaterialTheme.typography.labelSmall, color = colors.muted, textAlign = TextAlign.Center) }
                 }
             }
         }
@@ -509,6 +464,7 @@ internal fun QuantityStepper(
     unit: String,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
+    onEdit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
@@ -519,36 +475,43 @@ internal fun QuantityStepper(
     ) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(colors.primarySoft)
                 .clickable(role = Role.Button, onClick = onDecrease)
                 .semantics {
                     contentDescription = if (quantity > 1) "Giảm số lượng $name" else "Đánh dấu hết $name"
                 },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Minus, contentDescription = null, tint = colors.text, modifier = Modifier.size(16.dp))
+            Icon(AppIcons.Minus, contentDescription = null, tint = colors.text, modifier = Modifier.size(32.dp)
+                .background(colors.primarySoft, CircleShape).padding(8.dp))
         }
-        Text(
-            text = "$quantity $unit",
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = colors.text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 4.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        val quantityShape = RoundedCornerShape(10.dp)
+        Box(
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                .clip(quantityShape)
+                .border(1.dp, colors.line, quantityShape)
+                .clickable(role = Role.Button, onClick = onEdit)
+                .semantics { contentDescription = "Chỉnh số lượng $name" },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "$quantity $unit",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = colors.text,
+                textAlign = TextAlign.Center,
+            )
+        }
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(colors.primarySoft)
                 .clickable(role = Role.Button, onClick = onIncrease)
                 .semantics { contentDescription = "Tăng số lượng $name" },
             contentAlignment = Alignment.Center,
         ) {
-            Icon(AppIcons.Plus, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
+            Icon(AppIcons.Plus, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(32.dp)
+                .background(colors.primarySoft, CircleShape).padding(8.dp))
         }
     }
 }

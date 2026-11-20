@@ -49,6 +49,7 @@ sealed interface PantryGridAction {
     ) : PantryGridAction
     data class IncreaseQuantity(val ingredientId: String) : PantryGridAction
     data class DecreaseQuantity(val ingredientId: String) : PantryGridAction
+    data class SetQuantity(val ingredientId: String, val quantity: Int) : PantryGridAction
     data class ConsumeIngredient(val ingredientId: String) : PantryGridAction
     data class OpenShelfEditor(val ingredientId: String) : PantryGridAction
 
@@ -92,6 +93,8 @@ data class PantryCell(
 // Cố định, không cho nhập tự do: đủ để chọn bằng một chạm và không tràn màn hình.
 val SHELF_DAY_OPTIONS: List<Int> = listOf(1, 2, 3, 4, 5, 7, 10, 14, 21, 30)
 
+const val MAX_PANTRY_QUANTITY = 999
+
 fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate = when (action) {
     is PantryGridAction.Loaded -> PantryGridUpdate(
         state.copy(
@@ -110,6 +113,7 @@ fun reduce(state: PantryGridState, action: PantryGridAction): PantryGridUpdate =
     is PantryGridAction.AddCustomFood -> addCustomFood(state, action)
     is PantryGridAction.IncreaseQuantity -> changeQuantity(state, action.ingredientId, 1)
     is PantryGridAction.DecreaseQuantity -> decreaseQuantity(state, action.ingredientId)
+    is PantryGridAction.SetQuantity -> setQuantity(state, action.ingredientId, action.quantity)
     is PantryGridAction.ConsumeIngredient -> consumeIngredient(state, action.ingredientId)
     is PantryGridAction.OpenShelfEditor -> openEditor(state, action.ingredientId)
     is PantryGridAction.PickShelfDays -> pickDays(state, action.days)
@@ -208,6 +212,41 @@ private fun changeQuantity(state: PantryGridState, id: String, amount: Int): Pan
     return PantryGridUpdate(
         state.copy(quantities = quantities),
         listOf(PantryGridEffect.SaveQuantity(id, quantity)),
+    )
+}
+
+private fun setQuantity(state: PantryGridState, id: String, quantity: Int): PantryGridUpdate {
+    if (state.ingredients.none { it.id == id }) return PantryGridUpdate(state)
+    val have = state.pantry[id]?.have == true
+    if (quantity <= 0) {
+        if (!have) return PantryGridUpdate(state)
+        val tapped = tap(state, id)
+        val resetEffect = if (id in state.quantities) listOf(PantryGridEffect.SaveQuantity(id, 1)) else emptyList()
+        return tapped.copy(
+            state = tapped.state.copy(quantities = tapped.state.quantities - id),
+            effects = tapped.effects + resetEffect,
+        )
+    }
+    val clamped = quantity.coerceAtMost(MAX_PANTRY_QUANTITY)
+    val quantities = state.quantities.toMutableMap().apply {
+        if (clamped == 1) remove(id) else put(id, clamped)
+    }
+    if (have) {
+        return PantryGridUpdate(
+            state.copy(quantities = quantities),
+            listOf(PantryGridEffect.SaveQuantity(id, clamped)),
+        )
+    }
+    return PantryGridUpdate(
+        state.copy(
+            quantities = quantities,
+            pantry = state.pantry + (id to PantryItem(id, true, state.today)),
+            sessionBase = state.sessionBase - id,
+        ),
+        listOf(
+            PantryGridEffect.SaveHave(id, true, state.today),
+            PantryGridEffect.SaveQuantity(id, clamped),
+        ),
     )
 }
 

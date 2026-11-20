@@ -1,43 +1,58 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
+import com.loitu.yourrefri.feature.pantry.logic.MAX_PANTRY_QUANTITY
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 
 internal data class PantryGridFilters(
     val storageTab: StorageTab = StorageTab.ALL,
     val presentOnly: Boolean = false,
-    val pantryCategory: PantryCategory = PantryCategory.ALL,
+    val selectedCategories: Set<PantryCategory> = ALL_PANTRY_CATEGORIES,
 ) {
     fun showAllItems() = PantryGridFilters()
 }
 
 internal enum class PantryCategory(val labelVi: String) {
-    ALL("Tất cả"),
-    FRESH("Đồ tươi"),
-    LEFTOVER("Đồ ăn thừa"),
-    INSTANT_DRINK("Đồ ăn liền & uống"),
+    UNPROCESSED("Chưa chế biến"),
+    PROCESSED("Đã chế biến"),
     SPICE("Gia vị"),
 }
+
+internal val ALL_PANTRY_CATEGORIES: Set<PantryCategory> = PantryCategory.entries.toSet()
+
+private val leftoverNames = listOf("đồ ăn thừa", "leftover", "dư", "thừa", "cơm nguội")
+private val drinkNames = listOf("sữa", "nước", "trà", "cà phê", "nước ép")
+private val spiceNames = listOf("muối", "đường", "tiêu", "nước mắm", "nước tương", "dầu ăn", "dầu hào", "bột ngọt")
 
 internal fun pantryCategoryOf(cell: PantryCell): PantryCategory {
     val kind = cell.kind.lowercase()
     val group = cell.group?.lowercase()
     val name = cell.nameVi.lowercase()
     return when {
-        kind == "leftover" || group == "leftover" || group == "do-an-thua" ||
-            name.contains("đồ ăn thừa") || name.contains("leftover") || name.contains("dư") || name.contains("thừa") || name.contains("cơm nguội") -> PantryCategory.LEFTOVER
-        kind == "seasoning" || group == "gia-vi" ||
-            listOf("muối", "đường", "tiêu", "nước mắm", "nước tương", "dầu ăn", "dầu hào", "bột ngọt")
-                .any(name::contains) -> PantryCategory.SPICE
-        kind == "ready" ||
-            (group == "sua-trung" && listOf("sữa", "nước", "trà", "cà phê", "nước ép").any(name::contains)) ->
-            PantryCategory.INSTANT_DRINK
-        else -> PantryCategory.FRESH
+        kind == "leftover" || group == "leftover" || group == "do-an-thua" || kind == "ready" ||
+            leftoverNames.any(name::contains) || (group == "sua-trung" && drinkNames.any(name::contains)) ->
+            PantryCategory.PROCESSED
+        kind == "seasoning" || group == "gia-vi" || spiceNames.any(name::contains) -> PantryCategory.SPICE
+        else -> PantryCategory.UNPROCESSED
     }
 }
 
-internal fun filterByCategory(cells: List<PantryCell>, category: PantryCategory): List<PantryCell> =
-    if (category == PantryCategory.ALL) cells else cells.filter { pantryCategoryOf(it) == category }
+internal fun togglePantryCategory(selected: Set<PantryCategory>, category: PantryCategory): Set<PantryCategory> =
+    if (category in selected) selected - category else selected + category
+
+internal fun filterByCategories(cells: List<PantryCell>, selected: Set<PantryCategory>): List<PantryCell> = when {
+    selected.isEmpty() -> emptyList()
+    selected.size == PantryCategory.entries.size -> cells
+    else -> cells.filter { pantryCategoryOf(it) in selected }
+}
+
+internal fun pantryStatusSwitchLabel(presentOnly: Boolean): String = if (presentOnly) "Đang có" else "Tất cả"
+
+internal fun parseDirectQuantityInput(raw: String, maxQuantity: Int = MAX_PANTRY_QUANTITY): Int? {
+    val digits = raw.trim()
+    if (digits.isEmpty() || digits.any { it !in '0'..'9' }) return null
+    return digits.toIntOrNull()?.coerceAtMost(maxQuantity) ?: maxQuantity
+}
 
 internal enum class PantryGridEmptyState {
     NONE,
