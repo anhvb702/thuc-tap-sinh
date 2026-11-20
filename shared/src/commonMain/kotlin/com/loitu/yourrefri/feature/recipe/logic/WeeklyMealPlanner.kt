@@ -21,6 +21,13 @@ enum class FamilyPreferenceTag(val labelVi: String) {
     VEGGIE_TOFU("Rau, Đậu & Nấm"), MEAT("Thịt heo, bò, gà"),
 }
 
+enum class WeeklyDishSlot { DINNER_MAIN, DINNER_SIDE, LUNCH_MAIN, LUNCH_SIDE }
+
+fun weeklyDishSwapKey(dayIndex: Int, slot: WeeklyDishSlot): Int = 100 + dayIndex * 10 + slot.ordinal
+
+fun isValidWeeklySwapKey(key: Int): Boolean =
+    key in 0..6 || (key >= 100 && (key - 100) / 10 in 0..6 && (key - 100) % 10 in WeeklyDishSlot.entries.indices)
+
 data class PlannedDayMeal(
     val dayIndex: Int,
     val dayLabelVi: String,
@@ -113,6 +120,10 @@ fun buildWeeklyMealPlan(
     val sidePool = tasteFiltered.filter { it.isSoupOrVeggieSide() }
     val hasTwoCourseCatalog = mainPool.size >= 2 && sidePool.isNotEmpty() && mainPool.any { main -> sidePool.any { it.id != main.id } }
 
+    fun slotOffset(day: Int, slot: WeeklyDishSlot): Int =
+        (swappedOffsets[day]?.coerceAtLeast(0) ?: 0) +
+            (swappedOffsets[weeklyDishSwapKey(day, slot)]?.coerceAtLeast(0) ?: 0)
+
     fun pickSeries(pool: List<Recipe>): MutableList<Recipe> {
         val picks = mutableListOf<Recipe>()
         repeat(7) { day ->
@@ -120,11 +131,11 @@ fun buildWeeklyMealPlan(
             if (candidates.isEmpty()) return@repeat
             picks += candidates.firstOrNull { c -> picks.none { it.id == c.id } } ?: candidates.first()
         }
-        swappedOffsets.toSortedMap().forEach { (day, rawOffset) ->
-            val offset = rawOffset.coerceAtLeast(0)
-            if (day !in picks.indices || offset == 0) return@forEach
+        for (day in 0 until picks.size) {
+            val offset = slotOffset(day, WeeklyDishSlot.DINNER_MAIN)
+            if (offset == 0) continue
             val options = rankedFrom(pool, day, setOfNotNull(picks.getOrNull(day - 1)?.id))
-            if (options.isEmpty()) return@forEach
+            if (options.isEmpty()) continue
             val start = options.indexOfFirst { it.id == picks[day].id }.coerceAtLeast(0)
             picks[day] = options[(start + offset) % options.size]
             var next = day + 1
@@ -151,7 +162,7 @@ fun buildWeeklyMealPlan(
                 sides += null
             } else {
                 val unseen = candidates.filter { c -> sides.none { it?.id == c.id } }.ifEmpty { candidates }
-                val offset = swappedOffsets[day]?.coerceAtLeast(0) ?: 0
+                val offset = slotOffset(day, WeeklyDishSlot.DINNER_SIDE)
                 sides += unseen[offset % unseen.size]
             }
         }
@@ -170,8 +181,8 @@ fun buildWeeklyMealPlan(
                 .ifEmpty { rankedFrom(lunchPool, day, setOf(dinnerMain.id)) }
                 .ifEmpty { rankedFrom(lunchPool, day, emptySet()) }
             val unseen = candidates.filter { c -> lunchMainPicks.none { it.id == c.id } }.ifEmpty { candidates }
-            val offset = swappedOffsets[day]?.coerceAtLeast(0) ?: 0
-            val lunchMain = unseen[offset % unseen.size]
+            val offset = slotOffset(day, WeeklyDishSlot.LUNCH_MAIN)
+            val lunchMain =unseen[offset % unseen.size]
             lunchMainPicks += lunchMain
             lunchSidePicks += if (hasTwoCourseCatalog) {
                 val dinnerSideId = sidePicks.getOrNull(day)?.id
@@ -180,7 +191,8 @@ fun buildWeeklyMealPlan(
                 ).ifEmpty { rankedFrom(sidePool, day, setOfNotNull(dinnerSideId, lunchMain.id, dinnerMain.id)) }
                     .ifEmpty { rankedFrom(sidePool, day, setOf(lunchMain.id)) }
                 val unseenSides = sideCandidates.filter { c -> lunchSidePicks.none { it?.id == c.id } }.ifEmpty { sideCandidates }
-                unseenSides.firstOrNull()
+                val sideOffset = slotOffset(day, WeeklyDishSlot.LUNCH_SIDE)
+                if (unseenSides.isEmpty()) null else unseenSides[sideOffset % unseenSides.size]
             } else {
                 null
             }

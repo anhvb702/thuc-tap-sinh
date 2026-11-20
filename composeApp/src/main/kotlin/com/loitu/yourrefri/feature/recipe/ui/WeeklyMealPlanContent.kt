@@ -45,7 +45,9 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.WeeklyDishSlot
 import com.loitu.yourrefri.feature.recipe.logic.shoppingIdsToStock
+import com.loitu.yourrefri.feature.recipe.logic.weeklyDishSwapKey
 import com.loitu.yourrefri.ui.components.FoodThumb
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppIcons
@@ -74,23 +76,42 @@ private fun DropdownFieldText(text: String) {
 }
 
 @Composable
-private fun CompactDishRow(recipe: Recipe, onRequestCook: (Recipe) -> Unit) {
-    val title = compactDishTitles(recipe.title, null).firstOrNull() ?: return
+private fun CompactDishRow(
+    dish: Recipe,
+    slot: WeeklyDishSlot,
+    onRequestCook: (Recipe) -> Unit,
+    onSwapDish: (WeeklyDishSlot) -> Unit,
+) {
+    val title = compactDishTitles(dish.title, null).firstOrNull() ?: return
+    val colors = AppTheme.colors
     Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .clickable(role = Role.Button) { onRequestCook(recipe) },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RecipeThumb(recipeId = recipe.id, size = 40.dp)
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = AppTheme.colors.text,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Row(
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                .clickable(role = Role.Button) { onRequestCook(dish) },
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RecipeThumb(recipeId = dish.id, size = 40.dp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = colors.text,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        IconButton(onClick = { onSwapDish(slot) }, modifier = Modifier.size(48.dp)) {
+            Icon(
+                AppIcons.Shuffle,
+                contentDescription = "Đổi ${dish.title}",
+                tint = colors.accentText,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -211,16 +232,24 @@ internal fun WeeklyMealPlanSection(
             }
         }
         plan.forEach { day ->
+            val onSwapDish: (WeeklyDishSlot) -> Unit = { slot ->
+                weekConfirmed = false
+                onSwap(weeklyDishSwapKey(day.dayIndex, slot))
+            }
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = colors.surface),
                 shape = RoundedCornerShape(16.dp),
                 border = BorderStroke(1.dp, colors.line),
             ) {
-                Column(Modifier.padding(start = 12.dp, end = 8.dp, bottom = 8.dp)) {
+                Column(Modifier.padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)) {
                     val dayTitle = compactDayTitle(day.dayLabelVi, weekStart, day.dayIndex)
                     val totalMinutes = day.dishes.mapNotNull { it.minutes }.maxOrNull()
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             text = dayTitle,
                             modifier = Modifier.weight(1f),
@@ -231,17 +260,6 @@ internal fun WeeklyMealPlanSection(
                         compactDurationLabel(totalMinutes)?.let { duration ->
                             Text(duration, style = MaterialTheme.typography.labelMedium, color = colors.muted)
                         }
-                        IconButton(onClick = {
-                            weekConfirmed = false
-                            onSwap(day.dayIndex)
-                        }) {
-                            Icon(
-                                AppIcons.Shuffle,
-                                contentDescription = "Đổi món $dayTitle",
-                                tint = colors.accentText,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
                     }
                     day.lunchRecipe?.let { lunch ->
                         Text(
@@ -250,8 +268,10 @@ internal fun WeeklyMealPlanSection(
                             fontWeight = FontWeight.Bold,
                             color = colors.accentText,
                         )
-                        CompactDishRow(lunch, onRequestCook)
-                        day.lunchSideRecipe?.let { CompactDishRow(it, onRequestCook) }
+                        CompactDishRow(lunch, WeeklyDishSlot.LUNCH_MAIN, onRequestCook, onSwapDish)
+                        day.lunchSideRecipe?.let {
+                            CompactDishRow(it, WeeklyDishSlot.LUNCH_SIDE, onRequestCook, onSwapDish)
+                        }
                         Text(
                             text = "Tối",
                             modifier = Modifier.padding(top = 4.dp),
@@ -260,8 +280,10 @@ internal fun WeeklyMealPlanSection(
                             color = colors.accentText,
                         )
                     }
-                    CompactDishRow(day.recipe, onRequestCook)
-                    day.sideRecipe?.let { CompactDishRow(it, onRequestCook) }
+                    CompactDishRow(day.recipe, WeeklyDishSlot.DINNER_MAIN, onRequestCook, onSwapDish)
+                    day.sideRecipe?.let {
+                        CompactDishRow(it, WeeklyDishSlot.DINNER_SIDE, onRequestCook, onSwapDish)
+                    }
                 }
             }
         }

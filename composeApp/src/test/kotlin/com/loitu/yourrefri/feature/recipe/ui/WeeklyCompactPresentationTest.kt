@@ -25,8 +25,8 @@ class WeeklyCompactPresentationTest {
     @Test
     fun compactDayTitle_appendsDateWhenWeekStartProvided() {
         val monday = LocalDate(2026, 11, 16)
-        assertEquals("Thứ 2 · 16.11", compactDayTitle("Thứ 2", monday, 0))
-        assertEquals("Thứ 4 · 18.11", compactDayTitle("Thứ 4", monday, 2))
+        assertEquals("Thứ 2 (16/11/2026)", compactDayTitle("Thứ 2", monday, 0))
+        assertEquals("Thứ 4 (18/11/2026)", compactDayTitle("Thứ 4", monday, 2))
         assertEquals("Thứ 2", compactDayTitle("Thứ 2", null, 0))
     }
 

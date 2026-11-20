@@ -6,6 +6,7 @@ import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanSettings
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.isValidWeeklySwapKey
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -134,7 +135,7 @@ class WeeklyMealPlanViewModel(
                 preferences = togglePreferenceTag(current.preferences, action.value),
             )
             is WeeklyMealPlanAction.SwapDay -> {
-                if (action.dayIndex !in 0..6) return
+                if (!isValidWeeklySwapKey(action.dayIndex)) return
                 current.copy(swappedOffsets = bumpDaySwapOffset(current.swappedOffsets, action.dayIndex))
             }
             is WeeklyMealPlanAction.ToggleIngredient -> {
