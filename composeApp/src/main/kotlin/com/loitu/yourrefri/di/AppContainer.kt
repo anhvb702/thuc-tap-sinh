@@ -23,6 +23,7 @@ import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
+import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +43,7 @@ interface AppContainer {
 
     fun createPantryGridViewModel(): PantryGridViewModel
     fun homeViewModelFactory(): ViewModelProvider.Factory
+    fun recipeViewModelFactory(): ViewModelProvider.Factory
     fun weeklyMealPlanViewModelFactory(): ViewModelProvider.Factory
     fun favoriteRecipesViewModelFactory(): ViewModelProvider.Factory
     fun cookHistoryViewModelFactory(): ViewModelProvider.Factory
@@ -70,6 +72,8 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override fun createPantryGridViewModel() = PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
 
     override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel() }
+
+    override fun recipeViewModelFactory() = singleViewModelFactory { RecipeViewModel() }
 
     override fun weeklyMealPlanViewModelFactory() = singleViewModelFactory {
         WeeklyMealPlanViewModel(weeklyMealPlanRepository, clock, timeZone)
