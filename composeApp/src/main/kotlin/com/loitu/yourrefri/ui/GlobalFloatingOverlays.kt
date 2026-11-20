@@ -1,6 +1,10 @@
 package com.loitu.yourrefri.ui
 
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,9 +23,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -37,12 +48,41 @@ internal fun GlobalFloatingActionButtons(
 ) {
     val colors = AppTheme.colors
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End) {
-        Surface(Modifier.size(56.dp).clickable(role = Role.Button, onClick = onOpenWeeklyPlan), shape = CircleShape, shadowElevation = 6.dp, color = colors.primary) {
-            Icon(AppIcons.Calendar, contentDescription = "Lên thực đơn cả tuần", tint = colors.onPrimary, modifier = Modifier.padding(16.dp))
-        }
-        Surface(Modifier.size(56.dp).clickable(role = Role.Button, onClick = onOpenRandomWheel), shape = CircleShape, shadowElevation = 6.dp, color = colors.cta) {
-            Icon(AppIcons.Wheel, contentDescription = "Nấu ngẫu nhiên", tint = colors.onCta, modifier = Modifier.padding(16.dp))
-        }
+        GlobalFloatingActionButton(AppIcons.Calendar, "Lên thực đơn cả tuần", colors.primary, colors.onPrimary, onOpenWeeklyPlan)
+        GlobalFloatingActionButton(AppIcons.Wheel, "Nấu ngẫu nhiên", colors.cta, colors.onCta, onOpenRandomWheel)
+    }
+}
+
+@Composable
+private fun GlobalFloatingActionButton(
+    icon: ImageVector,
+    description: String,
+    containerColor: Color,
+    iconColor: Color,
+    onClick: () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed) 0.92f else 1f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "fabPress",
+    )
+    Surface(
+        onClick = onClick,
+        interactionSource = interaction,
+        modifier = Modifier
+            .size(56.dp)
+            .semantics { role = Role.Button }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
+        shape = CircleShape,
+        shadowElevation = 6.dp,
+        color = containerColor,
+    ) {
+        Icon(icon, contentDescription = description, tint = iconColor, modifier = Modifier.padding(16.dp))
     }
 }
 

@@ -1,7 +1,27 @@
 package com.loitu.yourrefri.feature.home.ui
 
+import android.animation.ValueAnimator
+import android.os.Build
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,12 +50,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +134,11 @@ internal fun PantryOverviewSection(
     onSelectBucket: (PantryOverviewBucket) -> Unit,
 ) {
     val colors = AppTheme.colors
+    val animatedTotalCount by animateIntAsState(
+        targetValue = totalCount,
+        animationSpec = tween(350),
+        label = "pantryCount",
+    )
     Surface(
         modifier = Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOpenPantry),
         shape = RoundedCornerShape(22.dp),
@@ -116,29 +147,73 @@ internal fun PantryOverviewSection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text("Trong tủ hiện có", style = MaterialTheme.typography.bodyMedium, color = colors.onPrimary)
-                Text("$totalCount nguyên liệu", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = colors.onPrimary)
+                Text("$animatedTotalCount nguyên liệu", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = colors.onPrimary)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PantryBucketButton("Ngăn mát", fridgeCount, colors.primary, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.FRIDGE) }
                 PantryBucketButton("Ngăn đông", freezerCount, colors.primary, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.FREEZER) }
-                PantryBucketButton("Dùng ngay", urgentCount, colors.cta, Modifier.weight(1f)) { onSelectBucket(PantryOverviewBucket.URGENT) }
+                PantryBucketButton("Dùng ngay", urgentCount, colors.cta, Modifier.weight(1f), isUrgent = true) {
+                    onSelectBucket(PantryOverviewBucket.URGENT)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun PantryBucketButton(label: String, count: Int, circleColor: Color, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun PantryBucketButton(
+    label: String,
+    count: Int,
+    circleColor: Color,
+    modifier: Modifier = Modifier,
+    isUrgent: Boolean = false,
+    onClick: () -> Unit,
+) {
     val colors = AppTheme.colors
+    val animatedCount by animateIntAsState(
+        targetValue = count,
+        animationSpec = tween(350),
+        label = "pantryCount",
+    )
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        if (pressed) 0.94f else 1f,
+        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "bucketPress",
+    )
+    val animatorsEnabled = remember { Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled() }
+    val circleModifier = if (isUrgent && count > 0 && animatorsEnabled) {
+        val pulse = rememberInfiniteTransition(label = "urgentPulse")
+        val urgentScale by pulse.animateFloat(
+            1f,
+            1.05f,
+            infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+            label = "urgentScale",
+        )
+        Modifier.graphicsLayer {
+            scaleX = urgentScale
+            scaleY = urgentScale
+        }
+    } else {
+        Modifier
+    }
     Surface(
-        modifier = modifier.clickable(role = Role.Button, onClick = onClick),
+        onClick = onClick,
+        interactionSource = interaction,
+        modifier = modifier
+            .semantics { role = Role.Button }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
         shape = RoundedCornerShape(16.dp), color = colors.surface,
         shadowElevation = 4.dp,
     ) {
         Column(Modifier.padding(vertical = 10.dp, horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Surface(shape = CircleShape, color = circleColor, shadowElevation = 3.dp, modifier = Modifier.size(32.dp)) {
+            Surface(shape = CircleShape, color = circleColor, shadowElevation = 3.dp, modifier = circleModifier.size(32.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(count.toString(), color = if (circleColor == colors.cta) colors.onCta else colors.onPrimary, fontWeight = FontWeight.ExtraBold)
+                    Text(animatedCount.toString(), color = if (circleColor == colors.cta) colors.onCta else colors.onPrimary, fontWeight = FontWeight.ExtraBold)
                 }
             }
             Text(label, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text, maxLines = 1)
@@ -309,36 +384,60 @@ internal fun DailySpotlightRecommendationSection(
             Text("Gợi ý bữa cơm hôm nay", style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.ExtraBold), color = colors.text)
             TextButton(onClick = onNavigateToRecipes) { Text("Xem thêm", color = colors.accentText) }
         }
-        when {
-            !hasRecommendations -> {
-                Text(emptyRecommendationCopy.message, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                TextButton(onClick = onNavigateToPantry) { Text("Xem tủ lạnh", color = colors.accentText) }
-            }
-            activeSuggestion == null -> Surface(shape = RoundedCornerShape(20.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line)) {
-                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Bạn đã ẩn các gợi ý vừa rồi", Modifier.weight(1f), color = colors.muted)
-                    TextButton(onClick = onResetDismissedSuggestions) { Text("Xem lại", color = colors.accentText) }
+        if (!hasRecommendations) {
+            Text(emptyRecommendationCopy.message, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            TextButton(onClick = onNavigateToPantry) { Text("Xem tủ lạnh", color = colors.accentText) }
+        } else {
+            AnimatedContent(
+                targetState = activeSuggestion?.recipe?.id,
+                transitionSpec = {
+                    (slideInHorizontally(tween(260)) { it / 3 } + fadeIn(tween(240))) togetherWith
+                        (slideOutHorizontally(tween(220)) { -it / 3 } + fadeOut(tween(180)))
+                },
+                label = "dailySpotlight",
+            ) { suggestionId ->
+                val isCurrentSuggestion = activeSuggestion?.recipe?.id == suggestionId
+                val currentSuggestion = activeSuggestion?.takeIf { isCurrentSuggestion }
+                val lastSuggestion = remember(suggestionId) { mutableStateOf(currentSuggestion) }
+                // Giữ nội dung của thẻ trong lúc thẻ trượt ra.
+                SideEffect {
+                    if (currentSuggestion != null) lastSuggestion.value = currentSuggestion
                 }
-            }
-            else -> {
-                val suggestion = requireNotNull(activeSuggestion)
-                Surface(
-                    modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { onNavigateToRecipe(suggestion.recipe.id) },
-                    shape = RoundedCornerShape(22.dp), color = colors.surface, shadowElevation = 6.dp, border = BorderStroke(1.dp, colors.line),
-                ) {
-                    Column {
-                        Box(Modifier.fillMaxWidth().height(176.dp)) {
-                            RecipeThumb(suggestion.recipe.id, Modifier.fillMaxSize(), 176.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
-                            Text(shortReasonLabel(suggestion.reason), Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(999.dp)).background(colors.surface.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 6.dp), color = colors.text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
-                            Surface(Modifier.align(Alignment.TopEnd).padding(8.dp), shape = CircleShape, color = colors.surface.copy(alpha = 0.90f), shadowElevation = 2.dp) {
-                                IconButton(onClick = { onDismissSuggestion(suggestion.recipe.id) }, modifier = Modifier.size(40.dp)) {
-                                    Icon(AppIcons.Close, contentDescription = "Bỏ qua món này", modifier = Modifier.size(18.dp), tint = colors.text)
-                                }
+                val suggestion = currentSuggestion ?: lastSuggestion.value
+                if (suggestionId == null) {
+                    Surface(shape = RoundedCornerShape(20.dp), color = colors.surface, border = BorderStroke(1.dp, colors.line)) {
+                        Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Bạn đã ẩn các gợi ý vừa rồi", Modifier.weight(1f), color = colors.muted)
+                            TextButton(onClick = onResetDismissedSuggestions, enabled = isCurrentSuggestion) {
+                                Text("Xem lại", color = colors.accentText)
                             }
                         }
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                } else if (suggestion != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = isCurrentSuggestion, role = Role.Button) {
+                            onNavigateToRecipe(suggestion.recipe.id)
+                        },
+                        shape = RoundedCornerShape(22.dp), color = colors.surface, shadowElevation = 6.dp, border = BorderStroke(1.dp, colors.line),
+                    ) {
+                        Column {
+                            Box(Modifier.fillMaxWidth().height(176.dp)) {
+                                RecipeThumb(suggestion.recipe.id, Modifier.fillMaxSize(), 176.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                                Text(shortReasonLabel(suggestion.reason), Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(999.dp)).background(colors.surface.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 6.dp), color = colors.text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
+                                Surface(Modifier.align(Alignment.TopEnd).padding(8.dp), shape = CircleShape, color = colors.surface.copy(alpha = 0.90f), shadowElevation = 2.dp) {
+                                    IconButton(
+                                        onClick = { onDismissSuggestion(suggestion.recipe.id) },
+                                        enabled = isCurrentSuggestion,
+                                        modifier = Modifier.size(40.dp),
+                                    ) {
+                                        Icon(AppIcons.Close, contentDescription = "Bỏ qua món này", modifier = Modifier.size(18.dp), tint = colors.text)
+                                    }
+                                }
+                            }
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }

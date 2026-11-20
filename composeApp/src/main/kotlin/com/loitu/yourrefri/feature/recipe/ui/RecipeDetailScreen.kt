@@ -1,5 +1,16 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -257,6 +268,11 @@ private fun ManualCookChecklistDialog(
     val checkedSet = checkedSteps.toSet()
     val totalSteps = recipe.steps.size
     val allStepsChecked = canFinishManualCook(checkedSet, totalSteps)
+    val animatedProgress by animateFloatAsState(
+        targetValue = manualCookProgress(checkedSet, totalSteps),
+        animationSpec = tween(260),
+        label = "manualCookProgress",
+    )
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.86f),
@@ -275,7 +291,7 @@ private fun ManualCookChecklistDialog(
                     IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text) }
                 }
                 LinearProgressIndicator(
-                    progress = { manualCookProgress(checkedSet, totalSteps) },
+                    progress = { animatedProgress },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(999.dp)),
                     color = colors.primary,
                     trackColor = colors.surfaceSoft,
@@ -283,27 +299,46 @@ private fun ManualCookChecklistDialog(
                 LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     itemsIndexed(recipe.steps) { index, step ->
                         val isChecked = index in checkedSet
+                        val stepBackground by animateColorAsState(
+                            targetValue = if (isChecked) colors.surfaceSoft else colors.surface,
+                            label = "manualStepBackground",
+                        )
+                        val stepTextColor by animateColorAsState(
+                            targetValue = if (isChecked) colors.muted else colors.text,
+                            label = "manualStepText",
+                        )
                         Surface(
                             modifier = Modifier.fillMaxWidth().clickable(role = Role.Checkbox) {
                                 checkedSteps = toggleManualCookStep(checkedSet, index).toList()
                             },
                             shape = RoundedCornerShape(16.dp),
-                            color = if (isChecked) colors.surfaceSoft else colors.surface,
+                            color = stepBackground,
                             border = BorderStroke(1.dp, colors.line),
                         ) {
                             Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Checkbox(checked = isChecked, onCheckedChange = null)
-                                Text(step, style = MaterialTheme.typography.bodyLarge, color = if (isChecked) colors.muted else colors.text)
+                                Text(step, style = MaterialTheme.typography.bodyLarge, color = stepTextColor)
                             }
                         }
                     }
                 }
-                if (allStepsChecked) {
+                AnimatedVisibility(
+                    visible = allStepsChecked,
+                    enter = slideInVertically(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { it / 2 } +
+                        fadeIn(tween(220)) + expandVertically(tween(220)),
+                    exit = fadeOut(tween(150)) + shrinkVertically(tween(150)),
+                ) {
                     Button(
                         onClick = onDone,
+                        enabled = allStepsChecked,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                         shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.cta,
+                            contentColor = colors.onCta,
+                            disabledContainerColor = colors.cta,
+                            disabledContentColor = colors.onCta,
+                        ),
                     ) { Text("Đã nấu xong", fontWeight = FontWeight.Bold) }
                 }
             }
