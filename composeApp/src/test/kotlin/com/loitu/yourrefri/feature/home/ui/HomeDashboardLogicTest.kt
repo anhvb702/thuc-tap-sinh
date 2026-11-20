@@ -29,10 +29,10 @@ class HomeDashboardLogicTest {
 
     @Test
     fun urgentCaption_containsEstimateWord() {
-        assertEquals("Còn 1 ngày (ước tính)", urgentCaption(1))
-        assertEquals("Còn 2 ngày (ước tính)", urgentCaption(2))
-        assertEquals("Nên dùng hôm nay (ước tính)", urgentCaption(0))
-        assertEquals("Đã qua 1 ngày (ước tính)", urgentCaption(-1))
+        assertEquals("Còn 1 ngày", urgentCaption(1))
+        assertEquals("Còn 2 ngày", urgentCaption(2))
+        assertEquals("Nên dùng hôm nay", urgentCaption(0))
+        assertEquals("Đã qua 1 ngày", urgentCaption(-1))
     }
 
     @Test

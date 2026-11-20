@@ -117,9 +117,9 @@ internal fun pantryRowUrgent(have: Boolean, daysLeft: Int?): Boolean =
     have && daysLeft != null && daysLeft <= URGENT_DAYS
 
 internal fun estimateDaysText(daysLeft: Int): String = when {
-    daysLeft < 0 -> "Đã qua ${-daysLeft} ngày (ước tính)"
-    daysLeft == 0 -> "Nên dùng hôm nay (ước tính)"
-    else -> "Còn $daysLeft ngày (ước tính)"
+    daysLeft < 0 -> "Đã qua ${-daysLeft} ngày"
+    daysLeft == 0 -> "Nên dùng hôm nay"
+    else -> "Còn $daysLeft ngày"
 }
 
 /** Dòng trạng thái dưới tên món; luôn là ước tính và không dùng lời nặng nề. */
