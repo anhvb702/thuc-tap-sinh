@@ -5,6 +5,7 @@ import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.CancelShelfEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.CancelUnitEditor
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.AddIngredient
+import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.AddCustomFood
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.ConsumeIngredient
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.Loaded
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction.OpenUnitEditor
@@ -62,6 +63,25 @@ class PantryGridReducerTest {
     }
 
     private fun cell(state: PantryGridState, id: String): PantryCell = cellsOf(state).single { it.ingredientId == id }
+
+    @Test
+    fun addCustomFood_addsFreshFoodToIngredientsAndPantry() {
+        val result = reduce(loaded(), AddCustomFood("Bánh mì", 3, group = "khac", kind = "fresh"))
+        val id = customFoodId("Bánh mì")!!
+        assertEquals("Bánh mì", result.state.ingredients.single { it.id == id }.nameVi)
+        assertEquals("fresh", result.state.ingredients.single { it.id == id }.kind)
+        assertTrue(result.state.pantry.getValue(id).have)
+    }
+
+    @Test
+    fun addCustomFood_addsLeftoverWithPrefixAndLeftoverKind() {
+        val result = reduce(loaded(), AddCustomFood("Canh rau", 2, group = "khac", kind = "leftover", isLeftover = true))
+        val id = customFoodId("Canh rau")!!
+        val ingredient = result.state.ingredients.single { it.id == id }
+        assertEquals("Đồ ăn thừa: Canh rau", ingredient.nameVi)
+        assertEquals("leftover", ingredient.kind)
+        assertTrue(result.state.pantry.getValue(id).have)
+    }
 
     @Test
     fun decreaseQuantityKeepsCookedItemPresentWhenMoreThanOneRemains() {

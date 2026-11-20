@@ -39,12 +39,9 @@ internal fun comboActionsFor(combo: GroceryCombo, state: PantryGridState): List<
     else PantryGridAction.AddIngredient(id, null)
 }
 
-internal fun toggleBatchSelection(selected: Set<String>, id: String): Set<String> =
-    if (id in selected) selected - id else selected + id
-
-internal fun batchClearActions(selectedIds: Set<String>, state: PantryGridState): List<PantryGridAction> =
+internal fun clearAllPantryActions(state: PantryGridState): List<PantryGridAction.Tap> =
     state.ingredients.mapNotNull { ingredient ->
-        ingredient.id.takeIf { it in selectedIds && state.pantry[it]?.have == true }?.let(PantryGridAction::Tap)
+        ingredient.id.takeIf { state.pantry[it]?.have == true }?.let(PantryGridAction::Tap)
     }
 
 @Composable
