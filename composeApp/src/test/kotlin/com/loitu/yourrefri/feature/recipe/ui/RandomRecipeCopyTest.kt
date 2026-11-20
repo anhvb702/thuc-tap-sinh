@@ -38,6 +38,7 @@ class RandomRecipeCopyTest {
     @Test
     fun copyIsExactAndAvoidsBannedWords() {
         assertEquals("Nấu ngẫu nhiên", RandomRecipeCopy.button)
+        assertEquals("Nay hữu duyên nấu món này nè!", RandomRecipeCopy.resultTitle)
         assertEquals("Món này cần thêm vài thứ nữa nè", RandomRecipeCopy.needMore)
         assertEquals("Món này ngoài chế độ ăn của bạn", RandomRecipeCopy.outsideDiet)
         assertEquals("Thử món khác", RandomRecipeCopy.tryAnother)

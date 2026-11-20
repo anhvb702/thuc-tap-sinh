@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.RandomRecipePick
 import com.loitu.yourrefri.ui.components.RecipeThumb
@@ -79,6 +80,7 @@ internal fun RandomWheelDialog(
     val colors = AppTheme.colors
     var spinTrigger by remember { mutableIntStateOf(0) }
     var landed by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
+    var showResult by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
     val (reel, winnerIndex) = remember(pool, pick.recipe.id, spinTrigger) {
         wheelReel(pool, pick.recipe, loops = 3, tail = 3)
     }
@@ -100,10 +102,12 @@ internal fun RandomWheelDialog(
             }
             listState.scrollToItem(winnerIndex)
             landed = true
+            delay(650)
+            showResult = true
         }
     }
 
-    AlertDialog(
+    if (!showResult) AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
         title = { Text("Hôm nay mình nấu gì nhỉ?", color = colors.text) },
@@ -187,25 +191,51 @@ internal fun RandomWheelDialog(
                         )
                     }
                 }
-                if (landed && !pick.canCookNow) {
-                    Text(RandomRecipeCopy.needMore, style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Đóng", color = colors.muted)
+            }
+        },
+    ) else AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = colors.surface,
+        title = {
+            Text(
+                RandomRecipeCopy.resultTitle,
+                color = colors.text,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                RecipeThumb(
+                    recipeId = pick.recipe.id,
+                    modifier = Modifier.fillMaxWidth(),
+                    size = 160.dp,
+                    shape = RoundedCornerShape(20.dp),
+                )
+                Text(
+                    pick.recipe.title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = colors.text,
+                )
+                pick.recipe.minutes?.let { minutes ->
+                    Text("Khoảng $minutes phút", color = colors.muted)
                 }
             }
         },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton(
-                    onClick = { spinTrigger++; onSpinAgain() },
+                    onClick = { showResult = false; spinTrigger++; onSpinAgain() },
                     modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text("Quay lại", color = colors.accentText) }
+                ) { Text("Quay lại", color = colors.muted) }
                 TextButton(
                     onClick = { onOpenRecipe(pick.recipe) },
                     modifier = Modifier.heightIn(min = 48.dp),
                 ) { Text("Xem cách nấu", color = colors.accentText, fontWeight = FontWeight.Bold) }
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text("Đóng", color = colors.muted) }
             }
         },
     )

@@ -77,6 +77,7 @@ import com.loitu.yourrefri.feature.recipe.logic.RecommendationReason
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.RandomPick
 import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
+import com.loitu.yourrefri.feature.recipe.logic.cookableRecipes
 import com.loitu.yourrefri.feature.recipe.logic.recommendRecipes
 import com.loitu.yourrefri.feature.recipe.logic.ingredientIdsToConsume
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
@@ -127,11 +128,17 @@ fun RecipeScreen(
     val colors = AppTheme.colors
     val randomSource = remember { kotlin.random.Random.Default }
     var randomShown by remember { mutableStateOf(false) }
+    var showNoCookable by remember { mutableStateOf(false) }
     var randomPick by remember { mutableStateOf<RandomPick?>(null) }
+    val cookable = remember(randomPool, state) { cookableRecipes(randomPool.orEmpty(), state) }
     fun rollRandom() {
-        // Rút lại thì tránh lặp món vừa ra; không còn món nào khác thì thẻ báo nhẹ và giữ nút "Quay lại".
-        randomPick = pickRandomRecipe(randomPool.orEmpty(), state, randomPick?.recipe?.id, randomSource)
-        randomShown = true
+        if (cookable.isEmpty()) {
+            randomShown = false
+            showNoCookable = true
+            return
+        }
+        randomPick = pickRandomRecipe(cookable, state, randomPick?.recipe?.id, randomSource)
+        randomShown = randomPick != null
     }
     var localMode by remember(initialMode) { mutableStateOf(initialMode) }
     val mode = localMode
@@ -238,6 +245,19 @@ fun RecipeScreen(
                     showCookConfirmation = false
                     pendingCookRecipe = null
                 }) { Text("Để sau") }
+            },
+        )
+    }
+    if (showNoCookable) {
+        AlertDialog(
+            onDismissRequest = { showNoCookable = false },
+            containerColor = colors.surface,
+            title = { Text("Nấu ngẫu nhiên", color = colors.text) },
+            text = { Text(RandomRecipeCopy.noCookable, color = colors.muted) },
+            confirmButton = {
+                TextButton(onClick = { showNoCookable = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Đóng", color = colors.accentText)
+                }
             },
         )
     }
@@ -361,7 +381,7 @@ fun RecipeScreen(
                     }
                 if (randomShown && randomPick != null) {
                     RandomWheelDialog(
-                        pool = randomPool.orEmpty(),
+                        pool = cookable,
                         pick = randomPick!!,
                         onSpinAgain = { rollRandom() },
                         onOpenRecipe = { onOpenRecipe?.invoke(it.id) },
