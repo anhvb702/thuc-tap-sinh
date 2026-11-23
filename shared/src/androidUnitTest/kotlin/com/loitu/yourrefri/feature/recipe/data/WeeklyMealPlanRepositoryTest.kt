@@ -162,7 +162,8 @@ class WeeklyMealPlanRepositoryTest {
 
             // Schema v5 thêm MealSlotToggleEntity (UX-21, chỉ thị người dùng 2026-11-12).
             // Schema v7 thêm CookLogMealEntity (A-11, 2026-11-13; người dùng cho phép đổi con số ghim này).
-        assertEquals(9L, YourRefriDatabase.Schema.version)
+            // Schema v10 thêm UnlockedRecipeEntity (Cook-to-Unlock, migration 9.sqm).
+            assertEquals(10L, YourRefriDatabase.Schema.version)
             assertEquals(listOf(PantryEntity("egg", true, "2026-11-01")), migratedDb.pantryEntityQueries.selectAll().executeAsList())
             assertEquals(listOf(UserShelfEntity("egg", 7L)), migratedDb.userShelfEntityQueries.selectAll().executeAsList())
             assertEquals(listOf(PantryQuantityEntity("egg", 3L)), migratedDb.pantryQuantityEntityQueries.selectAll().executeAsList())

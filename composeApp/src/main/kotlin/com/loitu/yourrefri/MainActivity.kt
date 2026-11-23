@@ -29,6 +29,7 @@ import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
+import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
@@ -119,6 +120,13 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         factory = remember(dependencies) { dependencies.favoriteRecipesViewModelFactory() },
     )
     val favoriteState by favoriteViewModel.state.collectAsState()
+    val unlockedRecipesVm: UnlockedRecipesViewModel = viewModel(
+        factory = remember(dependencies) { dependencies.unlockedRecipesViewModelFactory() },
+    )
+    val unlockedIds by unlockedRecipesVm.unlockedIds.collectAsState()
+    val unlocksLoaded by unlockedRecipesVm.loaded.collectAsState()
+    val mysteryUnlockFailedId by unlockedRecipesVm.failedId.collectAsState()
+    val unlocksLoadFailed by unlockedRecipesVm.loadFailed.collectAsState()
     val cookHistoryViewModel: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel = viewModel(
         factory = remember(dependencies) { dependencies.cookHistoryViewModelFactory() },
     )
@@ -154,6 +162,9 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     val weeklyMealPlanState by weeklyMealPlanViewModel.state.collectAsState()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(unlocksLoadFailed) {
+        if (unlocksLoadFailed) snackbarHostState.showSnackbar("Chưa đọc được các món đã mở khóa.")
+    }
     LaunchedEffect(weeklyMealPlanViewModel) {
         weeklyMealPlanViewModel.effects.collect { effect ->
             val message = when (effect) {
@@ -246,6 +257,10 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         onThemeModeChange = onThemeModeChange,
         favoriteIds = favoriteState.ids,
         onToggleFavorite = { favoriteViewModel.dispatch(FavoriteRecipesAction.Toggle(it)) },
+        unlockedIds = unlockedIds,
+        mysteryRewardsReady = unlocksLoaded && cookHistoryState.loaded,
+        mysteryUnlockFailedId = mysteryUnlockFailedId,
+        onUnlockMysteryRecipe = { unlockedRecipesVm.unlock(it.id) },
         dietRestriction = dietRestriction,
         onDietRestrictionChange = { restriction ->
             dietRestriction = restriction

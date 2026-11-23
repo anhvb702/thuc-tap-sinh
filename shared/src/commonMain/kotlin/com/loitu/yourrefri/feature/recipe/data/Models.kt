@@ -18,6 +18,7 @@ data class Recipe(
     val optional: List<Slot> = emptyList(),
     val minutes: Int? = null,
     val stepMinutes: List<Int?> = emptyList(),
+    val isMystery: Boolean = false,
 ) {
     init {
         require(id.isNotBlank()) { "Recipe id không được rỗng" }

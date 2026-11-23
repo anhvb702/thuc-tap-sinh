@@ -16,6 +16,7 @@ object RecipeBundle {
         val optional: List<SlotRow> = emptyList(),
         val minutes: Int? = null,
         val stepMinutes: List<Int?> = emptyList(),
+        val mystery: Boolean = false,
     )
 
     fun parse(json: String): List<Recipe> {
@@ -31,6 +32,7 @@ object RecipeBundle {
                 optional = row.optional.map { Slot(it.anyOf) },
                 minutes = row.minutes,
                 stepMinutes = row.stepMinutes,
+                isMystery = row.mystery,
             )
         }
     }

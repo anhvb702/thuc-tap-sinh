@@ -148,7 +148,8 @@ class WeeklyMealPlanSettingsRepositoryTest {
             val migratedDb = createDatabase(oldDriver)
             // Schema v5 thêm MealSlotToggleEntity (UX-21, chỉ thị người dùng 2026-11-12).
             // Schema v7 thêm CookLogMealEntity (A-11, 2026-11-13; người dùng cho phép đổi con số ghim này).
-            assertEquals(9L, YourRefriDatabase.Schema.version)
+            // Schema v10 thêm UnlockedRecipeEntity (Cook-to-Unlock, migration 9.sqm).
+            assertEquals(10L, YourRefriDatabase.Schema.version)
             assertEquals(emptyList(), repository(migratedDb).observeAll().first())
             val settings = sampleSettings()
             repository(migratedDb).saveSettings(settings)

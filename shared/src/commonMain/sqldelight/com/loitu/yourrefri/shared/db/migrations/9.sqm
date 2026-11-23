@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS UnlockedRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    unlockedOn TEXT NOT NULL
+);

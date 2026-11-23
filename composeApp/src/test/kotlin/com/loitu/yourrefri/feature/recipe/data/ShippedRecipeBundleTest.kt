@@ -197,13 +197,27 @@ class ShippedRecipeBundleTest {
         "trung-ga", "dau-phu", "nam",
     )
 
+    private val mysteryRecipeIds = setOf(
+        "bo-luc-lac-khoai-tay",
+        "suon-xao-chua-ngot-bi-mat",
+        "tom-rim-toi-chay-canh",
+        "ca-hoi-ap-chao-sot-chanh",
+        "ga-kho-gung-nam",
+        "muc-xao-bong-cai",
+    )
+
     @Test
     fun shippedBundleKeepsThreeOriginalRecipesAndAddsTwelveSpecifiedRecipes() {
         val recipes = shippedRecipes()
+        val standard = recipes.filter { !it.isMystery }
+        val mystery = recipes.filter { it.isMystery }
 
-        // Đổi từ 20 sang 30 có chủ đích: người dùng yêu cầu mở rộng kho nguyên liệu và món ăn kèm ảnh đồng bộ.
-        assertEquals(30, recipes.size)
-        assertEquals(originalRecipeIds + newRecipeContracts.keys, recipes.map { it.id }.toSet())
+        // 30 món mở sẵn + 6 món bí mật mới theo yêu cầu tính năng Cook-to-Unlock.
+        assertEquals(36, recipes.size)
+        assertEquals(30, standard.size)
+        assertEquals(6, mystery.size)
+        assertEquals(originalRecipeIds + newRecipeContracts.keys, standard.map { it.id }.toSet())
+        assertEquals(mysteryRecipeIds, mystery.map { it.id }.toSet())
     }
 
     @Test

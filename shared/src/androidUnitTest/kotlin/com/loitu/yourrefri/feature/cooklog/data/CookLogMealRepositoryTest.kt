@@ -36,7 +36,8 @@ class CookLogMealRepositoryTest {
 
     @Test
     fun schemaVersionIs8() {
-        assertEquals(9L, YourRefriDatabase.Schema.version)
+        // Schema v10 thêm UnlockedRecipeEntity (migration 9.sqm).
+        assertEquals(10L, YourRefriDatabase.Schema.version)
     }
 
     @Test

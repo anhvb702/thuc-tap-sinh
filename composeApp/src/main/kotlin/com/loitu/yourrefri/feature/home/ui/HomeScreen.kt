@@ -34,9 +34,11 @@ import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
+import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
 import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
@@ -62,6 +64,7 @@ fun HomeScreen(
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     homeViewModel: HomeViewModel = remember { HomeViewModel() },
     userName: String = DEFAULT_USER_NAME,
+    dietRestriction: DietRestriction = DietRestriction.NONE,
 ) {
     val colors = AppTheme.colors
     val homeState by homeViewModel.state.collectAsState()
@@ -71,8 +74,11 @@ fun HomeScreen(
     var dismissedRecipeIds by remember { mutableStateOf(emptySet<String>()) }
     val activeSuggestion: RecipeRecommendation? = activeSpotlightSuggestion(dashboard.recommendations, dismissedRecipeIds)
 
-    LaunchedEffect(state, recipes, meal, tasteProfile) {
-        homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
+    val suggestions = remember(recipes, dietRestriction, state.ingredients) {
+        filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
+    }
+    LaunchedEffect(state, suggestions, meal, tasteProfile) {
+        homeViewModel.onIntent(HomeIntent.SyncInputs(state, suggestions, meal, tasteProfile))
     }
     LaunchedEffect(homeViewModel) {
         homeViewModel.onIntent(HomeIntent.LoadWeather)
