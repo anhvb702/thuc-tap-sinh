@@ -8,6 +8,8 @@ import com.loitu.yourrefri.feature.cooklog.data.CookLogRepository
 import com.loitu.yourrefri.feature.cooklog.data.CookLogRepositoryImpl
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryViewModel
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
+import com.loitu.yourrefri.feature.home.data.HomeWeatherRepository
+import com.loitu.yourrefri.feature.home.data.OpenMeteoWeatherRepository
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryRepository
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
@@ -23,6 +25,7 @@ import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
+import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +44,9 @@ interface AppContainer {
     val recipes: List<Recipe>
 
     fun createPantryGridViewModel(): PantryGridViewModel
+    fun pantryGridViewModelFactory(): ViewModelProvider.Factory
     fun homeViewModelFactory(): ViewModelProvider.Factory
+    fun recipeViewModelFactory(): ViewModelProvider.Factory
     fun weeklyMealPlanViewModelFactory(): ViewModelProvider.Factory
     fun favoriteRecipesViewModelFactory(): ViewModelProvider.Factory
     fun cookHistoryViewModelFactory(): ViewModelProvider.Factory
@@ -53,6 +58,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val db = createDatabase(DriverFactory(appContext).create())
     private val clock = Clock.System
     private val timeZone = TimeZone.currentSystemDefault()
+    private val weatherRepository: HomeWeatherRepository = OpenMeteoWeatherRepository()
 
     override val pantryRepository: PantryRepository = PantryRepositoryImpl(db, clock, timeZone, Dispatchers.IO)
     override val weeklyMealPlanRepository: WeeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO)
@@ -69,7 +75,13 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override fun createPantryGridViewModel() = PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
 
-    override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel() }
+    override fun pantryGridViewModelFactory() = singleViewModelFactory {
+        PantryGridViewModel(pantryRepository, ingredients, clock, timeZone)
+    }
+
+    override fun homeViewModelFactory() = singleViewModelFactory { HomeViewModel(weatherRepository = weatherRepository) }
+
+    override fun recipeViewModelFactory() = singleViewModelFactory { RecipeViewModel() }
 
     override fun weeklyMealPlanViewModelFactory() = singleViewModelFactory {
         WeeklyMealPlanViewModel(weeklyMealPlanRepository, clock, timeZone)

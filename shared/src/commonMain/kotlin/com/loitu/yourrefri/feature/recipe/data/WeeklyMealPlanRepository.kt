@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.recipe.data
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import com.loitu.yourrefri.feature.recipe.logic.isValidWeeklySwapKey
 import com.loitu.yourrefri.shared.db.YourRefriDatabase
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -108,7 +109,7 @@ class WeeklyMealPlanRepositoryImpl(
         require(settings.goalId.isNotBlank())
         require(settings.preferenceIds.all(String::isNotBlank))
         require(settings.uncheckedIds.all(String::isNotBlank))
-        require(settings.swappedOffsets.all { (dayIndex, offset) -> dayIndex in 0..6 && offset >= 0 })
+        require(settings.swappedOffsets.all { (dayIndex, offset) -> isValidWeeklySwapKey(dayIndex) && offset >= 0 })
         withContext(ioContext) {
             db.weeklyMealPlanSettingsEntityQueries.upsert(
                 settingsId = 1L,

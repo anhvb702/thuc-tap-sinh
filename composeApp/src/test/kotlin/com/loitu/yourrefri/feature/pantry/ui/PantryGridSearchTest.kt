@@ -95,10 +95,10 @@ class PantryGridSearchTest {
 
     @Test
     fun urgentStatus_usesWarmWordingAndEstimate() {
-        assertEquals("Còn 2 ngày (ước tính)", pantryRowStatus(daysLeft = 2))
-        assertEquals("Còn 5 ngày (ước tính)", pantryRowStatus(daysLeft = 5))
-        assertEquals("Nên dùng hôm nay (ước tính)", pantryRowStatus(daysLeft = 0))
-        assertEquals("Đã qua 1 ngày (ước tính)", pantryRowStatus(daysLeft = -1))
+        assertEquals("Còn 2 ngày", pantryRowStatus(daysLeft = 2))
+        assertEquals("Còn 5 ngày", pantryRowStatus(daysLeft = 5))
+        assertEquals("Nên dùng hôm nay", pantryRowStatus(daysLeft = 0))
+        assertEquals("Đã qua 1 ngày", pantryRowStatus(daysLeft = -1))
     }
 
     @Test

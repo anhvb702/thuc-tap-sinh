@@ -101,7 +101,12 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     // Một bộ phụ thuộc cho cả tiến trình: xoay màn hình không mở thêm SqlDriver mới cho các ViewModel đang giữ lại.
     val dependencies = remember(context) { AppGraph.get(context) }
 
-    val viewModel = remember(dependencies) { dependencies.createPantryGridViewModel() }
+    val viewModel: com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel = viewModel(
+        factory = remember(dependencies) { dependencies.pantryGridViewModelFactory() },
+    )
+    val homeViewModel: com.loitu.yourrefri.feature.home.presentation.HomeViewModel = viewModel(
+        factory = remember(dependencies) { dependencies.homeViewModelFactory() },
+    )
     val weeklyMealPlanViewModel: WeeklyMealPlanViewModel = viewModel(
         factory = remember(dependencies) { dependencies.weeklyMealPlanViewModelFactory() },
     )
@@ -211,6 +216,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     }
 
     MainScaffold(
+        homeViewModel = homeViewModel,
         state = state,
         weeklyMealPlanState = weeklyMealPlanState,
         onWeeklyMealPlanAction = weeklyMealPlanViewModel::dispatch,

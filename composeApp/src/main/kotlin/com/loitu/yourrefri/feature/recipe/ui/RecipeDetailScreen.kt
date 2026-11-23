@@ -1,25 +1,39 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,7 +43,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,22 +57,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.Recipe
-import com.loitu.yourrefri.feature.recipe.logic.planServings
-import com.loitu.yourrefri.feature.recipe.logic.servingNoteVi
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
@@ -88,37 +101,31 @@ fun RecipeDetailScreen(
     val localHost = remember { SnackbarHostState() }
     val host = snackbarHostState ?: localHost
     val scope = rememberCoroutineScope()
-    var ticked by rememberSaveable(recipe.id) { mutableStateOf(listOf<Int>()) }
-    var showLeftover by remember(recipe.id) { mutableStateOf(false) }
-    var desiredServings by rememberSaveable(recipe.id) { mutableStateOf(2) }
-    val servingPlan = remember(recipe, state, desiredServings) { planServings(recipe, state, desiredServings) }
-    val candidateIds = remember(recipe, state) { recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds }
-    val namesById = remember(state.ingredients) { state.ingredients.associate { it.id to it.nameVi } }
+    var showManualChecklist by remember(recipe.id) { mutableStateOf(false) }
 
-    // Chụp tủ TRƯỚC khi nấu để hoàn tác đúng trạng thái cũ; phần "còn lại" không bị trừ nên cũng không bị hoàn tác.
-    fun finishCook(kept: Set<String>) {
+    fun finishCook() {
+        val plan = buildDirectCookPlan(recipe, state, callbackAvailable = true) ?: return
         val before = state
-        val ids = ingredientsToConsume(candidateIds, kept)
-        onCook(ids)
+        onCook(plan.ingredientIds)
         if (!showDoneSnackbar) return
-        val undo = cookUndoActions(before, ids)
+        val undo = cookUndoActions(before, plan.ingredientIds)
         scope.launch {
             val result = host.showSnackbar(
-                message = cookDoneMessage(hasUpdates = ids.isNotEmpty()),
+                message = cookDoneMessage(hasUpdates = plan.ingredientIds.isNotEmpty()),
                 actionLabel = if (undo.isNotEmpty()) "Hoàn tác" else null,
                 duration = SnackbarDuration.Long,
             )
             if (result == SnackbarResult.ActionPerformed) onUndo(undo)
         }
     }
-    if (showLeftover) {
-        CookLeftoverDialog(
-            ingredients = candidateIds.distinct().map { it to (namesById[it] ?: it) },
-            onConfirm = { kept ->
-                showLeftover = false
-                finishCook(kept)
+    if (showManualChecklist) {
+        ManualCookChecklistDialog(
+            recipe = recipe,
+            onDismiss = { showManualChecklist = false },
+            onDone = {
+                showManualChecklist = false
+                finishCook()
             },
-            onDismiss = { showLeftover = false },
         )
     }
 
@@ -203,70 +210,26 @@ fun RecipeDetailScreen(
                     recipeIngredientRows(recipe.optional, state).forEach { row -> IngredientRow(row) }
                 }
 
-                Text(
-                    text = "Số suất",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.text,
-                    modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
-                )
-                Text(
-                    text = servingNoteVi(servingPlan),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.accentText,
-                )
-                ServingSelector(
-                    servings = desiredServings,
-                    onChange = { desiredServings = it },
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-
-                Text(
-                    text = "Cách nấu",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = colors.text,
-                    modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
-                )
-                recipe.steps.forEachIndexed { index, step ->
-                    StepRow(
-                        title = stepTitle(index),
-                        text = step,
-                        checked = index in ticked,
-                        onCheckedChange = { on -> ticked = if (on) ticked + index else ticked - index },
-                    )
-                }
             }
 
             Surface(color = colors.background, border = BorderStroke(1.dp, colors.line)) {
-                Column {
-                if (onStartHandsFree != null) {
+                Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        onClick = onStartHandsFree,
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceSoft, contentColor = colors.text),
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 8.dp)
-                            .heightIn(min = 52.dp),
-                    ) {
-                        Icon(AppIcons.ChefHat, contentDescription = null, modifier = Modifier.size(22.dp))
-                        Text("Nấu rảnh tay", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 8.dp))
+                        onClick = { showManualChecklist = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                        shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1.3f).heightIn(min = 52.dp),
+                    ) { Text("Nấu thủ công", fontWeight = FontWeight.Bold) }
+                    if (onStartHandsFree != null) {
+                        OutlinedButton(
+                            onClick = onStartHandsFree,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.text),
+                            border = BorderStroke(1.dp, colors.line),
+                            shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                        ) {
+                            Icon(AppIcons.ChefHat, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text("Rảnh tay", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
+                        }
                     }
-                }
-                Button(
-                    onClick = {
-                        // Có nguyên liệu sắp trừ thì hỏi "Dùng hết hay còn lại?" trước; không có thì nấu xong luôn.
-                        if (candidateIds.isEmpty()) finishCook(emptySet()) else showLeftover = true
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
-                    enabled = servingPlan.canCookAtAll,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .heightIn(min = 52.dp),
-                ) {
-                    Text("Nấu xong, cập nhật tủ", fontWeight = FontWeight.SemiBold)
-                }
                 }
             }
         }
@@ -274,8 +237,97 @@ fun RecipeDetailScreen(
         if (snackbarHostState == null) {
             SnackbarHost(
                 hostState = localHost,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = if (onStartHandsFree != null) 136.dp else 76.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 76.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun ManualCookChecklistDialog(
+    recipe: Recipe,
+    onDismiss: () -> Unit,
+    onDone: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    var checkedSteps by rememberSaveable(recipe.id) { mutableStateOf(emptyList<Int>()) }
+    val checkedSet = checkedSteps.toSet()
+    val totalSteps = recipe.steps.size
+    val allStepsChecked = canFinishManualCook(checkedSet, totalSteps)
+    val animatedProgress by animateFloatAsState(
+        targetValue = manualCookProgress(checkedSet, totalSteps),
+        animationSpec = tween(260),
+        label = "manualCookProgress",
+    )
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.86f),
+            shape = RoundedCornerShape(24.dp),
+            color = colors.background,
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Text(
+                        recipe.title,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = colors.text,
+                        maxLines = 2,
+                    )
+                    IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text) }
+                }
+                LinearProgressIndicator(
+                    progress = { animatedProgress },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(999.dp)),
+                    color = colors.primary,
+                    trackColor = colors.surfaceSoft,
+                )
+                LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    itemsIndexed(recipe.steps) { index, step ->
+                        val isChecked = index in checkedSet
+                        val stepBackground by animateColorAsState(
+                            targetValue = if (isChecked) colors.surfaceSoft else colors.surface,
+                            label = "manualStepBackground",
+                        )
+                        val stepTextColor by animateColorAsState(
+                            targetValue = if (isChecked) colors.muted else colors.text,
+                            label = "manualStepText",
+                        )
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().clickable(role = Role.Checkbox) {
+                                checkedSteps = toggleManualCookStep(checkedSet, index).toList()
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = stepBackground,
+                            border = BorderStroke(1.dp, colors.line),
+                        ) {
+                            Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Checkbox(checked = isChecked, onCheckedChange = null)
+                                Text(step, style = MaterialTheme.typography.bodyLarge, color = stepTextColor)
+                            }
+                        }
+                    }
+                }
+                AnimatedVisibility(
+                    visible = allStepsChecked,
+                    enter = slideInVertically(spring(dampingRatio = Spring.DampingRatioMediumBouncy)) { it / 2 } +
+                        fadeIn(tween(220)) + expandVertically(tween(220)),
+                    exit = fadeOut(tween(150)) + shrinkVertically(tween(150)),
+                ) {
+                    Button(
+                        onClick = onDone,
+                        enabled = allStepsChecked,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colors.cta,
+                            contentColor = colors.onCta,
+                            disabledContainerColor = colors.cta,
+                            disabledContentColor = colors.onCta,
+                        ),
+                    ) { Text("Đã nấu xong", fontWeight = FontWeight.Bold) }
+                }
+            }
         }
     }
 }
@@ -320,34 +372,6 @@ private fun IngredientRow(row: RecipeIngredientRow) {
 }
 
 @Composable
-private fun ServingSelector(servings: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val colors = AppTheme.colors
-    Column(modifier = modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = { onChange((servings - 1).coerceAtLeast(1)) }, enabled = servings > 1) {
-            Icon(AppIcons.Minus, contentDescription = "Giảm số suất", tint = colors.text)
-        }
-        Text(
-            text = "$servings suất",
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.text,
-            modifier = Modifier.weight(1f),
-        )
-        IconButton(onClick = { onChange((servings + 1).coerceAtMost(6)) }, enabled = servings < 6) {
-            Icon(AppIcons.Plus, contentDescription = "Tăng số suất", tint = colors.text)
-        }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            listOf(1, 2, 4).forEach { option ->
-                TextButton(onClick = { onChange(option) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("$option suất", color = if (servings == option) colors.accentText else colors.muted)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun IngredientChip(chip: RecipeIngredientChip) {
     val colors = AppTheme.colors
     val suffix = missingChipSuffix(chip.have)
@@ -382,48 +406,5 @@ private fun IngredientChip(chip: RecipeIngredientChip) {
             style = MaterialTheme.typography.bodyMedium,
             color = if (chip.have) colors.text else colors.muted,
         )
-    }
-}
-
-@Composable
-private fun StepRow(title: String, text: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    val colors = AppTheme.colors
-    val shape = RoundedCornerShape(20.dp)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .clip(shape)
-            .background(if (checked) colors.surfaceSoft else colors.surface)
-            .border(1.dp, colors.line, shape)
-            .toggleable(value = checked, role = Role.Checkbox, onValueChange = onCheckedChange)
-            .heightIn(min = 56.dp)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (checked) colors.primary else Color.Transparent)
-                .border(1.5.dp, if (checked) colors.primary else colors.muted, RoundedCornerShape(8.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (checked) Icon(AppIcons.Check, contentDescription = null, tint = colors.onPrimary, modifier = Modifier.size(18.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = colors.accentText,
-            )
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (checked) colors.muted else colors.text,
-                textDecoration = if (checked) TextDecoration.LineThrough else null,
-            )
-        }
     }
 }

@@ -21,6 +21,13 @@ enum class FamilyPreferenceTag(val labelVi: String) {
     VEGGIE_TOFU("Rau, Đậu & Nấm"), MEAT("Thịt heo, bò, gà"),
 }
 
+enum class WeeklyDishSlot { DINNER_MAIN, DINNER_SIDE, LUNCH_MAIN, LUNCH_SIDE }
+
+fun weeklyDishSwapKey(dayIndex: Int, slot: WeeklyDishSlot): Int = 100 + dayIndex * 10 + slot.ordinal
+
+fun isValidWeeklySwapKey(key: Int): Boolean =
+    key in 0..6 || (key >= 100 && (key - 100) / 10 in 0..6 && (key - 100) % 10 in WeeklyDishSlot.entries.indices)
+
 data class PlannedDayMeal(
     val dayIndex: Int,
     val dayLabelVi: String,
@@ -29,9 +36,11 @@ data class PlannedDayMeal(
     val sideRecipe: Recipe? = null,
     val mealTypeVi: String = "Bữa cơm chính",
     val mealSlot: MealSlot = MealSlot.DINNER,
+    val lunchRecipe: Recipe? = null,
+    val lunchSideRecipe: Recipe? = null,
 ) {
     val dishes: List<Recipe>
-        get() = listOfNotNull(recipe, sideRecipe)
+        get() = listOfNotNull(recipe, sideRecipe, lunchRecipe, lunchSideRecipe)
 }
 
 data class ShoppingListItem(
@@ -71,6 +80,7 @@ fun buildWeeklyMealPlan(
     recipes: List<Recipe>, state: PantryGridState, goal: DietGoal = DietGoal.BALANCED,
     preferences: Set<FamilyPreferenceTag> = emptySet(), swappedOffsets: Map<Int, Int> = emptyMap(),
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
+    separateLunchAndDinner: Boolean = false,
 ): List<PlannedDayMeal> {
     val unique = recipes.distinctBy { it.id }
     if (unique.isEmpty()) return emptyList()
@@ -110,6 +120,10 @@ fun buildWeeklyMealPlan(
     val sidePool = tasteFiltered.filter { it.isSoupOrVeggieSide() }
     val hasTwoCourseCatalog = mainPool.size >= 2 && sidePool.isNotEmpty() && mainPool.any { main -> sidePool.any { it.id != main.id } }
 
+    fun slotOffset(day: Int, slot: WeeklyDishSlot): Int =
+        (swappedOffsets[day]?.coerceAtLeast(0) ?: 0) +
+            (swappedOffsets[weeklyDishSwapKey(day, slot)]?.coerceAtLeast(0) ?: 0)
+
     fun pickSeries(pool: List<Recipe>): MutableList<Recipe> {
         val picks = mutableListOf<Recipe>()
         repeat(7) { day ->
@@ -117,11 +131,11 @@ fun buildWeeklyMealPlan(
             if (candidates.isEmpty()) return@repeat
             picks += candidates.firstOrNull { c -> picks.none { it.id == c.id } } ?: candidates.first()
         }
-        swappedOffsets.toSortedMap().forEach { (day, rawOffset) ->
-            val offset = rawOffset.coerceAtLeast(0)
-            if (day !in picks.indices || offset == 0) return@forEach
+        for (day in 0 until picks.size) {
+            val offset = slotOffset(day, WeeklyDishSlot.DINNER_MAIN)
+            if (offset == 0) continue
             val options = rankedFrom(pool, day, setOfNotNull(picks.getOrNull(day - 1)?.id))
-            if (options.isEmpty()) return@forEach
+            if (options.isEmpty()) continue
             val start = options.indexOfFirst { it.id == picks[day].id }.coerceAtLeast(0)
             picks[day] = options[(start + offset) % options.size]
             var next = day + 1
@@ -148,13 +162,41 @@ fun buildWeeklyMealPlan(
                 sides += null
             } else {
                 val unseen = candidates.filter { c -> sides.none { it?.id == c.id } }.ifEmpty { candidates }
-                val offset = swappedOffsets[day]?.coerceAtLeast(0) ?: 0
+                val offset = slotOffset(day, WeeklyDishSlot.DINNER_SIDE)
                 sides += unseen[offset % unseen.size]
             }
         }
         sides
     } else {
         List(mainPicks.size) { null }
+    }
+
+    val lunchMainPicks = mutableListOf<Recipe>()
+    val lunchSidePicks = mutableListOf<Recipe?>()
+    if (separateLunchAndDinner) {
+        val lunchPool = if (hasTwoCourseCatalog) mainPool else tasteFiltered
+        mainPicks.forEachIndexed { day, dinnerMain ->
+            val priorId = lunchMainPicks.lastOrNull()?.id
+            val candidates = rankedFrom(lunchPool, day, setOfNotNull(dinnerMain.id, priorId))
+                .ifEmpty { rankedFrom(lunchPool, day, setOf(dinnerMain.id)) }
+                .ifEmpty { rankedFrom(lunchPool, day, emptySet()) }
+            val unseen = candidates.filter { c -> lunchMainPicks.none { it.id == c.id } }.ifEmpty { candidates }
+            val offset = slotOffset(day, WeeklyDishSlot.LUNCH_MAIN)
+            val lunchMain =unseen[offset % unseen.size]
+            lunchMainPicks += lunchMain
+            lunchSidePicks += if (hasTwoCourseCatalog) {
+                val dinnerSideId = sidePicks.getOrNull(day)?.id
+                val sideCandidates = rankedFrom(
+                    sidePool, day, setOfNotNull(dinnerSideId, lunchMain.id, dinnerMain.id, lunchSidePicks.lastOrNull()?.id),
+                ).ifEmpty { rankedFrom(sidePool, day, setOfNotNull(dinnerSideId, lunchMain.id, dinnerMain.id)) }
+                    .ifEmpty { rankedFrom(sidePool, day, setOf(lunchMain.id)) }
+                val unseenSides = sideCandidates.filter { c -> lunchSidePicks.none { it?.id == c.id } }.ifEmpty { sideCandidates }
+                val sideOffset = slotOffset(day, WeeklyDishSlot.LUNCH_SIDE)
+                if (unseenSides.isEmpty()) null else unseenSides[sideOffset % unseenSides.size]
+            } else {
+                null
+            }
+        }
     }
 
     val chosen = mutableListOf<PlannedDayMeal>()
@@ -170,7 +212,11 @@ fun buildWeeklyMealPlan(
             side != null -> "Đủ mâm: 1 món mặn + 1 món canh/rau"
             else -> "Gợi ý cân bằng cho bữa cơm gia đình"
         }
-        chosen += PlannedDayMeal(day, days[day], selected, reason, sideRecipe = side)
+        chosen += PlannedDayMeal(
+            day, days[day], selected, reason, sideRecipe = side,
+            lunchRecipe = lunchMainPicks.getOrNull(day),
+            lunchSideRecipe = lunchSidePicks.getOrNull(day),
+        )
     }
     return chosen
 }
@@ -185,7 +231,8 @@ fun buildWeeklyShoppingList(
 ): List<ShoppingListItem> {
     val preferredIds = preferences.flatMapTo(HashSet()) { it.ingredientIds() }
     val counts = linkedMapOf<String, Int>()
-    val portionMultiplier = if (includeLunchMealPrep) 2 else 1
+    val hasSeparateLunchDishes = plan.any { it.lunchRecipe != null }
+    val portionMultiplier = if (includeLunchMealPrep && !hasSeparateLunchDishes) 2 else 1
     val disabled = disabledMeals.toSet()
     plan.forEach { meal ->
         if (MealSlotKey(weekStart.plus(DatePeriod(days = meal.dayIndex)), meal.mealSlot) in disabled) return@forEach

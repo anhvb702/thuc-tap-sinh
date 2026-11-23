@@ -5,7 +5,8 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.Urgency
 
-internal fun pantryGridContentPadding(): PaddingValues = PaddingValues(bottom = 88.dp)
+internal fun pantryGridContentPadding(): PaddingValues =
+    PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp)
 
 internal data class PantryGridPresentation(
     val presentCount: Int,

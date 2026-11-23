@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Chỉ dùng để lấy thời tiết công khai từ Open-Meteo; dữ liệu tủ lạnh chỉ lưu trên máy. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Nghe tên món bằng nhận dạng giọng nói ngay trên máy; âm thanh không rời khỏi máy. -->

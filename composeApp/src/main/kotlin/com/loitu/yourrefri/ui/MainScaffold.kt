@@ -1,10 +1,20 @@
 package com.loitu.yourrefri.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,15 +24,18 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -40,14 +53,12 @@ import com.loitu.yourrefri.feature.recipe.ui.RecipeDetailScreen
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreen
 import com.loitu.yourrefri.feature.recipe.ui.HandsFreeCookScreen
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
-import com.loitu.yourrefri.feature.recipe.ui.CookLeftoverDialog
 import com.loitu.yourrefri.feature.recipe.ui.findRecipeById
-import com.loitu.yourrefri.feature.recipe.ui.ingredientsToConsume
 import com.loitu.yourrefri.feature.recipe.ui.CookDone
 import com.loitu.yourrefri.feature.recipe.ui.CookDoneScreen
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneNames
 import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
-import com.loitu.yourrefri.feature.recipe.ui.recipeCookPresentation
+import com.loitu.yourrefri.feature.recipe.ui.buildDirectCookPlan
 import com.loitu.yourrefri.feature.recipe.ui.freezerIngredientNames
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
@@ -67,6 +78,14 @@ import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForAllRecipes
 import com.loitu.yourrefri.feature.recipe.ui.recipeRequestForHomeCard
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreenMode
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyMealPlan
+import com.loitu.yourrefri.feature.recipe.logic.buildWeeklyShoppingList
+import com.loitu.yourrefri.feature.recipe.logic.cookableRecipes
+import com.loitu.yourrefri.feature.recipe.logic.pickRandomRecipe
+import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
+import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
+import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanSection
+import com.loitu.yourrefri.feature.recipe.ui.WeeklyShoppingSection
 import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
@@ -125,8 +144,14 @@ fun MainScaffold(
     modifier: Modifier = Modifier,
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
+    homeViewModel: com.loitu.yourrefri.feature.home.presentation.HomeViewModel? = null,
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
+    var showWeeklyOverlay by remember { mutableStateOf(false) }
+    var showShoppingOverlay by remember { mutableStateOf(false) }
+    var showGlobalRandomWheel by remember { mutableStateOf(false) }
+    var showGlobalNoCookable by remember { mutableStateOf(false) }
+    var globalRandomPick by remember { mutableStateOf<com.loitu.yourrefri.feature.recipe.logic.RandomRecipePick?>(null) }
     var requestedRecipeId by remember { mutableStateOf<String?>(null) }
     var requestedRecipeMode by remember { mutableStateOf(RecipeScreenMode.DAILY) }
     // Công thức đang mở ở màn chi tiết. Tạm dùng state cục bộ; khi có Navigation Compose sẽ thành route RecipeDetail.
@@ -172,6 +197,27 @@ fun MainScaffold(
     val visibleRecipes = remember(recipes, dietRestriction, dietTooStrict, state.ingredients) {
         if (dietTooStrict) recipes else filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
     }
+    val globalWeeklyPlan = remember(
+        visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences,
+        weeklyMealPlanState.swappedOffsets, tasteProfile, weeklyMealPlanState.includeLunchMealPrep,
+    ) {
+        buildWeeklyMealPlan(
+            visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences,
+            weeklyMealPlanState.swappedOffsets, tasteProfile,
+            separateLunchAndDinner = weeklyMealPlanState.includeLunchMealPrep,
+        )
+    }
+    val globalShopping = remember(globalWeeklyPlan, state, weeklyMealPlanState.preferences, weeklyMealPlanState.includeLunchMealPrep) {
+        buildWeeklyShoppingList(globalWeeklyPlan, state, weeklyMealPlanState.preferences, includeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep)
+    }
+    fun stockIngredients(ids: List<String>) {
+        ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
+            if (state.pantry[id]?.have != true) {
+                onAction(PantryGridAction.AddIngredient(id, null))
+                repeat((needed - 1).coerceAtLeast(0)) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+            } else repeat(needed.coerceAtLeast(0)) { onAction(PantryGridAction.IncreaseQuantity(id)) }
+        }
+    }
     LaunchedEffect(dietTooStrict, dietRestriction) {
         if (dietTooStrict) snackbarHostState.showSnackbar(SettingsPresentation.dietTooStrictNotice)
     }
@@ -201,29 +247,9 @@ fun MainScaffold(
     }
 
     // Nấu rảnh tay xong: trừ nguyên liệu như nút "Nấu xong" ở màn công thức, rồi hiện màn chúc mừng (có Hoàn tác).
-    // Phần người dùng đánh dấu "còn lại" ở lại trong tủ và không bị hoàn tác.
-    fun finishHandsFree(recipe: Recipe, kept: Set<String>) {
-        val ids = ingredientsToConsume(recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds, kept)
-        completeCook(recipe, ids)
-    }
-
-    // Bấm "Kết thúc" ở chế độ rảnh tay: có nguyên liệu sắp trừ thì hỏi "Dùng hết hay còn lại?" trước.
-    var leftoverRecipe by remember { mutableStateOf<Recipe?>(null) }
-    fun requestFinishHandsFree(recipe: Recipe) {
-        val candidates = recipeCookPresentation(recipe, state, callbackAvailable = true).ingredientIds
-        if (candidates.isEmpty()) finishHandsFree(recipe, emptySet()) else leftoverRecipe = recipe
-    }
-    leftoverRecipe?.let { pending ->
-        val names = state.ingredients.associate { it.id to it.nameVi }
-        val candidates = recipeCookPresentation(pending, state, callbackAvailable = true).ingredientIds.distinct()
-        CookLeftoverDialog(
-            ingredients = candidates.map { it to (names[it] ?: it) },
-            onConfirm = { kept ->
-                leftoverRecipe = null
-                finishHandsFree(pending, kept)
-            },
-            onDismiss = { leftoverRecipe = null },
-        )
+    fun finishHandsFree(recipe: Recipe) {
+        val plan = buildDirectCookPlan(recipe, state, callbackAvailable = true) ?: return
+        completeCook(recipe, plan.ingredientIds)
     }
     if (showReminderPopup) {
         val popupData = remember(state, state.today) { buildReminderPopupData(state, state.today.dayOfYear) }
@@ -326,7 +352,7 @@ fun MainScaffold(
                 HandsFreeCookScreen(
                     recipe = handsFreeRecipe,
                     onClose = { handsFreeRecipeId = null },
-                    onFinished = { requestFinishHandsFree(handsFreeRecipe) },
+                    onFinished = { finishHandsFree(handsFreeRecipe) },
                     freezerNames = freezerIngredientNames(handsFreeRecipe, state),
                 )
             } else if (showHistory && currentTab == NavTab.HOME) {
@@ -344,133 +370,207 @@ fun MainScaffold(
                     },
                     onBack = { showHistory = false },
                 )
-            } else when (currentTab) {
-                NavTab.HOME -> HomeScreen(
-                    state = state,
-                    recipes = visibleRecipes,
-                    onNavigateToPantry = { currentTab = NavTab.PANTRY },
-                    onOpenShopping = {
-                        requestedRecipeMode = RecipeScreenMode.SHOPPING
-                        currentTab = NavTab.RECIPES
-                    },
-                    onNavigateToRecipes = {
-                        requestedRecipeId = recipeRequestForAllRecipes()
-                        requestedRecipeMode = RecipeScreenMode.DAILY
-                        currentTab = NavTab.RECIPES
-                    },
-                    onNavigateToRecipe = { recipeId ->
-                        requestedRecipeId = recipeRequestForHomeCard(recipeId)
-                        requestedRecipeMode = RecipeScreenMode.DAILY
-                        openedRecipeId = recipeId
-                        currentTab = NavTab.RECIPES
-                    },
-                    onNavigateToWeeklyRecipes = {
-                        requestedRecipeId = null
-                        requestedRecipeMode = RecipeScreenMode.WEEKLY
-                        currentTab = NavTab.RECIPES
-                    },
-                    onNavigateToHistory = { showHistory = true },
-                    meal = currentMeal,
-                    onMealChange = { chosenMeal = it },
-                    tasteProfile = tasteProfile,
-                )
-                NavTab.PANTRY -> PantryGridScreen(
-                    state = state,
-                    onAction = onAction,
-                    snackbarHostState = snackbarHostState,
-                    onCookFromSoon = {
-                        requestedRecipeId = recipeRequestForAllRecipes()
-                        requestedRecipeMode = RecipeScreenMode.DAILY
-                        currentTab = NavTab.RECIPES
-                    },
-                )
-                NavTab.RECIPES -> {
-                    // Nút "Nấu ngẫu nhiên" bỏ qua chế độ ăn nên món mở ra có thể không nằm trong danh sách đã lọc.
-                    val opened = findRecipeById(openedRecipeId, visibleRecipes, recipes)
-                    if (opened != null) {
-                        RecipeDetailScreen(
-                            recipe = opened,
+            } else {
+                Crossfade(targetState = currentTab, animationSpec = tween(180), label = "mainTabCrossfade") { tab ->
+                    when (tab) {
+                        NavTab.HOME -> HomeScreen(
+                            homeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() },
                             state = state,
-                            isFavorite = opened.id in favoriteIds,
-                            onToggleFavorite = { onToggleFavorite(opened.id) },
-                            onStartHandsFree = { handsFreeRecipeId = opened.id },
-                            onBack = { openedRecipeId = null },
-                            onCook = { ids -> completeCook(opened, ids) },
-                            snackbarHostState = snackbarHostState,
-                            showDoneSnackbar = false,
+                            recipes = visibleRecipes,
+                            onNavigateToPantry = { currentTab = NavTab.PANTRY },
+                            onOpenShopping = {
+                                requestedRecipeMode = RecipeScreenMode.SHOPPING
+                                currentTab = NavTab.RECIPES
+                            },
+                            onNavigateToRecipes = {
+                                requestedRecipeId = recipeRequestForAllRecipes()
+                                requestedRecipeMode = RecipeScreenMode.DAILY
+                                currentTab = NavTab.RECIPES
+                            },
+                            onNavigateToRecipe = { recipeId ->
+                                requestedRecipeId = recipeRequestForHomeCard(recipeId)
+                                requestedRecipeMode = RecipeScreenMode.DAILY
+                                openedRecipeId = recipeId
+                                currentTab = NavTab.RECIPES
+                            },
+                            onNavigateToWeeklyRecipes = {
+                                requestedRecipeId = null
+                                requestedRecipeMode = RecipeScreenMode.WEEKLY
+                                currentTab = NavTab.RECIPES
+                            },
+                            onNavigateToHistory = { showHistory = true },
+                            meal = currentMeal,
+                            onMealChange = { chosenMeal = it },
+                            tasteProfile = tasteProfile,
                         )
-                    } else RecipeScreen(
-                    state = state,
-                    recipes = visibleRecipes,
-                    weekStart = weeklyMealPlanState.weekStart,
-                    favoriteIds = favoriteIds,
-                    onToggleFavorite = onToggleFavorite,
-                    onOpenHandsFree = { handsFreeRecipeId = it },
-                    randomPool = recipes,
-                    dietRestriction = dietRestriction,
-                    initialRecipeId = requestedRecipeId,
-                    initialMode = requestedRecipeMode,
-                    onWeeklyAction = onWeeklyMealPlanAction,
-                    weeklyGoal = weeklyMealPlanState.goal,
-                    weeklyPreferences = weeklyMealPlanState.preferences,
-                    weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
-                    weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
-                    weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
-                    onWeeklyIncludeLunchMealPrepChange = { enabled ->
-                        onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
-                    },
-                    onModeChange = { requestedRecipeMode = it },
-                    onBackHome = { currentTab = NavTab.HOME },
-                    onOpenRecipe = { openedRecipeId = it },
-                    onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
-                     tasteProfile = tasteProfile,
-                    onStockIngredients = { ids ->
-                        ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
-                            val alreadyHave = state.pantry[id]?.have == true
-                            if (!alreadyHave) {
-                                onAction(PantryGridAction.AddIngredient(id, null))
-                                repeat((needed - 1).coerceAtLeast(0)) {
-                                    onAction(PantryGridAction.IncreaseQuantity(id))
-                                }
-                            } else {
-                                repeat(needed.coerceAtLeast(0)) {
-                                    onAction(PantryGridAction.IncreaseQuantity(id))
-                                }
+                        NavTab.PANTRY -> PantryGridScreen(
+                            state = state,
+                            onAction = onAction,
+                            snackbarHostState = snackbarHostState,
+                            onCookFromSoon = {
+                                requestedRecipeId = recipeRequestForAllRecipes()
+                                requestedRecipeMode = RecipeScreenMode.DAILY
+                                currentTab = NavTab.RECIPES
+                            },
+                        )
+                        NavTab.RECIPES -> {
+                            val lastOpenedRecipeId = remember { mutableStateOf(openedRecipeId) }
+                            val isCurrentTab = currentTab == tab
+                            val displayedRecipeId = if (isCurrentTab) openedRecipeId else lastOpenedRecipeId.value
+                            // Giữ màn chi tiết trong lúc tab Món ăn mờ dần.
+                            SideEffect {
+                                if (isCurrentTab) lastOpenedRecipeId.value = displayedRecipeId
                             }
+                            // Nút "Nấu ngẫu nhiên" bỏ qua chế độ ăn nên món mở ra có thể không nằm trong danh sách đã lọc.
+                            val opened = findRecipeById(displayedRecipeId, visibleRecipes, recipes)
+                            if (opened != null) {
+                                RecipeDetailScreen(
+                                    recipe = opened,
+                                    state = state,
+                                    isFavorite = opened.id in favoriteIds,
+                                    onToggleFavorite = { onToggleFavorite(opened.id) },
+                                    onStartHandsFree = { handsFreeRecipeId = opened.id },
+                                    onBack = { openedRecipeId = null },
+                                    onCook = { ids -> completeCook(opened, ids) },
+                                    snackbarHostState = snackbarHostState,
+                                    showDoneSnackbar = false,
+                                )
+                            } else RecipeScreen(
+                                state = state,
+                                recipes = visibleRecipes,
+                                weekStart = weeklyMealPlanState.weekStart,
+                                favoriteIds = favoriteIds,
+                                onToggleFavorite = onToggleFavorite,
+                                onOpenHandsFree = { handsFreeRecipeId = it },
+                                randomPool = recipes,
+                                dietRestriction = dietRestriction,
+                                initialRecipeId = requestedRecipeId,
+                                initialMode = requestedRecipeMode,
+                                onWeeklyAction = onWeeklyMealPlanAction,
+                                weeklyGoal = weeklyMealPlanState.goal,
+                                weeklyPreferences = weeklyMealPlanState.preferences,
+                                weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
+                                weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
+                                weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
+                                onWeeklyIncludeLunchMealPrepChange = { enabled ->
+                                    onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
+                                },
+                                onModeChange = { requestedRecipeMode = it },
+                                onBackHome = { currentTab = NavTab.HOME },
+                                onOpenRecipe = { openedRecipeId = it },
+                                onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
+                                tasteProfile = tasteProfile,
+                                onStockIngredients = { ids ->
+                                    ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
+                                        val alreadyHave = state.pantry[id]?.have == true
+                                        if (!alreadyHave) {
+                                            onAction(PantryGridAction.AddIngredient(id, null))
+                                            repeat((needed - 1).coerceAtLeast(0)) {
+                                                onAction(PantryGridAction.IncreaseQuantity(id))
+                                            }
+                                        } else {
+                                            repeat(needed.coerceAtLeast(0)) {
+                                                onAction(PantryGridAction.IncreaseQuantity(id))
+                                            }
+                                        }
+                                    }
+                                },
+                            )
+                        }
+                        NavTab.SETTINGS -> SettingsScreen(
+                            backupStatus = backupStatus,
+                            restoreConfirmationPending = restoreConfirmationPending,
+                            onExportBackup = onExportBackup,
+                            onImportBackup = onImportBackup,
+                            onConfirmRestore = onConfirmRestore,
+                            onCancelRestore = onCancelRestore,
+                            reminderEnabled = reminderEnabled,
+                            onReminderChanged = onReminderChanged,
+                            onTestReminder = { onTestReminder(); showReminderPopup = true },
+                            themeMode = themeMode,
+                            onThemeModeChange = onThemeModeChange,
+                            weeklyGoal = weeklyMealPlanState.goal,
+                            onWeeklyGoalChange = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetGoal(it)) },
+                            weeklyPreferences = weeklyMealPlanState.preferences,
+                            onWeeklyPreferencesChange = { wanted ->
+                                // Màn cài đặt trả về cả tập khẩu vị; ViewModel chỉ có "đổi một khẩu vị", nên đổi từng cái khác nhau.
+                                val current = weeklyMealPlanState.preferences
+                                (wanted - current).forEach { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) }
+                                (current - wanted).forEach { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) }
+                            },
+                            dietRestriction = dietRestriction,
+                            onDietRestrictionChange = onDietRestrictionChange,
+                            appVersionName = appVersionName,
+                            sundayTime = sundayTime,
+                            onSundayTimeChange = onSundayTimeChange,
+                            tasteProfile = tasteProfile,
+                            onTasteProfileChange = onTasteProfileChange,
+                        )
+                    }
+                }
+            }
+            val showHomeFabs = shouldShowGlobalFloatingActions(currentTab, cookDone != null, handsFreeRecipe != null, showHistory)
+            AnimatedVisibility(
+                visible = showHomeFabs,
+                enter = fadeIn(tween(180)),
+                exit = fadeOut(tween(140)),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp),
+            ) {
+                GlobalFloatingActionButtons(
+                    onOpenWeeklyPlan = { showWeeklyOverlay = true },
+                    onOpenRandomWheel = {
+                        val cookable = cookableRecipes(recipes, state)
+                        if (cookable.isEmpty()) showGlobalNoCookable = true
+                        else {
+                            globalRandomPick = pickRandomRecipe(cookable, state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default)
+                            showGlobalRandomWheel = globalRandomPick != null
                         }
                     },
-                    )
-                }
-                NavTab.SETTINGS -> SettingsScreen(
-                    backupStatus = backupStatus,
-                    restoreConfirmationPending = restoreConfirmationPending,
-                    onExportBackup = onExportBackup,
-                    onImportBackup = onImportBackup,
-                    onConfirmRestore = onConfirmRestore,
-                    onCancelRestore = onCancelRestore,
-                    reminderEnabled = reminderEnabled,
-                    onReminderChanged = onReminderChanged,
-                    onTestReminder = { onTestReminder(); showReminderPopup = true },
-                    themeMode = themeMode,
-                    onThemeModeChange = onThemeModeChange,
-                    weeklyGoal = weeklyMealPlanState.goal,
-                    onWeeklyGoalChange = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetGoal(it)) },
-                    weeklyPreferences = weeklyMealPlanState.preferences,
-                    onWeeklyPreferencesChange = { wanted ->
-                        // Màn cài đặt trả về cả tập khẩu vị; ViewModel chỉ có "đổi một khẩu vị", nên đổi từng cái khác nhau.
-                        val current = weeklyMealPlanState.preferences
-                        (wanted - current).forEach { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) }
-                        (current - wanted).forEach { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) }
-                    },
-                    dietRestriction = dietRestriction,
-                    onDietRestrictionChange = onDietRestrictionChange,
-                    appVersionName = appVersionName,
-                    sundayTime = sundayTime,
-                    onSundayTimeChange = onSundayTimeChange,
-                     tasteProfile = tasteProfile,
-                     onTasteProfileChange = onTasteProfileChange,
+                    modifier = Modifier,
                 )
             }
+            if (showWeeklyOverlay) FloatingOverlayDialog("Thực đơn cả tuần", { showWeeklyOverlay = false }) {
+                WeeklyMealPlanSection(
+                    plan = globalWeeklyPlan,
+                    goal = weeklyMealPlanState.goal,
+                    preferences = weeklyMealPlanState.preferences,
+                    onGoal = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetGoal(it)) },
+                    onPreference = { onWeeklyMealPlanAction(WeeklyMealPlanAction.TogglePreference(it)) },
+                    onSwap = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SwapDay(it)) },
+                    onRequestCook = { cooked -> showWeeklyOverlay = false; openedRecipeId = cooked.id; currentTab = NavTab.RECIPES },
+                    updatedRecipeResult = null,
+                    weekStart = weeklyMealPlanState.weekStart,
+                    onNavigate = { target -> if (target == RecipeScreenMode.SHOPPING) showShoppingOverlay = true },
+                    includeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
+                    onIncludeLunchMealPrepChange = { onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(it)) },
+                )
+            }
+            if (showShoppingOverlay) FloatingOverlayDialog("Danh sách đi chợ", { showShoppingOverlay = false }) {
+                WeeklyShoppingSection(
+                    shopping = globalShopping,
+                    uncheckedIds = weeklyMealPlanState.uncheckedIds,
+                    onToggleChecked = { id, checked -> onWeeklyMealPlanAction(WeeklyMealPlanAction.ToggleIngredient(id, checked)) },
+                    onStock = { ids -> stockIngredients(ids); showShoppingOverlay = false; showWeeklyOverlay = false },
+                )
+            }
+            val globalPick = globalRandomPick
+            if (showGlobalRandomWheel && globalPick != null) RandomWheelDialog(
+                pool = cookableRecipes(recipes, state), pick = globalPick,
+                onSpinAgain = { globalRandomPick = pickRandomRecipe(cookableRecipes(recipes, state), state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default) },
+                onOpenRecipe = { recipe -> showGlobalRandomWheel = false; showHistory = false; cookDone = null; handsFreeRecipeId = null; openedRecipeId = recipe.id; currentTab = NavTab.RECIPES },
+                onDismiss = { showGlobalRandomWheel = false },
+            )
         }
     }
+    if (showGlobalNoCookable) AlertDialog(
+        onDismissRequest = { showGlobalNoCookable = false }, containerColor = AppTheme.colors.surface,
+        title = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Nấu ngẫu nhiên", Modifier.weight(1f), color = AppTheme.colors.text)
+                IconButton(onClick = { showGlobalNoCookable = false }) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = AppTheme.colors.text) }
+            }
+        }, text = { Text(RandomRecipeCopy.noCookable, color = AppTheme.colors.muted) }, confirmButton = {},
+    )
 }

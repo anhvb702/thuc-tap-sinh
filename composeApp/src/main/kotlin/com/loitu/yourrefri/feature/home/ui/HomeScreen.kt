@@ -1,12 +1,14 @@
 package com.loitu.yourrefri.feature.home.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -18,22 +20,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryCopy
 import com.loitu.yourrefri.feature.home.presentation.HomeEffect
 import com.loitu.yourrefri.feature.home.presentation.HomeIntent
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
-import com.loitu.yourrefri.feature.home.logic.homeGreeting
+import com.loitu.yourrefri.feature.home.domain.model.formatHomeWeatherLine
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
 import com.loitu.yourrefri.feature.recipe.logic.defaultMealFor
-import com.loitu.yourrefri.feature.recipe.ui.MealCopy
-import com.loitu.yourrefri.feature.recipe.ui.PillChip
 import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
 import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
@@ -58,14 +61,21 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     homeViewModel: HomeViewModel = remember { HomeViewModel() },
+    userName: String = DEFAULT_USER_NAME,
 ) {
     val colors = AppTheme.colors
     val homeState by homeViewModel.state.collectAsState()
     val dashboard = homeState.dashboard
     val zones = pantryZoneCounts(dashboard.haveItems.map { it.ingredientId })
+    var activeBucket by remember { mutableStateOf<PantryOverviewBucket?>(null) }
+    var dismissedRecipeIds by remember { mutableStateOf(emptySet<String>()) }
+    val activeSuggestion: RecipeRecommendation? = activeSpotlightSuggestion(dashboard.recommendations, dismissedRecipeIds)
 
     LaunchedEffect(state, recipes, meal, tasteProfile) {
         homeViewModel.onIntent(HomeIntent.SyncInputs(state, recipes, meal, tasteProfile))
+    }
+    LaunchedEffect(homeViewModel) {
+        homeViewModel.onIntent(HomeIntent.LoadWeather)
     }
     LaunchedEffect(homeViewModel) {
         homeViewModel.effects.collect { effect ->
@@ -105,37 +115,31 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        HomeHeader(greeting = greetingText(state.hourOfDay), meal = meal)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MealSlot.entries.forEach { option ->
-                PillChip(label = MealCopy.label(option), selected = option == meal, onClick = { onMealChange(option) })
-            }
-        }
-        PantrySummaryCard(
-            count = dashboard.haveItems.size,
-            zones = zones,
-            onOpenPantry = onNavigateToPantry,
-            onOpenShopping = onOpenShopping,
+        HomeHeader(
+            greeting = userGreetingText(userName),
+            weatherLine = formatHomeWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
+            onWeatherClick = { homeViewModel.onIntent(HomeIntent.ToggleWeatherCity) },
         )
-        UseSoonSection(items = dashboard.urgentItems, onOpenPantry = onNavigateToPantry)
-        RecommendationSection(
-            recommendations = dashboard.recommendations,
+        PantryOverviewSection(
+            totalCount = dashboard.haveItems.size,
+            fridgeCount = zones.fridge,
+            freezerCount = zones.freezer,
+            urgentCount = dashboard.urgentItems.size,
+            onOpenPantry = onNavigateToPantry,
+            onSelectBucket = { activeBucket = it },
+        )
+        DailySpotlightRecommendationSection(
+            hasRecommendations = dashboard.recommendations.isNotEmpty(),
+            activeSuggestion = activeSuggestion,
+            onDismissSuggestion = { dismissedRecipeIds = dismissedRecipeIds + it },
+            onResetDismissedSuggestions = { dismissedRecipeIds = resetDismissedSuggestions() },
             onNavigateToRecipe = onNavigateToRecipe,
             onNavigateToRecipes = onNavigateToRecipes,
             onNavigateToPantry = onNavigateToPantry,
         )
-        WeeklyPlanButton(onClick = onNavigateToWeeklyRecipes)
-        if (dashboard.haveItems.isNotEmpty() && recipes.isNotEmpty()) {
-            ShortcutCard(
-                icon = AppIcons.Wheel,
-                title = RandomRecipeCopy.button,
-                subtitle = "Quay vòng chọn nhanh một món cho bữa tối",
-                onClick = { homeViewModel.onIntent(HomeIntent.OpenRandomWheel) },
-            )
-        }
         if (onNavigateToHistory != null) {
             ShortcutCard(
                 icon = AppIcons.Clock,
@@ -144,19 +148,28 @@ fun HomeScreen(
                 onClick = onNavigateToHistory,
             )
         }
-        Text(
-            text = "Chỉ trên máy bạn · Không cần tài khoản",
-            style = MaterialTheme.typography.bodySmall,
-            color = colors.muted,
-        )
+    }
+    activeBucket?.let { bucket ->
+        val items = when (bucket) {
+            PantryOverviewBucket.FRIDGE -> dashboard.haveItems.filter { !isFreezerItem(it.ingredientId) }
+            PantryOverviewBucket.FREEZER -> dashboard.haveItems.filter { isFreezerItem(it.ingredientId) }
+            PantryOverviewBucket.URGENT -> dashboard.urgentItems
+        }
+        PantryBucketPopupDialog(bucket, items, onDismiss = { activeBucket = null })
     }
 }
 @Composable
-private fun HomeHeader(greeting: String, meal: MealSlot) {
+private fun HomeHeader(greeting: String, weatherLine: String, onWeatherClick: () -> Unit) {
     val colors = AppTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = "BẾP NHÀ", style = MaterialTheme.typography.labelMedium, color = colors.accentText)
-        Text(text = greeting, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-        Text(text = MealCopy.heading(meal), style = MaterialTheme.typography.headlineMedium, color = colors.text)
+        Text(text = greeting, style = MaterialTheme.typography.headlineMedium, color = colors.text)
+        Text(
+            text = weatherLine,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.muted,
+            modifier = Modifier
+                .heightIn(min = 36.dp)
+                .clickable(onClick = onWeatherClick),
+        )
     }
 }
