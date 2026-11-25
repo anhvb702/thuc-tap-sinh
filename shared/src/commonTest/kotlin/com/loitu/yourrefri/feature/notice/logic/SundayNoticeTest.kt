@@ -19,11 +19,11 @@ class SundayNoticeTest {
     private val shoppingBody = "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!"
 
     @Test
-    fun reminderTimeFor_sundayUsesSundayTime_otherDaysUse1730() {
+    fun reminderTimeFor_sundayUsesSundayTime_otherDaysUse1600() {
         assertEquals(eight, reminderTimeFor(sunday, eight))
         assertEquals(LocalTime(7, 5), reminderTimeFor(sunday, LocalTime(7, 5)))
-        assertEquals(LocalTime(17, 30), reminderTimeFor(friday, eight))
-        assertEquals(LocalTime(17, 30), reminderTimeFor(LocalDate(2026, 11, 14), eight))
+        assertEquals(LocalTime(16, 0), reminderTimeFor(friday, eight))
+        assertEquals(LocalTime(16, 0), reminderTimeFor(LocalDate(2026, 11, 14), eight))
     }
 
     @Test
@@ -35,9 +35,9 @@ class SundayNoticeTest {
     }
 
     @Test
-    fun sundayAfterEight_nextIsMonday1730() {
+    fun sundayAfterEight_nextIsMonday1600() {
         assertEquals(
-            Instant.parse("2026-11-16T17:30:00Z"),
+            Instant.parse("2026-11-16T16:00:00Z"),
             nextReminderTrigger(true, Instant.parse("2026-11-15T09:00:00Z"), TimeZone.UTC, eight),
         )
     }
@@ -45,16 +45,24 @@ class SundayNoticeTest {
     @Test
     fun sundayExactlyAtEight_isNotAgainTheSameInstant() {
         assertEquals(
-            Instant.parse("2026-11-16T17:30:00Z"),
+            Instant.parse("2026-11-16T16:00:00Z"),
             nextReminderTrigger(true, Instant.parse("2026-11-15T08:00:00Z"), TimeZone.UTC, eight),
         )
     }
 
     @Test
-    fun weekdayBeforeEveningStillUses1730() {
+    fun weekdayBeforeEveningStillUses1600() {
         assertEquals(
-            Instant.parse("2026-11-13T17:30:00Z"),
-            nextReminderTrigger(true, Instant.parse("2026-11-13T17:00:00Z"), TimeZone.UTC, eight),
+            Instant.parse("2026-11-13T16:00:00Z"),
+            nextReminderTrigger(true, Instant.parse("2026-11-13T15:00:00Z"), TimeZone.UTC, eight),
+        )
+    }
+
+    @Test
+    fun weekdayAtExactly1600_movesToNextDay1600() {
+        assertEquals(
+            Instant.parse("2026-11-14T16:00:00Z"),
+            nextReminderTrigger(true, Instant.parse("2026-11-13T16:00:00Z"), TimeZone.UTC, eight),
         )
     }
 
@@ -75,7 +83,7 @@ class SundayNoticeTest {
     @Test
     fun withoutSundayTime_behavesLikeBefore() {
         assertEquals(
-            Instant.parse("2026-11-15T17:30:00Z"),
+            Instant.parse("2026-11-15T16:00:00Z"),
             nextReminderTrigger(true, Instant.parse("2026-11-14T18:00:00Z"), TimeZone.UTC),
         )
     }
