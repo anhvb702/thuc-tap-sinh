@@ -4,9 +4,11 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import com.loitu.yourrefri.feature.notice.logic.clampWeekdayReminderTime
 import com.loitu.yourrefri.feature.notice.logic.nextReminderTrigger
 import com.loitu.yourrefri.feature.settings.ui.minutesOf
 import com.loitu.yourrefri.feature.settings.ui.sundayTimeOf
+import com.loitu.yourrefri.feature.settings.ui.weekdayTimeOf
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.time.Clock
@@ -16,6 +18,7 @@ object ReminderScheduler {
     private const val REQUEST = 1730
     private const val PREFS = "daily_reminder"
     private const val SUNDAY_MINUTES_KEY = "sunday_minutes"
+    private const val WEEKDAY_MINUTES_KEY = "weekday_minutes"
     fun enabled(context: Context) = context.getSharedPreferences(PREFS, 0).getBoolean("enabled", false)
     fun setEnabled(context: Context, value: Boolean) {
         context.getSharedPreferences(PREFS, 0).edit().putBoolean("enabled", value).apply()
@@ -31,6 +34,15 @@ object ReminderScheduler {
         schedule(context)
     }
 
+    fun weekdayTime(context: Context): LocalTime =
+        weekdayTimeOf(context.getSharedPreferences(PREFS, 0).getInt(WEEKDAY_MINUTES_KEY, -1))
+
+    fun setWeekdayTime(context: Context, time: LocalTime) {
+        val clamped = clampWeekdayReminderTime(time)
+        context.getSharedPreferences(PREFS, 0).edit().putInt(WEEKDAY_MINUTES_KEY, minutesOf(clamped)).apply()
+        schedule(context)
+    }
+
     @OptIn(ExperimentalTime::class)
     fun schedule(context: Context) {
         val trigger = nextReminderTrigger(
@@ -38,6 +50,7 @@ object ReminderScheduler {
             now = Clock.System.now(),
             tz = TimeZone.currentSystemDefault(),
             sundayTime = sundayTime(context),
+            weekdayTime = weekdayTime(context),
         ) ?: return
         val alarm = context.getSystemService(AlarmManager::class.java)
         alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger.toEpochMilliseconds(), pending(context))

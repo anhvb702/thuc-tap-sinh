@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -25,6 +26,8 @@ import com.loitu.yourrefri.feature.settings.presentation.SettingsEffect
 import com.loitu.yourrefri.feature.settings.presentation.SettingsIntent
 import com.loitu.yourrefri.feature.settings.presentation.SettingsUiState
 import com.loitu.yourrefri.feature.settings.presentation.SettingsViewModel
+import com.loitu.yourrefri.feature.settings.ui.LocalWeekdayReminderSettings
+import com.loitu.yourrefri.feature.settings.ui.WeekdayReminderSettings
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
@@ -72,7 +75,14 @@ class MainActivity : ComponentActivity() {
                 val settingsViewModel: SettingsViewModel = viewModel(factory = remember(dependencies) { dependencies.settingsViewModelFactory() })
                 val settingsState by settingsViewModel.state.collectAsState()
                 YourRefriTheme(darkTheme = settingsState.themeMode.isDark(isSystemInDarkTheme())) {
-                    App(dependencies, settingsViewModel, settingsState)
+                    CompositionLocalProvider(
+                        LocalWeekdayReminderSettings provides WeekdayReminderSettings(
+                            weekdayTime = settingsState.weekdayTime,
+                            onWeekdayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekdayTime(it)) },
+                        ),
+                    ) {
+                        App(dependencies, settingsViewModel, settingsState)
+                    }
                 }
             }
         }

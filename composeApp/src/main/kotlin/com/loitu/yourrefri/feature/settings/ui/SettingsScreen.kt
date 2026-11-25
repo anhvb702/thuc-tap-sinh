@@ -1,5 +1,6 @@
 package com.loitu.yourrefri.feature.settings.ui
 
+import android.app.TimePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -31,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.loitu.yourrefri.feature.notice.logic.DEFAULT_WEEKDAY_REMINDER_TIME
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
@@ -39,6 +42,13 @@ import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.ThemeMode
 import kotlinx.datetime.LocalTime
+
+internal data class WeekdayReminderSettings(
+    val weekdayTime: LocalTime = DEFAULT_WEEKDAY_REMINDER_TIME,
+    val onWeekdayTimeChange: (LocalTime) -> Unit = {},
+)
+
+internal val LocalWeekdayReminderSettings = compositionLocalOf { WeekdayReminderSettings() }
 
 @Composable
 fun SettingsScreen(
@@ -65,6 +75,8 @@ fun SettingsScreen(
     onSundayTimeChange: (LocalTime) -> Unit = {},
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
+    weekdayTime: LocalTime = LocalWeekdayReminderSettings.current.weekdayTime,
+    onWeekdayTimeChange: (LocalTime) -> Unit = LocalWeekdayReminderSettings.current.onWeekdayTimeChange,
 ) {
     val colors = AppTheme.colors
     val context = LocalContext.current
@@ -117,7 +129,7 @@ fun SettingsScreen(
                     text = ReminderCopy.sundayTimeLabel(sundayTime).substringAfter("lúc "),
                     description = "Đổi giờ nhắc đi chợ Chủ Nhật",
                     onClick = {
-                        android.app.TimePickerDialog(context, { _, hour, minute -> onSundayTimeChange(LocalTime(hour, minute)) }, sundayTime.hour, sundayTime.minute, true).show()
+                        TimePickerDialog(context, { _, hour, minute -> onSundayTimeChange(LocalTime(hour, minute)) }, sundayTime.hour, sundayTime.minute, true).show()
                     },
                 )
             }
@@ -127,10 +139,29 @@ fun SettingsScreen(
                 when (card) {
                     SettingsMainCard.REMINDER -> {
                         SectionTitle(SettingsPresentation.reminderGroupTitle, AppIcons.Bell)
-                        ChipRow(SettingsPresentation.reminderTitle, SettingsPresentation.reminderTime) {
+                        ChipRow(SettingsPresentation.reminderTitle, ReminderCopy.weekdayTimeLabel(weekdayTime)) {
                             ToggleChip(reminderEnabled, SettingsPresentation.reminderTitle, onReminderChanged)
                         }
-                        AnimatedVisibility(visible = shouldShowSundayTimeRow(reminderEnabled)) { sundayTimeRow() }
+                        AnimatedVisibility(visible = shouldShowSundayTimeRow(reminderEnabled)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                ChipRow("Giờ nhắc ngày thường", "Từ 14:00 đến 20:00") {
+                                    ValueChip(
+                                        text = reminderTimeLabel(weekdayTime.hour, weekdayTime.minute),
+                                        description = "Đổi giờ nhắc ngày thường",
+                                        onClick = {
+                                            TimePickerDialog(
+                                                context,
+                                                { _, hour, minute -> onWeekdayTimeChange(LocalTime(hour, minute)) },
+                                                weekdayTime.hour,
+                                                weekdayTime.minute,
+                                                true,
+                                            ).show()
+                                        },
+                                    )
+                                }
+                                sundayTimeRow()
+                            }
+                        }
                         Text(ReminderCopy.subtitle, fontSize = 12.sp, color = colors.muted)
                     }
                     SettingsMainCard.TASTE_HABIT -> SettingsNavRow(

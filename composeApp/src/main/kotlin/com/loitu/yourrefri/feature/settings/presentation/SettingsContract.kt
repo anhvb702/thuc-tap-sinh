@@ -1,5 +1,6 @@
 package com.loitu.yourrefri.feature.settings.presentation
 
+import com.loitu.yourrefri.feature.notice.logic.DEFAULT_WEEKDAY_REMINDER_TIME
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -16,6 +17,7 @@ data class SettingsUiState(
     val dietRestriction: DietRestriction = DietRestriction.NONE,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
+    val weekdayTime: LocalTime = DEFAULT_WEEKDAY_REMINDER_TIME,
 )
 sealed interface SettingsIntent {
     data object ClearBackupStatus : SettingsIntent
@@ -27,6 +29,7 @@ sealed interface SettingsIntent {
     data class RequestTestReminder(val hasPermission: Boolean) : SettingsIntent
     data class NotificationPermissionResult(val granted: Boolean) : SettingsIntent
     data class SetSundayTime(val time: LocalTime) : SettingsIntent
+    data class SetWeekdayTime(val time: LocalTime) : SettingsIntent
     data class SetDietRestriction(val restriction: DietRestriction) : SettingsIntent
     data class SetThemeMode(val mode: ThemeMode) : SettingsIntent
     data class SetTasteProfile(val profile: FamilyTasteProfile) : SettingsIntent

@@ -60,4 +60,52 @@ class NextTriggerTimeTest {
         check("2026-11-01T04:00:00Z", "America/New_York", LocalTime(1, 30), "2026-11-01T05:30:00Z")
         check("2026-11-01T05:45:00Z", "America/New_York", LocalTime(1, 30), "2026-11-02T06:30:00Z")
     }
+
+    @Test
+    fun defaultWeekdayTime_is1600() {
+        assertEquals(LocalTime(16, 0), DEFAULT_WEEKDAY_REMINDER_TIME)
+        assertEquals(LocalTime(14, 0), MIN_WEEKDAY_REMINDER_TIME)
+        assertEquals(LocalTime(20, 0), MAX_WEEKDAY_REMINDER_TIME)
+    }
+
+    @Test
+    fun clamp_lowerBound() {
+        assertEquals(LocalTime(14, 0), clampWeekdayReminderTime(LocalTime(13, 59)))
+        assertEquals(LocalTime(14, 0), clampWeekdayReminderTime(LocalTime(14, 0)))
+        assertEquals(LocalTime(14, 1), clampWeekdayReminderTime(LocalTime(14, 1)))
+    }
+
+    @Test
+    fun clamp_upperBound_checksMinutes() {
+        assertEquals(LocalTime(20, 0), clampWeekdayReminderTime(LocalTime(20, 0)))
+        assertEquals(LocalTime(20, 0), clampWeekdayReminderTime(LocalTime(20, 1)))
+        assertEquals(LocalTime(20, 0), clampWeekdayReminderTime(LocalTime(20, 30)))
+        assertEquals(LocalTime(19, 59), clampWeekdayReminderTime(LocalTime(19, 59)))
+    }
+
+    @Test
+    fun reminderTimeFor_weekdayUsesWeekdayTime_sundayKeepsOwn() {
+        val sunday = LocalTime(9, 0)
+        val monday = kotlinx.datetime.LocalDate(2026, 11, 23)
+        val sundayDate = kotlinx.datetime.LocalDate(2026, 11, 29)
+        assertEquals(LocalTime(16, 0), reminderTimeFor(monday, sunday))
+        assertEquals(LocalTime(18, 30), reminderTimeFor(monday, sunday, LocalTime(18, 30)))
+        assertEquals(LocalTime(14, 0), reminderTimeFor(monday, sunday, LocalTime(8, 0)))
+        assertEquals(sunday, reminderTimeFor(sundayDate, sunday, LocalTime(18, 30)))
+    }
+
+    @Test
+    fun nextReminderTrigger_weekdayTimeApplied_sundayNotOverridden() {
+        val utc = TimeZone.UTC
+        // Không có sundayTime: giờ ngày thường áp mọi ngày và được kẹp.
+        assertEquals(instant("2026-11-25T18:30:00Z"), nextReminderTrigger(true, instant("2026-11-25T10:00:00Z"), utc, null, LocalTime(18, 30)))
+        assertEquals(instant("2026-11-25T20:00:00Z"), nextReminderTrigger(true, instant("2026-11-25T10:00:00Z"), utc, null, LocalTime(20, 30)))
+        assertEquals(instant("2026-11-25T16:00:00Z"), nextReminderTrigger(true, instant("2026-11-25T10:00:00Z"), utc))
+        // Thứ 7 -> dùng weekdayTime; sau đó Chủ Nhật giữ sundayTime.
+        val sunday = LocalTime(9, 0)
+        assertEquals(instant("2026-11-28T15:00:00Z"), nextReminderTrigger(true, instant("2026-11-28T00:00:00Z"), utc, sunday, LocalTime(15, 0)))
+        assertEquals(instant("2026-11-29T09:00:00Z"), nextReminderTrigger(true, instant("2026-11-28T16:00:00Z"), utc, sunday, LocalTime(15, 0)))
+        assertEquals(instant("2026-11-23T14:00:00Z"), nextReminderTrigger(true, instant("2026-11-23T00:00:00Z"), utc, sunday, LocalTime(13, 0)))
+        assertEquals(null, nextReminderTrigger(false, instant("2026-11-23T00:00:00Z"), utc, sunday, LocalTime(15, 0)))
+    }
 }

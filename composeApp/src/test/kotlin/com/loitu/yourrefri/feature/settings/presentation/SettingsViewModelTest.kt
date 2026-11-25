@@ -4,6 +4,7 @@ import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
+import com.loitu.yourrefri.feature.settings.ui.weekdayTimeOf
 import com.loitu.yourrefri.ui.theme.ThemeMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -134,6 +135,44 @@ class SettingsViewModelTest {
         assertEquals(DietRestriction.NO_SEAFOOD, vm.state.value.dietRestriction)
     }
 
+    @Test fun setWeekdayTime_clampsAndPersistsAndUpdatesState() = runTest {
+        assertEquals(LocalTime(16, 0), vm.state.value.weekdayTime)
+
+        val cases = listOf(
+            LocalTime(20, 30) to LocalTime(20, 0),
+            LocalTime(13, 15) to LocalTime(14, 0),
+            LocalTime(18, 0) to LocalTime(18, 0),
+        )
+        cases.forEach { (selected, expected) ->
+            vm.onIntent(SettingsIntent.SetWeekdayTime(selected))
+            runCurrent()
+            assertEquals(expected, vm.state.value.weekdayTime)
+        }
+        assertEquals(cases.map { it.second }, preferences.weekdayWrites)
+        assertEquals(LocalTime(18, 0), preferencesViewModel().state.value.weekdayTime)
+    }
+
+    @Test fun weekdayTimeOf_defaultsTo1600AndClampsStoredMinutes() {
+        assertEquals(LocalTime(16, 0), weekdayTimeOf(-1))
+        assertEquals(LocalTime(16, 0), weekdayTimeOf(1440))
+        assertEquals(LocalTime(14, 0), weekdayTimeOf(0))
+        assertEquals(LocalTime(14, 0), weekdayTimeOf(13 * 60 + 15))
+        assertEquals(LocalTime(18, 25), weekdayTimeOf(18 * 60 + 25))
+        assertEquals(LocalTime(20, 0), weekdayTimeOf(20 * 60 + 30))
+        assertEquals(LocalTime(20, 0), weekdayTimeOf(1439))
+    }
+
+    @Test fun permissionRequestWithoutCallback_canRetryWithLatestReason() = runTest {
+        vm.onIntent(SettingsIntent.RequestReminderChange(true, false))
+        assertEquals(SettingsEffect.RequestNotificationPermission, nextEffect())
+        vm.onIntent(SettingsIntent.RequestTestReminder(false))
+        assertEquals(SettingsEffect.RequestNotificationPermission, nextEffect())
+        vm.onIntent(SettingsIntent.NotificationPermissionResult(true))
+        assertEquals(SettingsEffect.TriggerTestReminder, nextEffect())
+        assertFalse(vm.state.value.reminderEnabled)
+        assertTrue(preferences.reminderWrites.isEmpty())
+    }
+
     @Test fun setTasteProfile_rapidTaps_savesSequentiallyWithLatestWinning() = runTest {
         val first = FamilyTasteProfile(hasYoungKids = true)
         val latest = FamilyTasteProfile(flavors = setOf(TasteFlavor.LIGHT))
@@ -179,6 +218,7 @@ class SettingsViewModelTest {
 
     private class FakePreferences : SettingsPreferencesPort {
         val reminderWrites = mutableListOf<Boolean>()
+        val weekdayWrites = mutableListOf<LocalTime>()
         val tasteWrites = mutableListOf<FamilyTasteProfile>()
         val taste = MutableStateFlow(FamilyTasteProfile())
         private var sunday = LocalTime(8, 0)
@@ -187,6 +227,8 @@ class SettingsViewModelTest {
         override fun setReminderEnabled(enabled: Boolean) { reminderWrites.add(enabled) }
         override fun readSundayTime() = sunday
         override fun setSundayTime(time: LocalTime) { sunday = time }
+        override fun weekdayTime() = weekdayWrites.lastOrNull() ?: LocalTime(16, 0)
+        override fun setWeekdayTime(time: LocalTime) { weekdayWrites.add(time) }
         override fun readDietRestriction() = diet
         override fun setDietRestriction(restriction: DietRestriction) { diet = restriction }
         override fun readThemeMode() = theme
