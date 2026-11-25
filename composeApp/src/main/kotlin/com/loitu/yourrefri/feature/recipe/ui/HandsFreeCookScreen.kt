@@ -31,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -114,19 +116,16 @@ fun HandsFreeCookScreen(
 
         val stepText = recipe.steps[state.stepIndex]
         val timerSeconds = stepTimerSeconds(recipe, state.stepIndex)
-        if (timerSeconds != null) {
-            CookTimerCard(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                totalSeconds = timerSeconds,
-            )
-        }
-        // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn, không cắt chữ.
+        val config = LocalConfiguration.current
+        val fontScale = LocalDensity.current.fontScale
+        val compactTimerScroll = config.screenHeightDp < 600 || fontScale >= 1.35f
+        // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn; màn quá thấp/chữ rất to đặt đồng hồ vào vùng cuộn để không ép chữ.
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 if (state.isFirst && freezerNames.isNotEmpty()) {
@@ -161,7 +160,24 @@ fun HandsFreeCookScreen(
                         contentDescription = state.announcement(stepText)
                     },
                 )
+                if (timerSeconds != null && compactTimerScroll) {
+                    CookTimerCard(
+                        modifier = Modifier.padding(top = 4.dp),
+                        totalSeconds = timerSeconds,
+                        stepKey = state.stepIndex,
+                        dialSize = 120.dp,
+                    )
+                }
             }
+        }
+
+        if (timerSeconds != null && !compactTimerScroll) {
+            CookTimerCard(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                totalSeconds = timerSeconds,
+                stepKey = state.stepIndex,
+                dialSize = 136.dp,
+            )
         }
 
         Row(
