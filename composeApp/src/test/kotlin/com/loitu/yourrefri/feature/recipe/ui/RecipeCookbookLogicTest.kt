@@ -158,6 +158,18 @@ class RecipeCookbookLogicTest {
         assertEquals(CookbookFilters(), filters.resetAll())
     }
 
+    @Test
+    fun cookbookWeeklyShortcutAndRandomWheelPoolRespectReadyOnlyToggle() {
+        assertEquals("Thực đơn", COOKBOOK_WEEKLY_SHORTCUT_LABEL)
+        assertEquals("Mở thực đơn tuần", COOKBOOK_WEEKLY_SHORTCUT_DESC)
+        assertEquals("Chỉ quay từ đồ đang có", RANDOM_WHEEL_READY_ONLY_LABEL)
+        val cookable = listOf(quick)
+        val all = listOf(quick, missing)
+        assertEquals(cookable, randomWheelPool(cookable, all, onlyReadyIngredients = true))
+        assertEquals(all, randomWheelPool(cookable, all, onlyReadyIngredients = false))
+        assertEquals(emptyList(), randomWheelPool(emptyList(), all, onlyReadyIngredients = true))
+    }
+
     private fun filtered(
         filters: CookbookFilters = CookbookFilters(),
         query: String = "",

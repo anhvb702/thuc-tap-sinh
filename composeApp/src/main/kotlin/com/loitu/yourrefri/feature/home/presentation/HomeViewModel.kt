@@ -5,6 +5,8 @@ import com.loitu.yourrefri.feature.home.data.HomeWeatherRepository
 import com.loitu.yourrefri.feature.home.domain.usecase.BuildHomeDashboardUseCase
 import com.loitu.yourrefri.feature.home.domain.usecase.PickHomeRandomRecipeUseCase
 import com.loitu.yourrefri.feature.home.domain.model.WeatherCity
+import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.ui.randomWheelPool
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
@@ -17,6 +19,7 @@ class HomeViewModel(
         when (intent) {
             is HomeIntent.SyncInputs -> {
                 latestPantryState = intent.pantryState
+                latestRecipes = intent.recipes
                 updateState {
                 copy(
                     dashboard = buildHomeDashboard(
@@ -30,6 +33,10 @@ class HomeViewModel(
                 }
             }
             HomeIntent.OpenRandomWheel, HomeIntent.SpinRandomAgain -> openRandomWheel()
+            is HomeIntent.SetRandomOnlyReady -> {
+                updateState { copy(randomOnlyReady = intent.onlyReady) }
+                if (currentState.showRandomWheel) openRandomWheel()
+            }
             HomeIntent.DismissRandomWheel -> updateState { copy(showRandomWheel = false) }
             HomeIntent.DismissNoCookableDialog -> updateState { copy(showNoCookableDialog = false) }
             is HomeIntent.SelectRandomRecipe -> {
@@ -60,18 +67,24 @@ class HomeViewModel(
     }
 
     private fun openRandomWheel() {
-        val cookable = currentState.dashboard.cookableRecipes
-        if (cookable.isEmpty()) {
+        val pool = randomWheelPool(
+            cookableRecipes = currentState.dashboard.cookableRecipes,
+            allRecipes = latestRecipes,
+            onlyReadyIngredients = currentState.randomOnlyReady,
+        )
+        if (pool.isEmpty()) {
             updateState { copy(showRandomWheel = false, showNoCookableDialog = true) }
             return
         }
         val pick = pickRandomRecipe(
-            cookable = cookable,
+            cookable = pool,
             state = latestPantryState ?: return,
             excludeId = currentState.randomPick?.recipe?.id,
+            onlyCookable = currentState.randomOnlyReady,
         ) ?: return
         updateState { copy(randomPick = pick, showRandomWheel = true, showNoCookableDialog = false) }
     }
 
     private var latestPantryState: com.loitu.yourrefri.feature.pantry.logic.PantryGridState? = null
+    private var latestRecipes: List<Recipe> = emptyList()
 }

@@ -83,6 +83,8 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.MysteryUnlockStatus
 import com.loitu.yourrefri.feature.recipe.ui.ALL_COOKBOOK_DURATIONS
+import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_WEEKLY_SHORTCUT_DESC
+import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_WEEKLY_SHORTCUT_LABEL
 import com.loitu.yourrefri.feature.recipe.ui.CookbookDurationGroup
 import com.loitu.yourrefri.feature.recipe.ui.CookbookEntry
 import com.loitu.yourrefri.feature.recipe.ui.CookbookFilters
@@ -114,6 +116,7 @@ internal fun RecipeCookbook(
     onOpenRecipe: (Recipe) -> Unit,
     onToggleFavorite: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenWeeklyPlan: (() -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     val animatorsEnabled = areSystemAnimatorsEnabled()
@@ -145,6 +148,7 @@ internal fun RecipeCookbook(
                         searchVisible = !searchVisible
                         if (!searchVisible) query = ""
                     },
+                    onOpenWeeklyPlan = onOpenWeeklyPlan,
                 )
             }
             if (searchVisible) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -506,9 +510,19 @@ private fun CookbookEmptyState(message: String, actionLabel: String? = null, onA
 }
 
 @Composable
-private fun CookbookHeader(unlockedTotal: Int, total: Int, searchVisible: Boolean, onToggleSearch: () -> Unit) {
+private fun CookbookHeader(
+    unlockedTotal: Int,
+    total: Int,
+    searchVisible: Boolean,
+    onToggleSearch: () -> Unit,
+    onOpenWeeklyPlan: (() -> Unit)? = null,
+) {
     val colors = AppTheme.colors
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("SỔ TAY MÓN ĂN", color = colors.accentText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             Text(
@@ -519,6 +533,31 @@ private fun CookbookHeader(unlockedTotal: Int, total: Int, searchVisible: Boolea
                 fontWeight = FontWeight.Bold,
             )
             Text("Đã mở $unlockedTotal / $total món", color = colors.muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (onOpenWeeklyPlan != null) {
+            Surface(
+                onClick = onOpenWeeklyPlan,
+                modifier = Modifier.heightIn(min = 48.dp).semantics {
+                    contentDescription = COOKBOOK_WEEKLY_SHORTCUT_DESC
+                },
+                shape = RoundedCornerShape(999.dp),
+                color = colors.primarySoft,
+                border = BorderStroke(1.dp, colors.line),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(AppIcons.Calendar, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(18.dp))
+                    Text(
+                        COOKBOOK_WEEKLY_SHORTCUT_LABEL,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.accentText,
+                    )
+                }
+            }
         }
         IconButton(onClick = onToggleSearch, modifier = Modifier.size(48.dp).background(colors.primarySoft, CircleShape)) {
             Icon(
