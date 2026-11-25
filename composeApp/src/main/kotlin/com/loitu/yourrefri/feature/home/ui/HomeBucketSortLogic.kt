@@ -12,3 +12,34 @@ internal fun bucketItemExpiryLabel(daysLeft: Int?): String =
 
 internal fun bucketItemIsUrgent(daysLeft: Int?): Boolean =
     daysLeft != null && daysLeft <= URGENT_DAYS
+
+internal enum class BucketFreshnessFilter(val labelVi: String) {
+    PAST_ESTIMATE("Đã qua mốc"),
+    USABLE("Còn dùng được"),
+}
+
+internal const val BUCKET_FILTER_BUTTON_OFF = "Bật lọc dùng được"
+internal const val BUCKET_FILTER_BUTTON_ON = "Đang bật lọc"
+internal const val BUCKET_FILTER_RESET_LABEL = "Tắt bộ lọc"
+internal const val BUCKET_FILTER_EMPTY_MESSAGE = "Chưa có thực phẩm nào ở nhóm lọc này."
+
+internal fun supportsBucketFreshnessFilter(bucket: PantryOverviewBucket): Boolean =
+    bucket == PantryOverviewBucket.FRIDGE || bucket == PantryOverviewBucket.FREEZER
+
+internal fun filterBucketItems(
+    items: List<PantryCell>,
+    enabled: Boolean,
+    filter: BucketFreshnessFilter,
+): List<PantryCell> {
+    if (!enabled) return items
+    return when (filter) {
+        BucketFreshnessFilter.PAST_ESTIMATE -> items.filter { (it.daysLeft ?: 0) < 0 }
+        BucketFreshnessFilter.USABLE -> items.filter {
+            val daysLeft = it.daysLeft
+            daysLeft == null || daysLeft >= 0
+        }
+    }
+}
+
+internal fun defaultBucketFreshnessFilter(items: List<PantryCell>): BucketFreshnessFilter =
+    if (items.any { (it.daysLeft ?: 0) < 0 }) BucketFreshnessFilter.PAST_ESTIMATE else BucketFreshnessFilter.USABLE
