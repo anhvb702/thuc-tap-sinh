@@ -44,12 +44,15 @@ class AppColors(
     // Cạnh dưới của nút nổi: tối hơn màu nền nút, để nút trông như có độ dày khi nhấn.
     val primaryEdge: Color,
     val ctaEdge: Color,
+    val badgeRed: Color,
 )
 
 private val LightPrimaryEdge = Color(0xFF3B4F3C)
 private val LightCtaEdge = Color(0xFF8A3D27)
 private val DarkPrimaryEdge = Color(0xFF5E7A5D)
 private val DarkCtaEdge = Color(0xFF9A6A58)
+private val LightBadgeRed = Color(0xFFD93829)
+private val DarkBadgeRed = Color(0xFFFF6B5E)
 
 internal val LightAppColors = AppColors(
     isDark = false,
@@ -78,6 +81,7 @@ internal val LightAppColors = AppColors(
     ctaText = TerracottaText,
     primaryEdge = LightPrimaryEdge,
     ctaEdge = LightCtaEdge,
+    badgeRed = LightBadgeRed,
 )
 
 internal val DarkAppColors = AppColors(
@@ -107,6 +111,7 @@ internal val DarkAppColors = AppColors(
     ctaText = DarkWarnText,
     primaryEdge = DarkPrimaryEdge,
     ctaEdge = DarkCtaEdge,
+    badgeRed = DarkBadgeRed,
 )
 
 fun appColorsFor(dark: Boolean): AppColors = if (dark) DarkAppColors else LightAppColors
