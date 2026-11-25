@@ -7,6 +7,7 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -14,9 +15,11 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 
@@ -46,7 +49,10 @@ class PantryGridViewModelTest {
         var delayShelfSnapshots = false
         var gate: CompletableDeferred<Unit>? = null
         var writeHook: (suspend (String, Boolean, LocalDate?) -> Unit)? = null
-        override fun observe() = pantry
+        var failLoad = false
+        var failHaveWrite = false
+        override fun observe(): Flow<List<PantryItem>> =
+            if (failLoad) flow { error("Pantry read failed") } else pantry
         override fun observeQuantities(): Flow<Map<String, Int>> = quantities
         override fun observeShelfOverrides(): Flow<Map<String, Int>> = flow {
             emit(overrides.value)
@@ -63,6 +69,7 @@ class PantryGridViewModelTest {
             shelfSnapshots.emit(delayedShelfSnapshots.removeAt(0))
         }
         override suspend fun setHave(ingredientId: String, have: Boolean, markedAt: LocalDate?) {
+            check(!failHaveWrite) { "Pantry write failed" }
             writes += Triple(ingredientId, have, markedAt)
             val existing = pantry.value.firstOrNull { it.ingredientId == ingredientId }
             pantry.value = when {
@@ -102,6 +109,83 @@ class PantryGridViewModelTest {
                 if (unit == null) remove(ingredientId) else put(ingredientId, unit)
             }
         }
+    }
+
+    @Test fun onIntent_action_updatesUiStateAndPersists() = runTest {
+        val repository = FakeRepository()
+        val vm = PantryGridViewModel(repository, listOf(egg), newClock(), TimeZone.UTC, backgroundScope)
+        runCurrent()
+
+        vm.onIntent(PantryGridIntent.Action(PantryGridAction.Tap("egg")))
+        runCurrent()
+
+        val expected = PantryItem("egg", true, LocalDate(2026, 3, 10))
+        assertEquals(expected, vm.uiState.value.pantry["egg"])
+        assertEquals(listOf(expected), repository.pantry.value)
+    }
+
+    @Test fun onIntent_refresh_updatesTimeZoneAndClearsSessionBase() = runTest {
+        val repository = FakeRepository()
+        val vm = PantryGridViewModel(repository, listOf(egg), newClock(), TimeZone.UTC, backgroundScope)
+        runCurrent()
+        vm.onIntent(PantryGridIntent.Action(PantryGridAction.Tap("egg")))
+        runCurrent()
+        assertTrue(vm.uiState.value.sessionBase.containsKey("egg"))
+
+        vm.onIntent(PantryGridIntent.Refresh(TimeZone.of("UTC+07:00")))
+        runCurrent()
+
+        assertEquals(LocalDate(2026, 3, 11), vm.uiState.value.today)
+        assertEquals(6, vm.uiState.value.hourOfDay)
+        assertTrue(vm.uiState.value.sessionBase.isEmpty())
+    }
+
+    @Test fun uiState_matchesStateFlow() = runTest {
+        val vm = PantryGridViewModel(FakeRepository(), listOf(egg), newClock(), TimeZone.UTC, backgroundScope)
+
+        assertSame(vm.uiState, vm.state)
+    }
+
+    @Test fun saveFailure_emitsSaveFailedEffectAndKeepsActorAlive() = runTest {
+        val repository = FakeRepository()
+        val vm = PantryGridViewModel(repository, listOf(egg, tomato), newClock(), TimeZone.UTC, backgroundScope)
+        runCurrent()
+        repository.failHaveWrite = true
+
+        vm.onIntent(PantryGridIntent.Action(PantryGridAction.AddIngredient("egg", 7)))
+        runCurrent()
+
+        assertEquals(PantryGridUiEffect.SaveFailed("egg"), withTimeoutOrNull(1) { vm.uiEffects.first() })
+        assertEquals(7, repository.overrides.value["egg"])
+        assertTrue(repository.pantry.value.isEmpty())
+
+        repository.failHaveWrite = false
+        vm.onIntent(PantryGridIntent.Action(PantryGridAction.Tap("tomato")))
+        runCurrent()
+
+        val expected = PantryItem("tomato", true, LocalDate(2026, 3, 10))
+        assertEquals(listOf(expected), repository.pantry.value)
+        assertEquals(expected, vm.uiState.value.pantry["tomato"])
+    }
+
+    @Test fun loadFailure_emitsLoadFailedEffect() = runTest {
+        val repository = FakeRepository()
+        val vm = PantryGridViewModel(repository, listOf(egg), newClock(), TimeZone.UTC, backgroundScope)
+        runCurrent()
+        val initial = vm.uiState.value
+        repository.failLoad = true
+
+        vm.onIntent(PantryGridIntent.Refresh(TimeZone.of("UTC+07:00")))
+        runCurrent()
+
+        assertEquals(PantryGridUiEffect.LoadFailed, withTimeoutOrNull(1) { vm.uiEffects.first() })
+        assertEquals(initial, vm.uiState.value)
+
+        repository.failLoad = false
+        vm.onIntent(PantryGridIntent.Refresh())
+        runCurrent()
+
+        assertEquals(LocalDate(2026, 3, 11), vm.uiState.value.today)
     }
 
     @Test fun loadedQuantities_areAvailableInState() = runTest {

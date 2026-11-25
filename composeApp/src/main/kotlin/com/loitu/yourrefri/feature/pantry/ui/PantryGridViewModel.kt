@@ -9,12 +9,15 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridEffect
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.reduce
 import kotlin.time.Clock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -40,7 +43,10 @@ class PantryGridViewModel(
     private val mutableState = MutableStateFlow(
         PantryGridState(today = initialLocalTime.date, hourOfDay = initialLocalTime.hour),
     )
-    val state = mutableState.asStateFlow()
+    val uiState: StateFlow<PantryGridState> = mutableState.asStateFlow()
+    val state: StateFlow<PantryGridState> get() = uiState
+    private val mutableUiEffects = Channel<PantryGridUiEffect>(Channel.BUFFERED)
+    val uiEffects = mutableUiEffects.receiveAsFlow()
 
     init {
         workerScope.launch {
@@ -60,21 +66,7 @@ class PantryGridViewModel(
                         val update = reduce(current, action)
                         mutableState.value = update.state
                         for (effect in update.effects) {
-                            when (effect) {
-                                is PantryGridEffect.SaveHave -> repository.setHave(
-                                    effect.ingredientId, effect.have, effect.markedAt,
-                                )
-                                is PantryGridEffect.DeleteHave -> repository.deleteHave(effect.ingredientId)
-                                is PantryGridEffect.SaveQuantity -> repository.setQuantity(
-                                    effect.ingredientId, effect.quantity,
-                                )
-                                is PantryGridEffect.SaveUnit -> repository.setUnit(
-                                    effect.ingredientId, effect.unit,
-                                )
-                                is PantryGridEffect.SaveShelfDays -> repository.setShelfDays(
-                                    effect.ingredientId, effect.days,
-                                )
-                            }
+                            applyEffect(effect)
                         }
                     }
                 }
@@ -91,15 +83,50 @@ class PantryGridViewModel(
         }
     }
 
-    fun dispatch(action: PantryGridAction) {
-        events.trySend(Event.Action(action)).getOrThrow()
+    fun onIntent(intent: PantryGridIntent) {
+        val event = when (intent) {
+            is PantryGridIntent.Action -> Event.Action(intent.action)
+            is PantryGridIntent.Refresh -> Event.ResumeRefresh(intent.timeZone)
+        }
+        events.trySend(event)
     }
 
-    fun refresh(timeZone: TimeZone? = null) {
-        events.trySend(Event.ResumeRefresh(timeZone)).getOrThrow()
+    fun dispatch(action: PantryGridAction) = onIntent(PantryGridIntent.Action(action))
+
+    fun refresh(timeZone: TimeZone? = null) = onIntent(PantryGridIntent.Refresh(timeZone))
+
+    private suspend fun applyEffect(effect: PantryGridEffect): Unit = try {
+        when (effect) {
+            is PantryGridEffect.SaveHave -> repository.setHave(
+                effect.ingredientId, effect.have, effect.markedAt,
+            )
+            is PantryGridEffect.DeleteHave -> repository.deleteHave(effect.ingredientId)
+            is PantryGridEffect.SaveQuantity -> repository.setQuantity(
+                effect.ingredientId, effect.quantity,
+            )
+            is PantryGridEffect.SaveUnit -> repository.setUnit(
+                effect.ingredientId, effect.unit,
+            )
+            is PantryGridEffect.SaveShelfDays -> repository.setShelfDays(
+                effect.ingredientId, effect.days,
+            )
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        mutableUiEffects.send(PantryGridUiEffect.SaveFailed(effect.ingredientId))
     }
 
-    private suspend fun refreshSnapshot(clearSessionBase: Boolean) {
+    private val PantryGridEffect.ingredientId: String
+        get() = when (this) {
+            is PantryGridEffect.SaveHave -> this.ingredientId
+            is PantryGridEffect.DeleteHave -> this.ingredientId
+            is PantryGridEffect.SaveQuantity -> this.ingredientId
+            is PantryGridEffect.SaveUnit -> this.ingredientId
+            is PantryGridEffect.SaveShelfDays -> this.ingredientId
+        }
+
+    private suspend fun refreshSnapshot(clearSessionBase: Boolean): Unit = try {
         val pantry = repository.observe().first()
         val overrides = repository.observeShelfOverrides().first()
         val quantities = repository.observeQuantities().first()
@@ -120,6 +147,10 @@ class PantryGridViewModel(
             ),
         ).state
         mutableState.value = refreshed
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        mutableUiEffects.send(PantryGridUiEffect.LoadFailed)
     }
 
     override fun onCleared() {
