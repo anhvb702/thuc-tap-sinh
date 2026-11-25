@@ -29,6 +29,8 @@ import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
+import com.loitu.yourrefri.feature.settings.presentation.DefaultSettingsBackupPort
+import com.loitu.yourrefri.feature.settings.presentation.SettingsViewModel
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
 import kotlinx.coroutines.Dispatchers
@@ -55,6 +57,7 @@ interface AppContainer {
     fun favoriteRecipesViewModelFactory(): ViewModelProvider.Factory
     fun unlockedRecipesViewModelFactory(): ViewModelProvider.Factory
     fun cookHistoryViewModelFactory(): ViewModelProvider.Factory
+    fun settingsViewModelFactory(): ViewModelProvider.Factory
 }
 
 @OptIn(ExperimentalTime::class)
@@ -104,6 +107,9 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override fun cookHistoryViewModelFactory() = singleViewModelFactory {
         CookHistoryViewModel(cookLogRepository, clock, timeZone)
     }
+
+    override fun settingsViewModelFactory() =
+        singleViewModelFactory { SettingsViewModel(DefaultSettingsBackupPort(backupRepository)) }
 }
 
 object AppGraph {
