@@ -20,9 +20,26 @@ object ReminderCardRenderer {
     const val HEIGHT = 450
     const val SAFE_ZONE_HORIZONTAL_PX = 56
     internal const val CONTENT_SAFE_INSET_PX = 152
+    internal const val DISH_DIAMETER_PX = 340f
+    internal const val DISH_RIGHT_BLEED_PX = 20f
     private const val PAD = CONTENT_SAFE_INSET_PX.toFloat()
-    private const val PICTURE_SIZE = 280f
     private const val BADGE = "YOURREFRI · GỢI Ý BẾP NHÀ"
+
+    internal data class DishBleedLayout(val diameter: Float, val centerX: Float, val centerY: Float, val textWidth: Int)
+
+    fun accentColorArgb(): Int = LightAppColors.notifyHeroStart.toArgb()
+
+    internal fun computeDishBleedLayout(hasPicture: Boolean): DishBleedLayout {
+        val centerX = WIDTH - DISH_DIAMETER_PX / 2f + DISH_RIGHT_BLEED_PX
+        val centerY = HEIGHT / 2f
+        val textRight = if (hasPicture) {
+            centerX - DISH_DIAMETER_PX / 2f - 28f
+        } else {
+            WIDTH - CONTENT_SAFE_INSET_PX.toFloat()
+        }
+        val textWidth = (textRight - CONTENT_SAFE_INSET_PX.toFloat()).toInt().coerceAtLeast(1)
+        return DishBleedLayout(DISH_DIAMETER_PX, centerX, centerY, textWidth)
+    }
 
     fun render(title: String, body: String, picture: Bitmap?): Bitmap {
         val out = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
@@ -32,15 +49,12 @@ object ReminderCardRenderer {
         val background = Paint().apply {
             shader = LinearGradient(
                 0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(),
-                colors.notifyHeroStart.toArgb(), colors.notifyHeroEnd.toArgb(), Shader.TileMode.CLAMP,
+                accentColorArgb(), colors.notifyHeroEnd.toArgb(), Shader.TileMode.CLAMP,
             )
         }
         canvas.drawRect(0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(), background)
-        canvas.clipRect(PAD, 0f, WIDTH - PAD, HEIGHT.toFloat())
-        if (picture != null) drawDish(canvas, picture, onHero)
-
-        val reserved = if (picture != null) PICTURE_SIZE + 32f else 0f
-        val textWidth = (WIDTH - 2 * PAD - reserved).toInt()
+        val layout = computeDishBleedLayout(hasPicture = picture != null)
+        if (picture != null) drawDish(canvas, picture, onHero, layout)
 
         val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = onHero
@@ -60,7 +74,7 @@ object ReminderCardRenderer {
             textSize = 44f
             typeface = Typeface.DEFAULT_BOLD
         }
-        val titleLayout = layout(title, titlePaint, textWidth, maxLines = 2)
+        val titleLayout = createTextLayout(title, titlePaint, layout.textWidth, maxLines = 2)
         val titleTop = 100f
         drawLayout(canvas, titleLayout, titleTop)
 
@@ -69,7 +83,8 @@ object ReminderCardRenderer {
             textSize = 30f
         }
         val bodyTop = titleTop + titleLayout.height + 12f
-        drawLayout(canvas, layout(body, bodyPaint, textWidth, maxLines = 2), bodyTop)
+        val bodyLayout = createTextLayout(body, bodyPaint, layout.textWidth, maxLines = 2)
+        drawLayout(canvas, bodyLayout, bodyTop)
 
         return out
     }
@@ -81,18 +96,17 @@ object ReminderCardRenderer {
         canvas.restore()
     }
 
-    private fun layout(content: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout =
+    private fun createTextLayout(content: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout =
         StaticLayout.Builder.obtain(content, 0, content.length, paint, width)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .setMaxLines(maxLines)
             .setEllipsize(TextUtils.TruncateAt.END)
             .build()
 
-    private fun drawDish(canvas: Canvas, picture: Bitmap, frameColor: Int) {
-        val radius = PICTURE_SIZE / 2f
-        val centerX = WIDTH - PAD - radius
-        val centerY = HEIGHT / 2f
-        canvas.drawCircle(centerX, centerY, radius, dishPaint(picture, PICTURE_SIZE, centerX, centerY))
+    private fun drawDish(canvas: Canvas, picture: Bitmap, frameColor: Int, layout: DishBleedLayout) {
+        val (diameter, centerX, centerY) = layout
+        val radius = diameter / 2f
+        canvas.drawCircle(centerX, centerY, radius, dishPaint(picture, diameter, centerX, centerY))
 
         val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = frameColor
