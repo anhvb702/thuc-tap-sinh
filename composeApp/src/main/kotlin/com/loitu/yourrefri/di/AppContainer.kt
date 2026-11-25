@@ -30,6 +30,7 @@ import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
 import com.loitu.yourrefri.feature.settings.presentation.DefaultSettingsBackupPort
+import com.loitu.yourrefri.feature.settings.presentation.DefaultSettingsPreferencesPort
 import com.loitu.yourrefri.feature.settings.presentation.SettingsViewModel
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
@@ -108,8 +109,9 @@ class DefaultAppContainer(context: Context) : AppContainer {
         CookHistoryViewModel(cookLogRepository, clock, timeZone)
     }
 
-    override fun settingsViewModelFactory() =
-        singleViewModelFactory { SettingsViewModel(DefaultSettingsBackupPort(backupRepository)) }
+    override fun settingsViewModelFactory() = singleViewModelFactory {
+        SettingsViewModel(DefaultSettingsBackupPort(backupRepository), DefaultSettingsPreferencesPort(appContext, tasteProfileRepository))
+    }
 }
 
 object AppGraph {

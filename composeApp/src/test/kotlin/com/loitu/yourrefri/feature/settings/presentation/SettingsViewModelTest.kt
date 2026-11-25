@@ -1,15 +1,21 @@
 package com.loitu.yourrefri.feature.settings.presentation
 
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
+import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
 import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
+import com.loitu.yourrefri.ui.theme.ThemeMode
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.*
+import kotlinx.datetime.LocalTime
 import kotlin.test.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val port = FakeSettingsBackupPort()
-    private val viewModel = SettingsViewModel(port, dispatcher)
+    private val viewModel by lazy { SettingsViewModel(port, dispatcher) }
     private val state get() = viewModel.state.value
     @BeforeTest fun setUp() = Dispatchers.setMain(dispatcher)
     @AfterTest fun tearDown() = Dispatchers.resetMain()
@@ -96,6 +102,100 @@ class SettingsViewModelTest {
         assertEquals(SettingsBackupCopy.exportSuccess, state.backupStatus)
         dispatch(SettingsIntent.ExportBackup { error("write failed") })
         assertEquals("Chưa thể lưu bản sao lưu. Hãy thử chọn vị trí khác.", state.backupStatus)
+    }
+
+    @Test fun permissionDenied_keepsReminderDisabled() = runTest {
+        vm.onIntent(SettingsIntent.RequestReminderChange(true, false))
+        assertEquals(SettingsEffect.RequestNotificationPermission, nextEffect())
+        assertTrue(preferences.reminderWrites.isEmpty())
+        vm.onIntent(SettingsIntent.NotificationPermissionResult(false))
+        runCurrent()
+        assertFalse(vm.state.value.reminderEnabled)
+        assertEquals(listOf(false), preferences.reminderWrites)
+    }
+
+    @Test fun testReminderPermissionGranted_triggersTestWithoutEnablingDailyReminder() = runTest {
+        vm.onIntent(SettingsIntent.RequestTestReminder(false))
+        assertEquals(SettingsEffect.RequestNotificationPermission, nextEffect())
+        vm.onIntent(SettingsIntent.NotificationPermissionResult(true))
+        assertEquals(SettingsEffect.TriggerTestReminder, nextEffect())
+        assertFalse(vm.state.value.reminderEnabled)
+        assertTrue(preferences.reminderWrites.isEmpty())
+    }
+
+    @Test fun setSundayTimeAndDiet_persistsAndUpdatesState() = runTest {
+        val time = LocalTime(9, 35)
+        vm.onIntent(SettingsIntent.SetSundayTime(time))
+        vm.onIntent(SettingsIntent.SetDietRestriction(DietRestriction.NO_SEAFOOD))
+        runCurrent()
+        assertEquals(time, preferences.readSundayTime())
+        assertEquals(time, vm.state.value.sundayTime)
+        assertEquals(DietRestriction.NO_SEAFOOD, preferences.readDietRestriction())
+        assertEquals(DietRestriction.NO_SEAFOOD, vm.state.value.dietRestriction)
+    }
+
+    @Test fun setTasteProfile_rapidTaps_savesSequentiallyWithLatestWinning() = runTest {
+        val first = FamilyTasteProfile(hasYoungKids = true)
+        val latest = FamilyTasteProfile(flavors = setOf(TasteFlavor.LIGHT))
+        vm.onIntent(SettingsIntent.SetTasteProfile(first))
+        runCurrent()
+        vm.onIntent(SettingsIntent.SetTasteProfile(FamilyTasteProfile()))
+        vm.onIntent(SettingsIntent.SetTasteProfile(latest))
+        runCurrent()
+        assertEquals(latest, vm.state.value.tasteProfile)
+        assertEquals(listOf(first), preferences.tasteWrites)
+        advanceUntilIdle()
+        assertEquals(listOf(first, latest), preferences.tasteWrites)
+        assertEquals(latest, vm.state.value.tasteProfile)
+    }
+
+    @Test fun staleTasteFlowEmission_doesNotOverwriteNewerLocalTasteUpdate() = runTest {
+        val latest = FamilyTasteProfile(hasYoungKids = true)
+        vm.onIntent(SettingsIntent.SetTasteProfile(latest))
+        advanceUntilIdle()
+        val stale = FamilyTasteProfile(flavors = setOf(TasteFlavor.SWEET))
+        preferences.taste.value = stale
+        runCurrent()
+        assertEquals(latest, vm.state.value.tasteProfile)
+        preferences.taste.value = latest
+        runCurrent()
+        preferences.taste.value = stale
+        runCurrent()
+        assertEquals(stale, vm.state.value.tasteProfile)
+    }
+
+    @Test fun setThemeMode_persistsAndUpdatesState() = runTest {
+        vm.onIntent(SettingsIntent.SetThemeMode(ThemeMode.DARK))
+        runCurrent()
+        assertEquals(ThemeMode.DARK, preferences.readThemeMode())
+        assertEquals(ThemeMode.DARK, vm.state.value.themeMode)
+        assertEquals(ThemeMode.DARK, preferencesViewModel().state.value.themeMode)
+    }
+
+    private val preferences = FakePreferences()
+    private val vm by lazy { preferencesViewModel() }
+    private fun preferencesViewModel() = SettingsViewModel(port, preferences, dispatcher)
+    private suspend fun nextEffect() = withTimeoutOrNull(1) { vm.effects.first() }
+
+    private class FakePreferences : SettingsPreferencesPort {
+        val reminderWrites = mutableListOf<Boolean>()
+        val tasteWrites = mutableListOf<FamilyTasteProfile>()
+        val taste = MutableStateFlow(FamilyTasteProfile())
+        private var sunday = LocalTime(8, 0)
+        private var diet = DietRestriction.NONE
+        private var theme = ThemeMode.SYSTEM
+        override fun setReminderEnabled(enabled: Boolean) { reminderWrites.add(enabled) }
+        override fun readSundayTime() = sunday
+        override fun setSundayTime(time: LocalTime) { sunday = time }
+        override fun readDietRestriction() = diet
+        override fun setDietRestriction(restriction: DietRestriction) { diet = restriction }
+        override fun readThemeMode() = theme
+        override fun setThemeMode(mode: ThemeMode) { theme = mode }
+        override fun observeTasteProfile() = taste
+        override suspend fun saveTasteProfile(profile: FamilyTasteProfile) {
+            tasteWrites.add(profile)
+            delay(10)
+        }
     }
 
     private fun dispatch(intent: SettingsIntent) {

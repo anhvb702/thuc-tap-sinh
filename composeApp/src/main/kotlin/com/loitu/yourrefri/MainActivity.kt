@@ -13,11 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -26,28 +23,25 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.loitu.yourrefri.feature.settings.presentation.SettingsEffect
 import com.loitu.yourrefri.feature.settings.presentation.SettingsIntent
+import com.loitu.yourrefri.feature.settings.presentation.SettingsUiState
 import com.loitu.yourrefri.feature.settings.presentation.SettingsViewModel
-import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
-import com.loitu.yourrefri.feature.settings.ui.DietPrefs
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
 import com.loitu.yourrefri.di.AppGraph
+import com.loitu.yourrefri.di.AppContainer
 import com.loitu.yourrefri.shared.db.DatabaseTooNewException
 import com.loitu.yourrefri.ui.DatabaseTooNewNotice
 import com.loitu.yourrefri.ui.MainScaffold
-import com.loitu.yourrefri.ui.theme.ThemeMode
 import com.loitu.yourrefri.ui.theme.ThemePrefs
 import com.loitu.yourrefri.ui.theme.YourRefriTheme
 import com.loitu.yourrefri.reminder.ReminderIntents
 import com.loitu.yourrefri.reminder.ReminderOpenRequest
 import com.loitu.yourrefri.reminder.ReminderReceiver
 import com.loitu.yourrefri.reminder.ReminderScheduler
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -66,22 +60,19 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) ReminderOpenRequest.request(intent?.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
         setContent {
             val context = LocalContext.current
-            var themeMode by remember { mutableStateOf(ThemePrefs.read(context)) }
             // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
-            val dbTooNew = remember(context) {
-                runCatching { AppGraph.get(context) }.exceptionOrNull() as? DatabaseTooNewException
+            val dependencies = remember(context) {
+                try { AppGraph.get(context) } catch (_: DatabaseTooNewException) { null }
             }
-            YourRefriTheme(darkTheme = themeMode.isDark(isSystemInDarkTheme())) {
-                if (dbTooNew != null) {
+            if (dependencies == null) {
+                YourRefriTheme(darkTheme = ThemePrefs.read(context).isDark(isSystemInDarkTheme())) {
                     DatabaseTooNewNotice()
-                } else {
-                    App(
-                        themeMode = themeMode,
-                        onThemeModeChange = { mode ->
-                            themeMode = mode
-                            ThemePrefs.write(context, mode)
-                        },
-                    )
+                }
+            } else {
+                val settingsViewModel: SettingsViewModel = viewModel(factory = remember(dependencies) { dependencies.settingsViewModelFactory() })
+                val settingsState by settingsViewModel.state.collectAsState()
+                YourRefriTheme(darkTheme = settingsState.themeMode.isDark(isSystemInDarkTheme())) {
+                    App(dependencies, settingsViewModel, settingsState)
                 }
             }
         }
@@ -90,17 +81,14 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalTime::class)
 @Composable
-private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
+private fun App(dependencies: AppContainer, settingsViewModel: SettingsViewModel, settingsState: SettingsUiState) {
     val context = LocalContext.current
-    var reminderEnabled by remember { mutableStateOf(ReminderScheduler.enabled(context)) }
-    var sundayTime by remember { mutableStateOf(ReminderScheduler.sundayTime(context)) }
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        reminderEnabled = granted
-        ReminderScheduler.setEnabled(context, granted)
+        settingsViewModel.onIntent(SettingsIntent.NotificationPermissionResult(granted))
     }
+    fun hasNotificationPermission() = Build.VERSION.SDK_INT < 33 ||
+        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
     LaunchedEffect(Unit) { ReminderScheduler.schedule(context) }
-    // Một bộ phụ thuộc cho cả tiến trình: xoay màn hình không mở thêm SqlDriver mới cho các ViewModel đang giữ lại.
-    val dependencies = remember(context) { AppGraph.get(context) }
 
     val viewModel: com.loitu.yourrefri.feature.pantry.ui.PantryGridViewModel = viewModel(
         factory = remember(dependencies) { dependencies.pantryGridViewModelFactory() },
@@ -111,9 +99,8 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
     val weeklyMealPlanViewModel: WeeklyMealPlanViewModel = viewModel(
         factory = remember(dependencies) { dependencies.weeklyMealPlanViewModelFactory() },
     )
-    val tasteProfile by dependencies.tasteProfileRepository.observe().collectAsState(initial = FamilyTasteProfile())
-    LaunchedEffect(weeklyMealPlanViewModel, tasteProfile) {
-        weeklyMealPlanViewModel.updateTasteProfile(tasteProfile)
+    LaunchedEffect(weeklyMealPlanViewModel, settingsState.tasteProfile) {
+        weeklyMealPlanViewModel.updateTasteProfile(settingsState.tasteProfile)
     }
 
     val favoriteViewModel: FavoriteRecipesViewModel = viewModel(
@@ -131,7 +118,6 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         factory = remember(dependencies) { dependencies.cookHistoryViewModelFactory() },
     )
     val cookHistoryState by cookHistoryViewModel.state.collectAsState()
-    var dietRestriction by remember { mutableStateOf(DietPrefs.read(context)) }
     val appVersionName = remember(context) {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
@@ -160,7 +146,6 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
 
     val state by viewModel.state.collectAsState()
     val weeklyMealPlanState by weeklyMealPlanViewModel.state.collectAsState()
-    val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(unlocksLoadFailed) {
         if (unlocksLoadFailed) snackbarHostState.showSnackbar("Chưa đọc được các món đã mở khóa.")
@@ -183,15 +168,19 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             snackbarHostState.showSnackbar(message)
         }
     }
-    val settingsViewModel: SettingsViewModel = viewModel(
-        factory = remember(dependencies) { dependencies.settingsViewModelFactory() },
-    )
-    val settingsState by settingsViewModel.state.collectAsState()
     LaunchedEffect(settingsViewModel) {
-        settingsViewModel.effects.filterIsInstance<SettingsEffect.BackupRestored>().collect {
-            weeklyMealPlanViewModel.reloadSettings()
-            favoriteViewModel.reload()
-            cookHistoryViewModel.reload()
+        settingsViewModel.effects.collect { effect ->
+            when (effect) {
+                SettingsEffect.BackupRestored -> {
+                    weeklyMealPlanViewModel.reloadSettings()
+                    favoriteViewModel.reload()
+                    cookHistoryViewModel.reload()
+                }
+                SettingsEffect.RequestNotificationPermission -> notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                SettingsEffect.TriggerTestReminder -> context.sendBroadcast(
+                    android.content.Intent(context, ReminderReceiver::class.java).setAction(ReminderIntents.ACTION_TEST),
+                )
+            }
         }
     }
 
@@ -226,48 +215,26 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         snackbarHostState = snackbarHostState,
         recipes = dependencies.recipes,
         onAction = viewModel::dispatch,
-        onTestReminder = {
-            if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                context.sendBroadcast(android.content.Intent(context, ReminderReceiver::class.java).setAction(ReminderIntents.ACTION_TEST))
-            }
-        },
-        reminderEnabled = reminderEnabled,
-        onReminderChanged = { enabled ->
-            if (!enabled) {
-                reminderEnabled = false
-                ReminderScheduler.setEnabled(context, false)
-            } else if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            } else {
-                reminderEnabled = true
-                ReminderScheduler.setEnabled(context, true)
-            }
-        },
-        themeMode = themeMode,
-        onThemeModeChange = onThemeModeChange,
+        onTestReminder = { settingsViewModel.onIntent(SettingsIntent.RequestTestReminder(hasNotificationPermission())) },
+        reminderEnabled = settingsState.reminderEnabled,
+        onReminderChanged = { settingsViewModel.onIntent(SettingsIntent.RequestReminderChange(it, hasNotificationPermission())) },
+        themeMode = settingsState.themeMode,
+        onThemeModeChange = { settingsViewModel.onIntent(SettingsIntent.SetThemeMode(it)) },
         favoriteIds = favoriteState.ids,
         onToggleFavorite = { favoriteViewModel.dispatch(FavoriteRecipesAction.Toggle(it)) },
         unlockedIds = unlockedIds,
         mysteryRewardsReady = unlocksLoaded && cookHistoryState.loaded,
         mysteryUnlockFailedId = mysteryUnlockFailedId,
         onUnlockMysteryRecipe = { unlockedRecipesVm.unlock(it.id) },
-        dietRestriction = dietRestriction,
-        onDietRestrictionChange = { restriction ->
-            dietRestriction = restriction
-            DietPrefs.write(context, restriction)
-        },
+        dietRestriction = settingsState.dietRestriction,
+        onDietRestrictionChange = { settingsViewModel.onIntent(SettingsIntent.SetDietRestriction(it)) },
         appVersionName = appVersionName,
         cookHistoryState = cookHistoryState,
         onDeleteCook = { id -> cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(id)) },
         onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
         currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
-        sundayTime = sundayTime,
-        onSundayTimeChange = { time ->
-            sundayTime = time
-            ReminderScheduler.setSundayTime(context, time)
-        },
+        sundayTime = settingsState.sundayTime,
+        onSundayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetSundayTime(it)) },
         backupStatus = settingsState.backupStatus,
         restoreConfirmationPending = settingsState.restoreConfirmationPending,
         onExportBackup = {
@@ -280,7 +247,7 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         },
         onConfirmRestore = { settingsViewModel.onIntent(SettingsIntent.ConfirmRestore) },
         onCancelRestore = { settingsViewModel.onIntent(SettingsIntent.CancelRestore) },
-        tasteProfile = tasteProfile,
-        onTasteProfileChange = { next -> scope.launch { dependencies.tasteProfileRepository.save(next) } },
+        tasteProfile = settingsState.tasteProfile,
+        onTasteProfileChange = { settingsViewModel.onIntent(SettingsIntent.SetTasteProfile(it)) },
     )
 }
