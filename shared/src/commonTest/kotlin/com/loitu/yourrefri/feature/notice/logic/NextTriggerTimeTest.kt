@@ -6,6 +6,8 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class NextTriggerTimeTest {
@@ -52,6 +54,15 @@ class NextTriggerTimeTest {
     @Test
     fun fallBack_usesCalendarDayNot24Hours() {
         check("2026-10-31T22:00:00Z", "America/New_York", target, "2026-11-01T22:30:00Z")
+    }
+
+    @Test
+    fun weekdayTimeRange_is1400To2000Inclusive() {
+        assertTrue(isWeekdayTimeAllowed(LocalTime(14, 0)))
+        assertTrue(isWeekdayTimeAllowed(LocalTime(16, 0)))
+        assertTrue(isWeekdayTimeAllowed(LocalTime(20, 0)))
+        assertFalse(isWeekdayTimeAllowed(LocalTime(13, 59)))
+        assertFalse(isWeekdayTimeAllowed(LocalTime(20, 1)))
     }
 
     @Test

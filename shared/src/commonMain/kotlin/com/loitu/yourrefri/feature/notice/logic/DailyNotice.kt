@@ -33,8 +33,9 @@ fun planDailyNotice(
     }
     val items = expiringList(pantry, ingredients, today)
     if (items.isEmpty()) return null
-    val names = items.take(2).joinToString(", ") { it.ingredient.nameVi }
-    val summary = if (items.size > 2) "$names và ${items.size - 2} món khác" else names
+    // R0-02 (Q13a): liệt kê tối đa 3 món, phần còn lại đếm thành "và N món khác".
+    val names = items.take(3).joinToString(", ") { it.ingredient.nameVi }
+    val summary = if (items.size > 3) "$names và ${items.size - 3} món khác" else names
     return DailyNotice(
         day = today,
         ingredientIds = items.map { it.item.ingredientId },

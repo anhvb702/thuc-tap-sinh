@@ -20,10 +20,18 @@ class SundayNoticeTest {
 
     @Test
     fun reminderTimeFor_sundayUsesSundayTime_otherDaysUse1730() {
+        // R0-02: giờ ngày thường mặc định vẫn 17:30 trong PR này (Q5 đặt 16:00 sẽ bật cùng màn Cài đặt).
         assertEquals(eight, reminderTimeFor(sunday, eight))
         assertEquals(LocalTime(7, 5), reminderTimeFor(sunday, LocalTime(7, 5)))
         assertEquals(LocalTime(17, 30), reminderTimeFor(friday, eight))
         assertEquals(LocalTime(17, 30), reminderTimeFor(LocalDate(2026, 11, 14), eight))
+    }
+
+    @Test
+    fun reminderTimeFor_customWeekdayTime_appliesOnlyToWeekdays() {
+        val custom = LocalTime(19, 15)
+        assertEquals(custom, reminderTimeFor(friday, eight, custom))
+        assertEquals(eight, reminderTimeFor(sunday, eight, custom))
     }
 
     @Test
@@ -51,10 +59,19 @@ class SundayNoticeTest {
     }
 
     @Test
-    fun weekdayBeforeEveningStillUses1730() {
+    fun weekdayBeforeAfternoonStillUses1730() {
+        // R0-02: trước 17:30 thì nhắc trong ngày; sau 17:30 thì sang ngày hôm sau.
         assertEquals(
             Instant.parse("2026-11-13T17:30:00Z"),
-            nextReminderTrigger(true, Instant.parse("2026-11-13T17:00:00Z"), TimeZone.UTC, eight),
+            nextReminderTrigger(true, Instant.parse("2026-11-13T15:00:00Z"), TimeZone.UTC, eight),
+        )
+    }
+
+    @Test
+    fun customWeekdayTime_isUsedByNextTrigger() {
+        assertEquals(
+            Instant.parse("2026-11-13T19:15:00Z"),
+            nextReminderTrigger(true, Instant.parse("2026-11-13T15:00:00Z"), TimeZone.UTC, eight, LocalTime(19, 15)),
         )
     }
 
