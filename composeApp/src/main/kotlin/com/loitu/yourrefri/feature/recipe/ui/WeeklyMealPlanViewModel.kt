@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -20,29 +21,6 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
-
-data class WeeklyMealPlanState(
-    val isLoaded: Boolean,
-    val weekStart: LocalDate,
-    val goal: DietGoal = DietGoal.BALANCED,
-    val preferences: Set<FamilyPreferenceTag> = emptySet(),
-    val swappedOffsets: Map<Int, Int> = emptyMap(),
-    val uncheckedIds: Set<String> = emptySet(),
-    val includeLunchMealPrep: Boolean = false,
-)
-
-sealed interface WeeklyMealPlanAction {
-    data class SetGoal(val value: DietGoal) : WeeklyMealPlanAction
-    data class TogglePreference(val value: FamilyPreferenceTag) : WeeklyMealPlanAction
-    data class SwapDay(val dayIndex: Int) : WeeklyMealPlanAction
-    data class ToggleIngredient(val id: String, val checked: Boolean) : WeeklyMealPlanAction
-    data class SetLunchMealPrep(val enabled: Boolean) : WeeklyMealPlanAction
-}
-
-sealed interface WeeklyMealPlanEffect {
-    data object SettingsSaveFailed : WeeklyMealPlanEffect
-    data object SettingsLoadFailed : WeeklyMealPlanEffect
-}
 
 @OptIn(ExperimentalTime::class)
 class WeeklyMealPlanViewModel(
@@ -53,7 +31,7 @@ class WeeklyMealPlanViewModel(
     initialTasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
 ) : ViewModel() {
     private sealed interface Event {
-        data class Action(val value: WeeklyMealPlanAction) : Event
+        data class Action(val value: WeeklyMealPlanStateAction) : Event
         data class Refresh(val timeZone: TimeZone) : Event
         data class Settings(val value: WeeklyMealPlanSettings?, val replace: Boolean) : Event
         data object SettingsLoadFailed : Event
@@ -62,17 +40,18 @@ class WeeklyMealPlanViewModel(
     private val workerScope = scope ?: viewModelScope
     private val events = Channel<Event>(Channel.UNLIMITED)
     private val mutableEffects = Channel<WeeklyMealPlanEffect>(Channel.BUFFERED)
-    private val pendingActions = mutableListOf<WeeklyMealPlanAction>()
+    private val pendingActions = mutableListOf<WeeklyMealPlanStateAction>()
     private var currentTimeZone = timeZone
     private var currentTasteProfile = initialTasteProfile
     private val mutableState = MutableStateFlow(
         WeeklyMealPlanState(isLoaded = false, weekStart = currentWeekStart()),
     )
-    val state = mutableState.asStateFlow()
+    val uiState: StateFlow<WeeklyMealPlanState> = mutableState.asStateFlow()
+    val state: StateFlow<WeeklyMealPlanState> get() = uiState
     val effects = mutableEffects.receiveAsFlow()
 
     fun updateTasteProfile(profile: FamilyTasteProfile) {
-        currentTasteProfile = profile
+        onIntent(WeeklyMealPlanIntent.UpdateTasteProfile(profile))
     }
 
     init {
@@ -103,16 +82,25 @@ class WeeklyMealPlanViewModel(
         }
     }
 
+    fun onIntent(intent: WeeklyMealPlanIntent) {
+        when (intent) {
+            is WeeklyMealPlanIntent.Refresh -> events.trySend(Event.Refresh(intent.timeZone)).getOrThrow()
+            WeeklyMealPlanIntent.ReloadSettings -> requestSettings(replace = true)
+            is WeeklyMealPlanIntent.UpdateTasteProfile -> currentTasteProfile = intent.profile
+            is WeeklyMealPlanStateAction -> events.trySend(Event.Action(intent)).getOrThrow()
+        }
+    }
+
     fun dispatch(action: WeeklyMealPlanAction) {
-        events.trySend(Event.Action(action)).getOrThrow()
+        onIntent(action)
     }
 
     fun refresh(timeZone: TimeZone) {
-        events.trySend(Event.Refresh(timeZone)).getOrThrow()
+        onIntent(WeeklyMealPlanIntent.Refresh(timeZone))
     }
 
     fun reloadSettings() {
-        requestSettings(replace = true)
+        onIntent(WeeklyMealPlanIntent.ReloadSettings)
     }
 
     private fun requestSettings(replace: Boolean) {
@@ -127,24 +115,24 @@ class WeeklyMealPlanViewModel(
         }
     }
 
-    private suspend fun apply(action: WeeklyMealPlanAction) {
+    private suspend fun apply(action: WeeklyMealPlanStateAction) {
         val current = mutableState.value
         val next = when (action) {
-            is WeeklyMealPlanAction.SetGoal -> current.copy(goal = action.value)
-            is WeeklyMealPlanAction.TogglePreference -> current.copy(
+            is WeeklyMealPlanIntent.SetGoal -> current.copy(goal = action.value)
+            is WeeklyMealPlanIntent.TogglePreference -> current.copy(
                 preferences = togglePreferenceTag(current.preferences, action.value),
             )
-            is WeeklyMealPlanAction.SwapDay -> {
+            is WeeklyMealPlanIntent.SwapDay -> {
                 if (!isValidWeeklySwapKey(action.dayIndex)) return
                 current.copy(swappedOffsets = bumpDaySwapOffset(current.swappedOffsets, action.dayIndex))
             }
-            is WeeklyMealPlanAction.ToggleIngredient -> {
+            is WeeklyMealPlanIntent.ToggleIngredient -> {
                 if (action.id.isBlank()) return
                 val unchecked = if (action.checked) current.uncheckedIds - action.id
                 else current.uncheckedIds + action.id
                 current.copy(uncheckedIds = unchecked)
             }
-            is WeeklyMealPlanAction.SetLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
+            is WeeklyMealPlanIntent.SetLunchMealPrep -> current.copy(includeLunchMealPrep = action.enabled)
         }
         mutableState.value = next
         save(next)

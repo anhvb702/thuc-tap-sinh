@@ -21,6 +21,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlin.time.Instant
@@ -188,6 +189,80 @@ class WeeklyMealPlanViewModelTest {
         assertEquals(DietGoal.LIGHT, viewModel.state.value.goal)
         assertEquals(setOf(FamilyPreferenceTag.VEGGIE_TOFU), viewModel.state.value.preferences)
         assertEquals(true, viewModel.state.value.includeLunchMealPrep)
+    }
+
+    @Test
+    fun onIntent_setGoalAndTogglePreference_updatesUiStateAndPersists() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val viewModel = createViewModel(repository)
+        runCurrent()
+
+        viewModel.onIntent(WeeklyMealPlanIntent.SetGoal(DietGoal.QUICK))
+        viewModel.onIntent(WeeklyMealPlanIntent.TogglePreference(FamilyPreferenceTag.SEAFOOD))
+        runCurrent()
+
+        assertEquals(DietGoal.QUICK, viewModel.uiState.value.goal)
+        assertEquals(setOf(FamilyPreferenceTag.SEAFOOD), viewModel.uiState.value.preferences)
+        assertEquals(DietGoal.QUICK.name, repository.saved.value?.goalId)
+        assertEquals(setOf(FamilyPreferenceTag.SEAFOOD.name), repository.saved.value?.preferenceIds)
+    }
+
+    @Test
+    fun onIntent_reloadSettings_replacesWithRestoredSettings() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val viewModel = createViewModel(repository)
+        runCurrent()
+        repository.saved.value = WeeklyMealPlanSettings(
+            weekStart = monday,
+            goalId = DietGoal.LIGHT.name,
+            preferenceIds = setOf(FamilyPreferenceTag.VEGGIE_TOFU.name),
+            swappedOffsets = mapOf(2 to 1),
+            uncheckedIds = setOf("egg"),
+            includeLunchMealPrep = true,
+        )
+
+        viewModel.onIntent(WeeklyMealPlanIntent.ReloadSettings)
+        runCurrent()
+
+        assertEquals(
+            WeeklyMealPlanState(
+                isLoaded = true,
+                weekStart = monday,
+                goal = DietGoal.LIGHT,
+                preferences = setOf(FamilyPreferenceTag.VEGGIE_TOFU),
+                swappedOffsets = mapOf(2 to 1),
+                uncheckedIds = setOf("egg"),
+                includeLunchMealPrep = true,
+            ),
+            viewModel.uiState.value,
+        )
+    }
+
+    @Test
+    fun onIntent_refresh_updatesWeekForNewTimeZone() = runTest {
+        val repository = FakeWeeklyMealPlanRepository()
+        val viewModel = WeeklyMealPlanViewModel(
+            repository = repository,
+            clock = MutableClock(Instant.parse("2026-11-15T17:30:00Z")),
+            timeZone = TimeZone.UTC,
+            scope = backgroundScope,
+        )
+        runCurrent()
+        assertEquals(monday, viewModel.uiState.value.weekStart)
+
+        viewModel.onIntent(WeeklyMealPlanIntent.Refresh(TimeZone.of("Asia/Bangkok")))
+        runCurrent()
+
+        val nextMonday = LocalDate(2026, 11, 16)
+        assertEquals(nextMonday, viewModel.uiState.value.weekStart)
+        assertEquals(nextMonday, repository.saved.value?.weekStart)
+    }
+
+    @Test
+    fun uiState_matchesStateFlow() = runTest {
+        val viewModel = createViewModel(FakeWeeklyMealPlanRepository())
+
+        assertSame(viewModel.state, viewModel.uiState)
     }
 
     private fun TestScope.createViewModel(repository: WeeklyMealPlanRepository) = WeeklyMealPlanViewModel(
