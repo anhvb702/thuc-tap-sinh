@@ -298,4 +298,41 @@ class ShippedRecipeBundleTest {
         val required: Set<Set<String>>,
         val optional: Set<Set<String>>,
     )
+
+    @Test
+    fun firstTwelveRecipesHaveCompleteMeasuresAndSeasonings() {
+        val expectedIds = listOf(
+            "canh-chua-ca-basa", "thit-kho-trung", "rau-muong-xao-hanh", "thit-bo-xao-hanh-tay",
+            "canh-rau-ngot-thit-bam", "dau-phu-sot-ca-chua", "tom-rim-thit", "ga-kho-khoai-tay",
+            "canh-bi-xanh-nau-tom", "ca-hoi-ap-chao-xa-lach", "trung-xao-ca-chua", "canh-cai-dau-phu",
+        )
+        val forbiddenCopy = listOf(
+            "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "streak", "chuỗi ngày liên tiếp", // lint-copy: rule
+            "điểm số", "xếp hạng", "so với người khác", "đáng xấu hổ", // lint-copy: rule
+        )
+        val recipes = shippedRecipes().take(expectedIds.size)
+
+        assertEquals(expectedIds, recipes.map { it.id })
+        recipes.forEach { recipe ->
+            assertEquals(2, recipe.servings, recipe.id)
+            val slots = recipe.required + recipe.optional
+            slots.forEach { slot ->
+                slot.anyOf.forEach { ingredientId ->
+                    val measure = checkNotNull(slot.measures[ingredientId]) {
+                        "${recipe.id} is missing a measure for $ingredientId"
+                    }
+                    assertTrue(measure.amount > 0.0, "${recipe.id}: $ingredientId must have a positive amount")
+                    assertTrue(measure.unit.isNotBlank(), "${recipe.id}: $ingredientId must have a unit")
+                }
+            }
+            assertTrue(recipe.seasonings.isNotEmpty(), "${recipe.id} needs seasonings")
+
+            val copy = listOf(recipe.title) + recipe.steps +
+                slots.flatMap { slot -> slot.measures.values.map { it.unit } } +
+                recipe.seasonings.flatMap { listOf(it.name, it.amountText) }
+            copy.forEach { label ->
+                assertTrue(forbiddenCopy.none { label.contains(it, ignoreCase = true) }, "${recipe.id}: $label")
+            }
+        }
+    }
 }

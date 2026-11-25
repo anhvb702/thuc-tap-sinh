@@ -90,4 +90,64 @@ class RecipeBundleTest {
         assertEquals(8, parseRow(withSteps(8)).single().steps.size)
         assertFailsWith<IllegalArgumentException> { parseRow(withSteps(9)) }
     }
+
+    @Test
+    fun measuresServingsAndSeasoningsParseCleanlyAndKeepLegacyCompatible() {
+        val rich = """
+            {
+              "id": "thit-kho-test",
+              "title": "Thịt kho",
+              "servings": 4,
+              "steps": ["Sơ chế", "Kho lửa nhỏ"],
+              "required": [
+                {
+                  "anyOf": ["thit-heo", "thit-heo-xay"],
+                  "measures": {
+                    "thit-heo": {"amount": 400, "unit": "g"},
+                    "thit-heo-xay": {"amount": 350, "unit": "g"}
+                  }
+                }
+              ],
+              "seasonings": [
+                {"name": "Nước mắm", "amountText": "2 muỗng canh"},
+                {"name": "Tiêu xay", "amountText": "vừa miệng"}
+              ]
+            }
+        """.trimIndent()
+        val parsed = RecipeBundle.parse("[$rich,$row]")
+        assertEquals(2, parsed.size)
+        val first = parsed[0]
+        assertEquals(4, first.servings)
+        assertEquals(Measure(400.0, "g"), first.required.single().measures["thit-heo"])
+        assertEquals(Measure(350.0, "g"), first.required.single().measures["thit-heo-xay"])
+        assertEquals(
+            listOf(Seasoning("Nước mắm", "2 muỗng canh"), Seasoning("Tiêu xay", "vừa miệng")),
+            first.seasonings,
+        )
+        val legacy = parsed[1]
+        assertEquals(2, legacy.servings)
+        assertEquals(emptyMap(), legacy.required.single().measures)
+        assertEquals(emptyList(), legacy.seasonings)
+    }
+
+    @Test
+    fun measuresRejectsUnknownIngredientKeyAndInvalidAmountOrUnit() {
+        val badKey = """{"id":"a","title":"A","steps":["Nấu"],"required":[{"anyOf":["egg"],"measures":{"pork":{"amount":100,"unit":"g"}}}]}"""
+        val zeroAmount = """{"id":"a","title":"A","steps":["Nấu"],"required":[{"anyOf":["egg"],"measures":{"egg":{"amount":0,"unit":"quả"}}}]}"""
+        val blankUnit = """{"id":"a","title":"A","steps":["Nấu"],"required":[{"anyOf":["egg"],"measures":{"egg":{"amount":2,"unit":"  "}}}]}"""
+        for (json in listOf("[$badKey]", "[$zeroAmount]", "[$blankUnit]")) {
+            assertFailsWith<IllegalArgumentException> { RecipeBundle.parse(json) }
+        }
+    }
+
+    @Test
+    fun seasoningsAndServingsRejectInvalidValues() {
+        val blankName = """{"id":"a","title":"A","steps":["Nấu"],"required":[{"anyOf":["egg"]}],"seasonings":[{"name":"  ","amountText":"1 thìa"}]}"""
+        val blankText = """{"id":"a","title":"A","steps":["Nấu"],"required":[{"anyOf":["egg"]}],"seasonings":[{"name":"Muối","amountText":" "}]}"""
+        val zeroServings = """{"id":"a","title":"A","servings":0,"steps":["Nấu"],"required":[{"anyOf":["egg"]}]}"""
+        val hugeServings = """{"id":"a","title":"A","servings":21,"steps":["Nấu"],"required":[{"anyOf":["egg"]}]}"""
+        for (json in listOf("[$blankName]", "[$blankText]", "[$zeroServings]", "[$hugeServings]")) {
+            assertFailsWith<IllegalArgumentException> { RecipeBundle.parse(json) }
+        }
+    }
 }
