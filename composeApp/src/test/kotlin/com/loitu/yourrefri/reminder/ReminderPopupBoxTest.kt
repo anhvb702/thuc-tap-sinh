@@ -59,6 +59,42 @@ class ReminderPopupBoxTest {
         assertCopyHasNoBannedWords(data.title + data.body)
     }
 
+    @Test
+    fun urgentPopupPopulatesBadgeAndUrgentSummaryWithoutBannedWords() {
+        val today = LocalDate(2026, 11, 19)
+        val state = PantryGridState(
+            today = today,
+            ingredients = listOf(
+                Ingredient("rau", "Rau ngót", "rau-la", 4),
+                Ingredient("thit", "Thịt băm", "thit", 4),
+                Ingredient("trung", "Trứng", "sua-trung", 4),
+                Ingredient("carot", "Cà rốt", "rau-cu", 4),
+            ),
+            pantry = listOf(
+                PantryItem("rau", true, LocalDate(2026, 11, 17)),
+                PantryItem("thit", true, LocalDate(2026, 11, 16)),
+                PantryItem("trung", true, LocalDate(2026, 11, 15)),
+                PantryItem("carot", true, LocalDate(2026, 11, 18)), // daysLeft = 3 -> không tính vào nhóm 0..2 ngày
+            ).associateBy { it.ingredientId },
+        )
+
+        val data = buildReminderPopupData(state, 2)
+        assertEquals(3, data.urgentCount)
+        assertEquals("NÊN NẤU SỚM", data.badgeLabel)
+        assertTrue(data.urgentSummary.orEmpty().contains("Trứng, Thịt băm"))
+        assertFalse(data.urgentSummary.orEmpty().contains("Cà rốt"))
+        assertCopyHasNoBannedWords(data.badgeLabel + data.urgentSummary.orEmpty())
+    }
+
+    @Test
+    fun emptyPantryPopupUsesWarmDefaultBadgeAndNullUrgentSummary() {
+        val data = buildReminderPopupData(PantryGridState(LocalDate(2026, 11, 19)), 2)
+        assertEquals(0, data.urgentCount)
+        assertEquals("GỢI Ý BẾP NHÀ", data.badgeLabel)
+        assertEquals(null, data.urgentSummary)
+        assertCopyHasNoBannedWords(data.badgeLabel)
+    }
+
     private fun assertCopyHasNoBannedWords(copy: String) {
         listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên", "điểm", "streak").forEach { banned -> // lint-copy: rule
             assertFalse(copy.contains(banned, ignoreCase = true), "chứa từ cấm: $banned")
