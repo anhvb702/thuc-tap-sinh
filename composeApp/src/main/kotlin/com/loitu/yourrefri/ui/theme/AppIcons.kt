@@ -73,6 +73,22 @@ object AppIcons {
         strokeIcon("Keyboard", "M4 7h16a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z", "M7 11h.01", "M10 11h.01", "M13 11h.01", "M16 11h.01", "M8 14h8")
     }
     val Heart by lazy { strokeIcon("Heart", "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z") }
+    val HeartFilled by lazy {
+        ImageVector.Builder(
+            name = "HeartFilled",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).addPath(
+            pathData = addPathNodes("M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"),
+            fill = SolidColor(Color.Black),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round,
+        ).build()
+    }
     val Snowflake by lazy { strokeIcon("Snowflake", "M12 3v18", "M4.5 7.5l15 9", "M19.5 7.5l-15 9", "M9.5 4.5L12 6.5l2.5-2", "M9.5 19.5L12 17.5l2.5 2") }
     val Cart by lazy { strokeIcon("Cart", "M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.4a1 1 0 0 0 1-.8L20 8H6", "M9 19.5h.01", "M17 19.5h.01") }
     val ChefHat by lazy { strokeIcon("ChefHat", "M7 14a4 4 0 1 1 1-7.9A4 4 0 0 1 16 6a4 4 0 1 1 1 8v5H7z", "M7 17h10") }
