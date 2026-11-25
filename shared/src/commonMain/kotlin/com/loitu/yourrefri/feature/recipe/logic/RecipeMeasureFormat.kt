@@ -35,8 +35,17 @@ fun formatMeasureAmount(amount: Double): String {
 
 fun formatScaledMeasure(measure: Measure, baseServings: Int, targetServings: Int): String {
     val scaled = scaleMeasureAmount(measure.amount, baseServings, targetServings)
+    val unit = measure.unit.trim()
+    if (unit.equals("quả", ignoreCase = true) && scaled > 0.0 && scaled < 10.0) {
+        val quarters = (scaled * 4.0).roundToLong()
+        val whole = quarters / 4
+        val rem = (quarters % 4).toInt()
+        if (whole >= 1L && rem != 0) {
+            return "khoảng $whole–${whole + 1} $unit"
+        }
+    }
     val amountText = formatMeasureAmount(scaled)
-    return if (amountText.isEmpty()) "" else "$amountText ${measure.unit.trim()}"
+    return if (amountText.isEmpty()) "" else "$amountText $unit"
 }
 
 fun formatSlotMeasure(slot: Slot, ingredientId: String, baseServings: Int, targetServings: Int): String? {
@@ -46,3 +55,14 @@ fun formatSlotMeasure(slot: Slot, ingredientId: String, baseServings: Int, targe
 
 fun measureEstimateNote(servings: Int): String =
     "Định lượng ước tính cho khoảng ${servings.coerceAtLeast(1)} người"
+
+/** Ghi chú gia vị trung thực khi người dùng đổi khẩu phần khác chuẩn của công thức. */
+fun seasoningEstimateNote(baseServings: Int, targetServings: Int): String {
+    val base = baseServings.coerceAtLeast(1)
+    val target = targetServings.coerceAtLeast(1)
+    return if (target == base) {
+        "Tham khảo cho khoảng $base người · nêm theo khẩu vị"
+    } else {
+        "Khẩu phần chuẩn $base người · tự gia giảm khi nấu $target người"
+    }
+}
