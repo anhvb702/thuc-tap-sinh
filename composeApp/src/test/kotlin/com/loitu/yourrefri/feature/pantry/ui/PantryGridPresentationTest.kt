@@ -23,7 +23,28 @@ class PantryGridPresentationTest {
 
     @Test
     fun gridContentPaddingLeavesRoomForTheFloatingAddButton() {
-        assertEquals(88.dp, pantryGridContentPadding().calculateBottomPadding())
+        // P2a (Master Plan đã duyệt): tăng bottom padding 88dp -> 148dp để FAB không che hàng thẻ cuối.
+        assertEquals(148.dp, pantryGridContentPadding().calculateBottomPadding())
+    }
+
+    @Test
+    fun pantryItemMenuCopy_formatsLabelsAndAvoidsBannedWords() {
+        val copy = pantryItemMenuCopy("Trứng gà", "quả")
+        assertEquals("Trứng gà", copy.title)
+        assertEquals("Sửa hạn ước tính", copy.editShelfLabel)
+        assertEquals("Đổi đơn vị (quả)", copy.editUnitLabel)
+        assertEquals("Đánh dấu hết món", copy.markOutLabel)
+        assertEquals("Tùy chọn khác cho Trứng gà", copy.moreButtonDescription)
+        assertEquals("Đóng", copy.closeLabel)
+        val joined = listOf(copy.editShelfLabel, copy.editUnitLabel, copy.markOutLabel, copy.moreButtonDescription).joinToString(" ")
+        for (w in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "tồn kho")) {
+            kotlin.test.assertFalse(joined.contains(w, ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun pantryItemMenuCopy_omitsParenthesesWhenUnitIsBlank() {
+        assertEquals("Đổi đơn vị", pantryItemMenuCopy("Tỏi", "   ").editUnitLabel)
     }
 
     @Test

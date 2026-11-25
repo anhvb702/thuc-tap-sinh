@@ -139,7 +139,7 @@ internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onTogg
             val selected = category in selectedCategories
             val shape = RoundedCornerShape(16.dp)
             val containerColor by animateColorAsState(
-                targetValue = if (selected) colors.primary else colors.surface,
+                targetValue = if (selected) colors.primary else colors.surfaceSoft,
                 animationSpec = if (animatorsEnabled) tween(180) else snap(),
                 label = "pantry chip bg",
             )
@@ -156,7 +156,7 @@ internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onTogg
             Row(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
                     .background(containerColor)
-                    .border(1.dp, borderColor, shape)
+                    .border(if (selected) 1.5.dp else 1.dp, borderColor, shape)
                     .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle(category) })
                     .padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -176,7 +176,9 @@ internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onTogg
                 }
                 Text(
                     text = category.labelVi,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    ),
                     color = textColor,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
@@ -609,8 +611,8 @@ internal fun VoiceSheet(
 }
 
 /**
- * Hàng thực phẩm: khung ảnh 48dp, tên, hạn ước tính và bộ đếm − / + tròn 48dp.
- * Chạm vào tên để đổi trạng thái có / hết; "Sửa hạn" và "Đổi đơn vị" giữ vùng chạm 48dp.
+ * Hàng thực phẩm: khung ảnh, tên, hạn ước tính và bộ đếm − / + tròn 48dp.
+ * Chạm vào tên để đổi trạng thái có / hết; nút ⋯ mở Bottom Sheet sửa hạn / đổi đơn vị để thẻ gọn đều 2 cột.
  */
 @Composable
 internal fun WarmFoodCard(
@@ -627,10 +629,12 @@ internal fun WarmFoodCard(
 ) {
     val colors = AppTheme.colors
     val cardCopy = pantryCardCopy(cell.have, quantity)
+    val menuCopy = pantryItemMenuCopy(cell.nameVi, cell.unit)
     val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
     val animatorsEnabled = areSystemAnimatorsEnabled()
+    var showActionsSheet by remember(cell.ingredientId) { mutableStateOf(false) }
     val containerColor by animateColorAsState(
-        targetValue = if (cell.have) colors.surface else Color.Transparent,
+        targetValue = if (cell.have) colors.surface else colors.surfaceSoft,
         animationSpec = if (animatorsEnabled) tween(200) else snap(),
         label = "pantry card bg",
     )
@@ -650,15 +654,13 @@ internal fun WarmFoodCard(
         ),
         shape = RoundedCornerShape(14.dp),
         color = containerColor,
-        border = BorderStroke(2.dp, borderColor),
+        border = BorderStroke(if (selected) 2.dp else 1.5.dp, borderColor),
     ) {
-        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
                     .clickable(onClick = onTap)
                     .semantics {
                         contentDescription = if (cell.have) {
@@ -668,50 +670,67 @@ internal fun WarmFoodCard(
                         }
                     },
             ) {
-                FoodThumb(
-                    ingredientId = cell.ingredientId,
-                    size = 36.dp,
-                    shape = RoundedCornerShape(10.dp),
-                    urgent = urgent,
-                    modifier = Modifier.alpha(if (cell.have) 1f else 0.55f),
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                ) {
+                    FoodThumb(
+                        ingredientId = cell.ingredientId,
+                        size = 40.dp,
+                        shape = RoundedCornerShape(12.dp),
+                        urgent = urgent,
+                        modifier = Modifier.alpha(if (cell.have) 1f else 0.72f),
+                    )
+                    if (cell.have) {
+                        IconButton(
+                            onClick = { showActionsSheet = true },
+                            modifier = Modifier.size(48.dp),
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.MoreVert,
+                                contentDescription = menuCopy.moreButtonDescription,
+                                tint = colors.muted,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = cell.nameVi,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = colors.text,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                if (cardCopy.showEstimatedStatus) {
+                    cell.daysLeft?.let { days ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            if (urgent) {
+                                UrgentPulseDot(animatorsEnabled = animatorsEnabled)
+                            }
+                            Text(
+                                text = pantryRowStatus(days),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Medium,
+                                ),
+                                color = if (urgent) colors.ctaText else colors.accentText,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                } else {
                     Text(
-                        text = cell.nameVi,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = if (cell.have) colors.text else colors.muted,
+                        text = "Chạm để thêm",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                        color = colors.accentText,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (cardCopy.showEstimatedStatus) {
-                        cell.daysLeft?.let { days ->
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                            ) {
-                                if (urgent) {
-                                    UrgentPulseDot(animatorsEnabled = animatorsEnabled)
-                                }
-                                Text(
-                                    text = pantryRowStatus(days),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal,
-                                    ),
-                                    color = if (urgent) colors.ctaText else colors.accentText,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    } else {
-                        Text(
-                            text = "Chạm để thêm",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = colors.muted,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
                 }
             }
 
@@ -725,25 +744,122 @@ internal fun WarmFoodCard(
                     onEdit = onEditQuantity,
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(
-                        onClick = onEditShelf,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Sửa hạn ước tính cho ${cell.nameVi}" },
-                        contentPadding = PaddingValues(0.dp),
-                    ) { Text("Sửa hạn", style = MaterialTheme.typography.labelSmall, color = colors.accentText) }
-                    TextButton(
-                        onClick = onEditUnit,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Đổi đơn vị số lượng ${cell.nameVi}, hiện là ${cell.unit}" },
-                        contentPadding = PaddingValues(0.dp),
-                    ) { Text("Đổi đơn vị", style = MaterialTheme.typography.labelSmall, color = colors.muted, textAlign = TextAlign.Center) }
-                }
             }
+        }
+    }
+
+    if (showActionsSheet && cell.have) {
+        PantryItemActionsSheet(
+            copy = menuCopy,
+            statusLine = cell.daysLeft?.let(::pantryRowStatus),
+            onDismiss = { showActionsSheet = false },
+            onEditShelf = {
+                showActionsSheet = false
+                onEditShelf()
+            },
+            onEditUnit = {
+                showActionsSheet = false
+                onEditUnit()
+            },
+            onMarkOut = {
+                showActionsSheet = false
+                onTap()
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PantryItemActionsSheet(
+    copy: PantryItemMenuCopy,
+    statusLine: String?,
+    onDismiss: () -> Unit,
+    onEditShelf: () -> Unit,
+    onEditUnit: () -> Unit,
+    onMarkOut: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.background,
+        contentColor = colors.text,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = copy.title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = colors.text,
+            )
+            if (statusLine != null) {
+                Text(
+                    text = statusLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.accentText,
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            PantrySheetActionRow(
+                icon = AppIcons.Clock,
+                label = copy.editShelfLabel,
+                tint = colors.accentText,
+                onClick = onEditShelf,
+            )
+            PantrySheetActionRow(
+                icon = AppIcons.Pencil,
+                label = copy.editUnitLabel,
+                tint = colors.text,
+                onClick = onEditUnit,
+            )
+            PantrySheetActionRow(
+                icon = AppIcons.Close,
+                label = copy.markOutLabel,
+                tint = colors.ctaText,
+                onClick = onMarkOut,
+            )
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Text(copy.closeLabel, color = colors.text, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun PantrySheetActionRow(
+    icon: ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    val colors = AppTheme.colors
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = colors.surface,
+        border = BorderStroke(1.dp, colors.line),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = tint,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(AppIcons.Chevron, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
         }
     }
 }
