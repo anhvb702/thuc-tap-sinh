@@ -13,22 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
-/** Trạng thái các món yêu thích; [loaded] false cho tới khi đọc xong lần đầu. */
-data class FavoriteRecipesState(
-    val ids: Set<String> = emptySet(),
-    val loaded: Boolean = false,
-)
-
-sealed interface FavoriteRecipesAction {
-    data class Toggle(val recipeId: String) : FavoriteRecipesAction
-}
-
-sealed interface FavoriteRecipesEffect {
-    /** Báo nhẹ: "Chưa lưu được món yêu thích." */
-    data object SaveFailed : FavoriteRecipesEffect
-    data object LoadFailed : FavoriteRecipesEffect
-}
-
 class FavoriteRecipesViewModel(
     private val repository: FavoriteRecipeRepository,
     scope: CoroutineScope? = null,
@@ -38,23 +22,23 @@ class FavoriteRecipesViewModel(
     private val mutableEffects = Channel<FavoriteRecipesEffect>(Channel.BUFFERED)
     private var collectJob: Job? = null
 
-    val state: StateFlow<FavoriteRecipesState> = mutableState.asStateFlow()
+    val uiState: StateFlow<FavoriteRecipesState> = mutableState.asStateFlow()
+    val state: StateFlow<FavoriteRecipesState> get() = uiState
     val effects = mutableEffects.receiveAsFlow()
 
     init {
         startCollecting()
     }
 
-    fun dispatch(action: FavoriteRecipesAction) {
-        when (action) {
-            is FavoriteRecipesAction.Toggle -> toggle(action.recipeId)
-        }
+    fun onIntent(intent: FavoriteRecipesIntent) = when (intent) {
+        is FavoriteRecipesIntent.Toggle -> toggle(intent.recipeId)
+        FavoriteRecipesIntent.Reload -> startCollecting()
     }
 
+    fun dispatch(action: FavoriteRecipesAction) = onIntent(action)
+
     /** Đọc lại từ DB, dùng sau khi khôi phục sao lưu. */
-    fun reload() {
-        startCollecting()
-    }
+    fun reload() = onIntent(FavoriteRecipesIntent.Reload)
 
     private fun startCollecting() {
         collectJob?.cancel()
