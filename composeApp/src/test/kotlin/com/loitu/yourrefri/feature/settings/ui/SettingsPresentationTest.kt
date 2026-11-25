@@ -61,4 +61,16 @@ class SettingsPresentationTest {
         for (word in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")) assertFalse(all.contains(word, ignoreCase = true))
         assertTrue(SettingsPresentation.reminderTime.contains("16:00"))
     }
+
+    @Test fun settingsBottomPadding_leavesRoomAboveFloatingNav() {
+        assertEquals(148, SettingsPresentation.bottomPaddingDp)
+    }
+
+    @Test fun cookLeftoverEyebrow_usesWarmKitchenCopyWithoutWarehouseJargon() {
+        val eyebrow = com.loitu.yourrefri.feature.recipe.ui.CookLeftoverCopy.eyebrow
+        assertEquals("CÒN LẠI TRONG TỦ", eyebrow)
+        for (word in listOf("tồn kho", "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn")) {
+            assertFalse(eyebrow.contains(word, ignoreCase = true))
+        }
+    }
 }

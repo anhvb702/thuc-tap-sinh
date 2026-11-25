@@ -23,6 +23,7 @@ internal object SettingsPresentation {
     const val backupGroupTitle = "Sao lưu & khôi phục"
     const val transferTitle = "Chuyển sang điện thoại mới"
     const val onDeviceBadge = "Chỉ trên máy bạn"
+    const val bottomPaddingDp = 148
 
     val themeModeOrder: List<com.loitu.yourrefri.ui.theme.ThemeMode> = listOf(
         com.loitu.yourrefri.ui.theme.ThemeMode.LIGHT,

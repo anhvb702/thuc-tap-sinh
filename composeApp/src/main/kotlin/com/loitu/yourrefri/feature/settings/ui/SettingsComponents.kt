@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,8 +33,17 @@ import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
 @Composable
-internal fun SectionTitle(text: String) {
-    Text(text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.text, modifier = Modifier.padding(top = 8.dp))
+internal fun SectionTitle(text: String, icon: ImageVector? = null) {
+    Row(
+        modifier = Modifier.padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (icon != null) {
+            Icon(icon, contentDescription = null, tint = AppTheme.colors.accentText, modifier = Modifier.size(20.dp))
+        }
+        Text(text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = AppTheme.colors.text)
+    }
 }
 
 @Composable
@@ -54,10 +65,21 @@ internal fun ChipRow(title: String, subtitle: String? = null, chip: @Composable 
 @Composable
 internal fun ToggleChip(enabled: Boolean, description: String, onChange: (Boolean) -> Unit) {
     val colors = AppTheme.colors
-    Row(Modifier.heightIn(min = 48.dp).widthIn(min = 72.dp).clip(RoundedCornerShape(20.dp)).background(if (enabled) colors.primarySoft else colors.surfaceSoft).semantics { contentDescription = "$description: ${SettingsPresentation.toggleChipLabel(enabled)}" }.selectable(selected = enabled, role = Role.Switch, onClick = { onChange(!enabled) }).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
-        Text(SettingsPresentation.toggleChipLabel(enabled), fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (enabled) colors.accentText else colors.muted)
-        if (enabled) Icon(AppIcons.Check, null, tint = colors.accentText, modifier = Modifier.size(16.dp))
-    }
+    Switch(
+        checked = enabled,
+        onCheckedChange = onChange,
+        modifier = Modifier
+            .heightIn(min = 48.dp)
+            .semantics { contentDescription = "$description: ${SettingsPresentation.toggleChipLabel(enabled)}" },
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = colors.onPrimary,
+            checkedTrackColor = colors.primary,
+            checkedBorderColor = colors.primary,
+            uncheckedThumbColor = colors.muted,
+            uncheckedTrackColor = colors.surfaceSoft,
+            uncheckedBorderColor = colors.line,
+        ),
+    )
 }
 
 @Composable

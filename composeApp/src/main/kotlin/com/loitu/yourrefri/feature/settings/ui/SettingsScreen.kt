@@ -114,7 +114,11 @@ fun SettingsScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = SettingsPresentation.bottomPaddingDp.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column {
@@ -122,7 +126,7 @@ fun SettingsScreen(
             Text(SettingsPresentation.title, fontSize = 27.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
         }
 
-        SectionTitle(SettingsPresentation.reminderGroupTitle)
+        SectionTitle(SettingsPresentation.reminderGroupTitle, AppIcons.Bell)
         SettingsCard {
             ChipRow(SettingsPresentation.reminderTitle, SettingsPresentation.reminderTime) {
                 ToggleChip(reminderEnabled, SettingsPresentation.reminderTitle, onReminderChanged)
@@ -140,7 +144,7 @@ fun SettingsScreen(
             SecondaryButton("Thử thông báo ngay", "Thử thông báo ngay", onTestReminder)
         }
 
-        SectionTitle(SettingsPresentation.tasteGroupTitle)
+        SectionTitle(SettingsPresentation.tasteGroupTitle, AppIcons.Heart)
         SettingsCard {
             Text(SettingsPresentation.dietTitle, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colors.text)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -158,7 +162,7 @@ fun SettingsScreen(
         }
         FamilyTasteSettingsCard(tasteProfile, onTasteProfileChange)
 
-        SectionTitle(ThemeModeCopy.title)
+        SectionTitle(ThemeModeCopy.title, AppIcons.Moon)
         SettingsCard {
             Text(ThemeModeCopy.subtitle, fontSize = 12.sp, color = colors.muted)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -168,7 +172,7 @@ fun SettingsScreen(
             }
         }
 
-        SectionTitle(SettingsPresentation.backupGroupTitle)
+        SectionTitle(SettingsPresentation.backupGroupTitle, AppIcons.Save)
         SettingsCard {
             Text(SettingsBackupCopy.backupContents, fontSize = 14.sp, color = colors.muted)
             SecondaryButton(SettingsBackupCopy.exportLabel, "${SettingsPresentation.exportTitle}. ${SettingsPresentation.exportSubtitle}", onExportBackup, AppIcons.Save)
