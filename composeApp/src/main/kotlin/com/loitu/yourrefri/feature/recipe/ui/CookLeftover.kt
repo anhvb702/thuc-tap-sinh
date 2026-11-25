@@ -22,10 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.ui.theme.AppTheme
 
 internal object CookLeftoverCopy {
+    const val eyebrow = "CÒN LẠI TRONG TỦ"
     const val title = "Dùng hết hay còn lại?"
     const val useAll = "Dùng hết"
     const val keepSome = "Còn lại"
@@ -72,7 +74,17 @@ internal fun CookLeftoverDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.surface,
-        title = { Text(CookLeftoverCopy.title, color = colors.text) },
+        title = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = CookLeftoverCopy.eyebrow,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.accentText,
+                )
+                Text(CookLeftoverCopy.title, color = colors.text)
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 ingredients.forEach { (id, name) ->
