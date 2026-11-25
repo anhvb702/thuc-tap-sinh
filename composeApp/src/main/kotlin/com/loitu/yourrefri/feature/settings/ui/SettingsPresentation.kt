@@ -1,7 +1,9 @@
 package com.loitu.yourrefri.feature.settings.ui
 
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
+import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 
 /** Chữ và nhãn rút gọn của màn Cài đặt; hàm thuần để test được. */
 internal object SettingsPresentation {
@@ -20,6 +22,10 @@ internal object SettingsPresentation {
     const val dietTitle = "Chế độ ăn"
     const val reminderGroupTitle = "Nhắc nhở"
     const val tasteGroupTitle = "Khẩu vị & thói quen"
+    const val tasteSavedFeedback = "Đã lưu"
+    const val tasteResetLabel = "Đặt lại"
+    const val favoriteGroupTitle = "Nhóm món ưa thích"
+    const val tasteCloseLabel = "Đóng"
     const val backupGroupTitle = "Sao lưu & khôi phục"
     const val transferTitle = "Chuyển sang điện thoại mới"
     const val onDeviceBadge = "Chỉ trên máy bạn"
@@ -64,4 +70,58 @@ internal object SettingsPresentation {
 
     fun versionLine(versionName: String): String? =
         versionName.trim().takeIf { it.isNotEmpty() }?.let { "Phiên bản $it" }
+}
+
+internal enum class TasteSheetSection(val title: String) {
+    DIET(SettingsPresentation.dietTitle),
+    FAVORITE_GROUPS(SettingsPresentation.favoriteGroupTitle),
+    GOAL(SettingsPresentation.goalTitle),
+    FLAVORS("Vị thích"),
+    DISH_STYLES("Món thích"),
+    AVOIDED("Không ăn"),
+    KIDS("Nhà có trẻ nhỏ"),
+}
+
+internal val TASTE_SHEET_SECTIONS = TasteSheetSection.entries
+
+internal data class TasteHabitSnapshot(
+    val diet: DietRestriction = DietRestriction.NONE,
+    val preferences: Set<FamilyPreferenceTag> = emptySet(),
+    val goal: DietGoal = DietGoal.BALANCED,
+    val taste: FamilyTasteProfile = FamilyTasteProfile(),
+)
+
+internal fun resetTasteHabitDefaults(): TasteHabitSnapshot = TasteHabitSnapshot()
+
+internal fun dispatchTasteHabitReset(
+    onDiet: (DietRestriction) -> Unit,
+    onPreferences: (Set<FamilyPreferenceTag>) -> Unit,
+    onGoal: (DietGoal) -> Unit,
+    onTaste: (FamilyTasteProfile) -> Unit,
+): String {
+    val defaults = resetTasteHabitDefaults()
+    onDiet(defaults.diet)
+    onPreferences(defaults.preferences)
+    onGoal(defaults.goal)
+    onTaste(defaults.taste)
+    return SettingsPresentation.tasteSavedFeedback
+}
+
+internal fun settingsTasteHabitSummary(
+    diet: DietRestriction, preferences: Set<FamilyPreferenceTag>, goal: DietGoal, taste: FamilyTasteProfile,
+): String = buildList {
+    if (diet != DietRestriction.NONE) add(diet.labelVi)
+    if (preferences.isNotEmpty()) add(SettingsPresentation.preferencesSummary(preferences))
+    if (goal != DietGoal.BALANCED) add(SettingsPresentation.goalSummary(goal))
+    if (taste != FamilyTasteProfile()) add(tasteProfileSummaryVi(taste))
+}.joinToString(" · ").ifEmpty { "Ăn đa dạng · Cân bằng" }
+
+internal fun applyImmediateTasteChange(
+    current: TasteHabitSnapshot,
+    transform: (TasteHabitSnapshot) -> TasteHabitSnapshot,
+    onSave: (TasteHabitSnapshot) -> Unit,
+): Pair<TasteHabitSnapshot, String> {
+    val next = transform(current)
+    onSave(next)
+    return next to SettingsPresentation.tasteSavedFeedback
 }
