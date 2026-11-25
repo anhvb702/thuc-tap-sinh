@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -47,6 +50,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -63,6 +67,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -71,6 +76,10 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.Recipe
+import com.loitu.yourrefri.feature.recipe.data.Seasoning
+import com.loitu.yourrefri.feature.recipe.data.Slot
+import com.loitu.yourrefri.feature.recipe.logic.formatSlotMeasure
+import com.loitu.yourrefri.feature.recipe.logic.measureEstimateNote
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
@@ -102,6 +111,8 @@ fun RecipeDetailScreen(
     val host = snackbarHostState ?: localHost
     val scope = rememberCoroutineScope()
     var showManualChecklist by remember(recipe.id) { mutableStateOf(false) }
+    var selectedServings by rememberSaveable(recipe.id) { mutableIntStateOf(recipe.servings) }
+    val hasMeasures = remember(recipe) { (recipe.required + recipe.optional).any { it.measures.isNotEmpty() } }
 
     fun finishCook() {
         val plan = buildDirectCookPlan(recipe, state, callbackAvailable = true) ?: return
@@ -181,7 +192,7 @@ fun RecipeDetailScreen(
                             Icon(AppIcons.Clock, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(16.dp))
                             Text(
                                 text = (recipe.minutes?.let { "Khoảng $it phút" } ?: "Thời gian chưa rõ") +
-                                    " · " + servingsDifficultyLabel(recipe.minutes),
+                                    " · " + servingsDifficultyLabel(recipe.minutes, selectedServings),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colors.accentText,
                             )
@@ -195,11 +206,16 @@ fun RecipeDetailScreen(
                     color = colors.text,
                     modifier = Modifier.padding(top = 20.dp, bottom = 8.dp),
                 )
+                if (hasMeasures || recipe.seasonings.isNotEmpty()) {
+                    ServingSelector(selectedServings, onSelect = { selectedServings = it })
+                }
                 DefrostNoticeBanner(
                     freezerIngredientNames(recipe, state),
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                 )
-                recipeIngredientRows(recipe.required, state).forEach { row -> IngredientRow(row) }
+                recipeIngredientRows(recipe.required, state, recipe.servings, selectedServings).forEach { row ->
+                    IngredientRow(row)
+                }
                 if (recipe.optional.isNotEmpty()) {
                     Text(
                         text = "Có thể thêm",
@@ -207,9 +223,14 @@ fun RecipeDetailScreen(
                         color = colors.accentText,
                         modifier = Modifier.padding(top = 12.dp, bottom = 6.dp),
                     )
-                    recipeIngredientRows(recipe.optional, state).forEach { row -> IngredientRow(row) }
+                    recipeIngredientRows(recipe.optional, state, recipe.servings, selectedServings).forEach { row ->
+                        IngredientRow(row)
+                    }
                 }
-
+                if (recipe.seasonings.isNotEmpty()) {
+                    RecipeSeasonings(recipe.seasonings, recipe.servings)
+                }
+                Spacer(Modifier.height(8.dp))
             }
 
             Surface(color = colors.background, border = BorderStroke(1.dp, colors.line)) {
@@ -332,17 +353,100 @@ private fun ManualCookChecklistDialog(
     }
 }
 
-private data class RecipeIngredientRow(val id: String, val name: String, val have: Boolean)
+@Composable
+private fun ServingSelector(selectedServings: Int, onSelect: (Int) -> Unit) {
+    val colors = AppTheme.colors
+    Text("Khẩu phần (người)", style = MaterialTheme.typography.labelLarge, color = colors.muted)
+    Row(
+        Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp).selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        for (count in 1..4) {
+            val selected = count == selectedServings
+            Surface(
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(CircleShape)
+                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(count) })
+                    .semantics { contentDescription = "Chọn $count người ăn" },
+                shape = CircleShape,
+                color = if (selected) colors.primary else colors.surface,
+                contentColor = if (selected) colors.onPrimary else colors.text,
+                border = if (selected) null else BorderStroke(1.dp, colors.line),
+            ) {
+                Box(Modifier.padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                    Text(count.toString(), style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+    Text(
+        text = measureEstimateNote(selectedServings),
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.muted,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+}
+
+@Composable
+private fun RecipeSeasonings(seasonings: List<Seasoning>, baseServings: Int) {
+    val colors = AppTheme.colors
+    Text(
+        text = "Gia vị cần dùng",
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+        color = colors.text,
+        modifier = Modifier.padding(top = 18.dp, bottom = 2.dp),
+    )
+    Text(
+        text = "Tham khảo cho khoảng $baseServings người · nêm theo khẩu vị",
+        style = MaterialTheme.typography.bodySmall,
+        color = colors.muted,
+        modifier = Modifier.padding(bottom = 8.dp),
+    )
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.surface,
+        border = BorderStroke(1.dp, colors.line),
+    ) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            seasonings.forEach { seasoning ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(AppIcons.Spice, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(18.dp))
+                    Text(seasoning.name, Modifier.weight(1f), color = colors.text, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = seasoning.amountText,
+                        modifier = Modifier.weight(1f),
+                        color = colors.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.End,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class RecipeIngredientRow(val id: String, val name: String, val have: Boolean, val measureText: String?)
 
 private fun recipeIngredientRows(
-    slots: List<com.loitu.yourrefri.feature.recipe.data.Slot>,
+    slots: List<Slot>,
     state: PantryGridState,
+    baseServings: Int,
+    targetServings: Int,
 ): List<RecipeIngredientRow> {
     val haveIds = state.pantry.values.filter { it.have }.mapTo(HashSet()) { it.ingredientId }
     val names = state.ingredients.associate { it.id to it.nameVi }
     return slots.map { slot ->
         val id = slot.anyOf.firstOrNull { it in haveIds } ?: slot.anyOf.first()
-        RecipeIngredientRow(id, names[id] ?: id, id in haveIds)
+        RecipeIngredientRow(
+            id = id,
+            name = names[id] ?: id,
+            have = id in haveIds,
+            measureText = formatSlotMeasure(slot, id, baseServings, targetServings),
+        )
     }
 }
 
@@ -355,7 +459,7 @@ private fun IngredientRow(row: RecipeIngredientRow) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         FoodThumb(ingredientId = row.id, size = 32.dp, shape = CircleShape)
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(2f)) {
             Text(row.name, style = MaterialTheme.typography.bodyLarge, color = if (row.have) colors.text else colors.muted)
             if (row.have) {
                 Text(
@@ -367,7 +471,19 @@ private fun IngredientRow(row: RecipeIngredientRow) {
                 )
             }
         }
-        if (!row.have) Text("chưa có", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+        if (row.measureText != null || !row.have) {
+            Column(
+                modifier = if (row.measureText != null) Modifier.weight(1f) else Modifier,
+                horizontalAlignment = Alignment.End,
+            ) {
+                row.measureText?.let { measure ->
+                    Text(measure, style = MaterialTheme.typography.bodyMedium, color = colors.text, textAlign = TextAlign.End)
+                }
+                if (!row.have) {
+                    Text("chưa có", style = MaterialTheme.typography.bodySmall, color = colors.muted, textAlign = TextAlign.End)
+                }
+            }
+        }
     }
 }
 
