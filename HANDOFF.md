@@ -1,12 +1,28 @@
 # HANDOFF: YourRefri
 
-> Cập nhật: **2026-11-20**. Repo `anhvb702/thuc-tap-sinh`; trạng thái hiện tại là `origin/main` tại **`3d578a7`** (sau PR #65).
+> Cập nhật: **2026-11-25**. Repo `anhvb702/thuc-tap-sinh`; `origin/main` tại **`ea9b74a`** (sau PR #88).
 > Sứ mệnh: **Người trợ lý nhỏ trong căn bếp gia đình** — Warm Minimalism, dữ liệu chỉ lưu trên thiết bị (offline-only SQLDelight).
 > Đọc file này đầu tiên, rồi các quy tắc bắt buộc trong `.agents/rules/` (`vibe-coding-10-stage-workflow.md`, `clean-architecture-mvi.md`, `test-retry-and-bug-isolation.md`), `DECISIONS.md` và `PLAN.md`. Luôn đối chiếu `git log origin/main -n 10` trước khi làm tiếp.
 
 ---
 
-## 1. Trạng thái hiện tại trên `main` (`3d578a7`)
+## 1. Tổng kết tiến độ trên `main` (`ea9b74a`)
+
+### Modern UI & Motion Master Plan · P0 hoàn tất, PR #77–#88 đã merge
+
+- **P0 · Design Freeze v2.3:** HTML Mockup gồm **17 màn hình (00–16)**. Figma v2 `H9jGzYBEaeGQ64ZFPp0XGu` đủ **17/17 frame**.
+- **PR #77 (`67be092`):** Sửa 5 lỗi phân loại Tủ lạnh và QuickAdd, gồm tách nhóm Gia vị, đồng bộ hai bản `shelf_table.json` và sửa regex «du» cho Dưa leo.
+- **PR #78 (`ae8d215`):** Floating Charcoal Pill Bottom Nav, `TabTransitionSpec` và `pressScale`.
+- **PR #79 (`a30dff6`):** Warm Hero Card cho `ReminderPreviewPopup`.
+- **PR #80 (`5a94a8e`, P1a):** Thông báo `RemoteViews` 3 tầng kiểu Duolingo, `RUBRIC_PASS 21/25`.
+- **PR #81 (`80abb5b`, P1b):** Đổi giờ nhắc mặc định ngày thường từ 17:30 sang 16:00.
+- **PR #82 (`28f9a09`, P2a–P2b):** Nâng cấp thẻ Tủ lạnh hai cột, mở bottom sheet từ nút ba chấm và thêm khoảng đệm đáy 148dp.
+- **PR #83 (`e030a73`, P2c):** CTA một chạm «Xem & nấu ngay» trên Home Spotlight, `ModalBottomSheet` «Cần dùng ngay» và ẩn placeholder thời tiết.
+- **PR #84 (`ac44952`, P2d):** Làm tròn theo cách đong trong bếp «khoảng X–Y quả» ở `:shared` và giữ ghi chú gia vị trung thực khi đổi khẩu phần.
+- **PR #85 (`9601f83`, P2e–P2f):** Nhãn «CÒN LẠI TRONG TỦ», icon nhóm Cài đặt, công tắc Material 3 và khoảng đệm đáy 148dp.
+- **PR #86 (`23df85b`, P2g):** Lối tắt «Thực đơn» hai chiều trên Kho món và công tắc Gacha «Chỉ quay từ đồ đang có» xuyên suốt từ `:shared` đến `HomeViewModel`.
+- **PR #87 (`178ed2f`, P3a):** `AnimatedContent` trượt theo hướng cho bước Rảnh tay và ghi chú khẩu phần, hiệu ứng pop-in ở màn nấu xong và `AnimatedVisibility` cho tìm kiếm Tủ lạnh.
+- **PR #88 (`ea9b74a`, P3b):** Voice RMS waveform 5 thanh xử lý trên thiết bị, `animateContentSize` và `maxLines = 2` cho Khẩu vị gia đình, `pressScale` cho CTA Home và nút Rảnh tay.
 
 ### Sản phẩm & dữ liệu
 - **Danh mục đã mở rộng & đồng bộ ảnh 100%:** **42 nguyên liệu** (gồm cả gia vị `nuoc-mam`, `dau-an`, `nuoc-tuong`) và **30 món ăn Việt Nam** (4 bước/món), toàn bộ có ảnh studio đồng bộ (`AssetCoverageTest` kiểm tra 100%).
@@ -30,13 +46,14 @@
 
 ---
 
-## 2. Bằng chứng kiểm chứng gần nhất (2026-11-20)
+## 2. Bằng chứng kiểm chứng gần nhất (2026-11-25)
 
-- **`scripts/lint-copy.ps1`:** PASS (0 từ cấm, 0 emoji UI).
-- **`:shared:testDebugUnitTest`:** **504 / 504 PASS** (0 lỗi, 0 bỏ qua) — đã xác minh sau PR #64.
-- **`:composeApp:testDebugUnitTest`:** **485 / 485 PASS** (0 lỗi, 0 bỏ qua) — đã xác minh sau PR #64.
-- **Tổng unit test:** **989 / 989 PASS**.
-- **`:composeApp:assembleDebug`:** BUILD SUCCESSFUL trên `main` (`2572af0`, trước 3 PR refactor/rule #63–#65; chưa cài APK mới lên máy ảo vì `adb devices` trống lúc chạy kiểm tra).
+- **Unit test:** **1.126/1.126 PASS**, gồm **550/550** ở `:shared` và **576/576** ở `:composeApp`, với **0 lỗi, 0 bỏ qua**.
+- **P4 Full Regression** trên `emulator-5554`, Claude CLI ghi nhận **VISUAL_PASS**.
+  - **Dark Mode:** VISUAL_PASS trên Home, Tủ lạnh và Cài đặt.
+  - **Reduce Motion** (`animator_duration_scale=0`): 0 crash/error trong `logcat *:E`.
+  - **Cô Hạnh, cỡ chữ 1.35x:** Tủ lạnh chuyển sang một cột gọn, Cài đặt hiển thị đầy đủ chữ.
+  - **Ba điểm chỉnh nhẹ cho đợt sau:** Chip «Chưa chế biến» hơi dài ở 1.35x và hiển thị «Chưa chế ...», dòng phụ màu xám cần tăng độ tương phản trong Dark Mode, và hai mục trong Cài đặt cùng mang nhãn «Khẩu vị gia đình».
 
 ---
 
