@@ -13,14 +13,14 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
 
-private val WEEKDAY_REMINDER_TIME = LocalTime(17, 30)
+private val WEEKDAY_REMINDER_TIME = LocalTime(16, 0)
 
-/** Chủ Nhật dùng giờ riêng (nhắc đi chợ), các ngày khác 17:30. */
+/** Chủ Nhật dùng giờ riêng (nhắc đi chợ), các ngày khác 16:00. */
 fun reminderTimeFor(date: LocalDate, sundayTime: LocalTime): LocalTime =
     if (date.dayOfWeek == DayOfWeek.SUNDAY) sundayTime else WEEKDAY_REMINDER_TIME
 
 /**
- * Mốc nhắc kế tiếp. `sundayTime == null` giữ nguyên hành vi cũ (17:30 mọi ngày); có giá trị thì Chủ Nhật dùng giờ đó.
+ * Mốc nhắc kế tiếp. `sundayTime == null` giữ nguyên hành vi cũ (16:00 mọi ngày); có giá trị thì Chủ Nhật dùng giờ đó.
  * Mỗi ngày đúng một mốc nên tối đa một thông báo mỗi ngày.
  */
 fun nextReminderTrigger(enabled: Boolean, now: Instant, tz: TimeZone, sundayTime: LocalTime? = null): Instant? {
