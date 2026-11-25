@@ -47,6 +47,10 @@ class AppColors(
     val badgeRed: Color,
     val navContainer: Color,
     val navUnselected: Color,
+    val notifyHeroStart: Color,
+    val notifyHeroEnd: Color,
+    val notifyHeroOn: Color,
+    val notifyHeroBadgeBg: Color,
 )
 
 private val LightPrimaryEdge = Color(0xFF3B4F3C)
@@ -58,6 +62,7 @@ private val DarkBadgeRed = Color(0xFFFF6B5E)
 private val LightNavContainer = Color(0xFF2B302B)
 private val DarkNavContainer = Color(0xFF242924)
 private val NavUnselectedLabel = Color(0xFFC5CCC5)
+private val NotifyHeroBadgeBg = Color(0x38FFFFFF)
 
 internal val LightAppColors = AppColors(
     isDark = false,
@@ -89,6 +94,10 @@ internal val LightAppColors = AppColors(
     badgeRed = LightBadgeRed,
     navContainer = LightNavContainer,
     navUnselected = NavUnselectedLabel,
+    notifyHeroStart = Color(0xFFB94D32),
+    notifyHeroEnd = Color(0xFF8C3224),
+    notifyHeroOn = Color.White,
+    notifyHeroBadgeBg = NotifyHeroBadgeBg,
 )
 
 internal val DarkAppColors = AppColors(
@@ -121,6 +130,10 @@ internal val DarkAppColors = AppColors(
     badgeRed = DarkBadgeRed,
     navContainer = DarkNavContainer,
     navUnselected = NavUnselectedLabel,
+    notifyHeroStart = Color(0xFF9A3E27),
+    notifyHeroEnd = Color(0xFF6B261C),
+    notifyHeroOn = Color.White,
+    notifyHeroBadgeBg = NotifyHeroBadgeBg,
 )
 
 fun appColorsFor(dark: Boolean): AppColors = if (dark) DarkAppColors else LightAppColors

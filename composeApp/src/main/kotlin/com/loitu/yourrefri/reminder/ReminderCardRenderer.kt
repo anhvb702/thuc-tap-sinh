@@ -1,18 +1,20 @@
 package com.loitu.yourrefri.reminder
 
 import android.graphics.Bitmap
+import android.graphics.BitmapShader
 import android.graphics.Canvas
-import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
-import android.graphics.RectF
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.TextUtils
+import androidx.compose.ui.graphics.toArgb
+import com.loitu.yourrefri.ui.theme.LightAppColors
 
 /**
  * Vẽ cả thẻ nhắc (nền terracotta, chữ, ảnh món tròn) thành một ảnh để hiện bằng BigPictureStyle.
@@ -22,44 +24,68 @@ object ReminderCardRenderer {
     const val WIDTH = 960
     const val HEIGHT = 440
     private const val PAD = 48f
-    private const val PICTURE_SIZE = 300
-
-    private val background = Color.parseColor("#D98C70")
-    private val text = Color.parseColor("#343B34")
+    private const val PICTURE_SIZE = 300f
+    private const val BADGE = "YOURREFRI · GỢI Ý BẾP NHÀ"
 
     fun render(title: String, body: String, picture: Bitmap?): Bitmap {
         val out = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
-        // Nền phủ kín toàn ảnh, không bo góc: màu tràn tới mép vùng ảnh của thông báo.
-        canvas.drawRect(0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = background })
+        val colors = LightAppColors
+        val onHero = colors.notifyHeroOn.toArgb()
+        val background = Paint().apply {
+            shader = LinearGradient(
+                0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(),
+                colors.notifyHeroStart.toArgb(), colors.notifyHeroEnd.toArgb(), Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawRect(0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(), background)
+        if (picture != null) drawDish(canvas, picture, onHero)
 
-        // Chừa chỗ cho ảnh món ở góc dưới phải, chữ không chạy sang đó.
-        val reserved: Float = if (picture != null) PICTURE_SIZE + 24f else 0f
+        val reserved = if (picture != null) PICTURE_SIZE + 32f else 0f
         val textWidth = (WIDTH - 2 * PAD - reserved).toInt()
 
-        val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = text; textSize = 34f }
-        canvas.drawText("YourRefri", PAD, PAD + 34f, label)
-
-        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = text; textSize = 58f; typeface = Typeface.DEFAULT_BOLD }
-        val titleLayout = layout(title, titlePaint, textWidth, maxLines = 2)
-        canvas.save()
-        canvas.translate(PAD, PAD + 70f)
-        titleLayout.draw(canvas)
-        canvas.restore()
-
-        val bodyPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = text; textSize = 38f }
-        val bodyTop = PAD + 70f + titleLayout.height + 16f
-        val bodyLayout = layout(body, bodyPaint, textWidth, maxLines = 2)
-        canvas.save()
-        canvas.translate(PAD, bodyTop)
-        bodyLayout.draw(canvas)
-        canvas.restore()
-
-        if (picture != null) {
-            val dish = circle(picture, PICTURE_SIZE)
-            canvas.drawBitmap(dish, (WIDTH - PAD - PICTURE_SIZE).toFloat(), (HEIGHT - PAD - PICTURE_SIZE).toFloat(), null)
+        val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = onHero
+            textSize = 24f
+            typeface = Typeface.DEFAULT_BOLD
         }
+        val badgeBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.notifyHeroBadgeBg.toArgb() }
+        val badgeCenterY = 60f
+        canvas.drawRoundRect(
+            PAD, badgeCenterY - 22f, PAD + label.measureText(BADGE) + 36f, badgeCenterY + 22f,
+            22f, 22f, badgeBackground,
+        )
+        canvas.drawText(BADGE, PAD + 18f, badgeCenterY - (label.ascent() + label.descent()) / 2f, label)
+
+        val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = onHero
+            textSize = 52f
+            typeface = Typeface.DEFAULT_BOLD
+        }
+        val titleLayout = layout(title, titlePaint, textWidth, maxLines = 2)
+        val titleTop = 100f
+        drawLayout(canvas, titleLayout, titleTop)
+
+        val bodyPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFF7EBE6.toInt()
+            textSize = 34f
+        }
+        val bodyTop = titleTop + titleLayout.height + 12f
+        drawLayout(canvas, layout(body, bodyPaint, textWidth, maxLines = 2), bodyTop)
+
+        val hint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0xFFF0D7CC.toInt()
+            textSize = 26f
+        }
+        canvas.drawText("Chạm để mở công thức →", PAD, HEIGHT - PAD, hint)
         return out
+    }
+
+    private fun drawLayout(canvas: Canvas, layout: StaticLayout, top: Float) {
+        canvas.save()
+        canvas.translate(PAD, top)
+        layout.draw(canvas)
+        canvas.restore()
     }
 
     private fun layout(content: String, paint: TextPaint, width: Int, maxLines: Int): StaticLayout =
@@ -69,16 +95,39 @@ object ReminderCardRenderer {
             .setEllipsize(TextUtils.TruncateAt.END)
             .build()
 
-    /** Cắt ảnh vuông ở giữa rồi làm tròn. */
-    private fun circle(src: Bitmap, size: Int): Bitmap {
-        val side = minOf(src.width, src.height)
-        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(out)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
-        paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
-        val from = Rect((src.width - side) / 2, (src.height - side) / 2, (src.width + side) / 2, (src.height + side) / 2)
-        canvas.drawBitmap(src, from, Rect(0, 0, size, size), paint)
-        return out
+    private fun drawDish(canvas: Canvas, picture: Bitmap, frameColor: Int) {
+        val radius = PICTURE_SIZE / 2f
+        val centerX = WIDTH - PAD - radius
+        val centerY = HEIGHT / 2f
+        val glowRadius = radius + 80f
+        val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                centerX, centerY, glowRadius, 0x66FFC0A1, 0x00FFC0A1, Shader.TileMode.CLAMP,
+            )
+        }
+        canvas.drawCircle(centerX, centerY, glowRadius, glow)
+
+        val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = frameColor
+            setShadowLayer(18f, 0f, 10f, 0x80421C15.toInt())
+        }
+        canvas.drawCircle(centerX, centerY, radius, frame)
+
+        val scale = PICTURE_SIZE / minOf(picture.width, picture.height)
+        val crop = Matrix().apply {
+            setScale(scale, scale)
+            postTranslate(centerX - picture.width * scale / 2f, centerY - picture.height * scale / 2f)
+        }
+        val photo = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            shader = BitmapShader(picture, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+                setLocalMatrix(crop)
+            }
+        }
+        canvas.drawCircle(centerX, centerY, radius, photo)
+
+        frame.clearShadowLayer()
+        frame.style = Paint.Style.STROKE
+        frame.strokeWidth = 8f
+        canvas.drawCircle(centerX, centerY, radius, frame)
     }
 }
