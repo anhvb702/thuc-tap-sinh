@@ -71,6 +71,41 @@ class PantryCategoryFilterTest {
         assertEquals(listOf("com", "sua", "muoi"), filterByCategories(cells, selected).ids())
     }
 
+    @Test
+    fun pantryCategoryOf_doesNotMisclassifyDuaLeoOrMelonsAsLeftovers() {
+        listOf("Dưa leo", "Dưa hấu", "Dưa lưới", "Dưa gang").forEach { freshProduce ->
+            assertEquals(
+                PantryCategory.UNPROCESSED,
+                pantryCategoryOf(cell(freshProduce, freshProduce, group = "rau-cu")),
+                "$freshProduce phải thuộc Chưa chế biến, không bị khớp nhầm chữ 'dư'",
+            )
+        }
+        assertEquals(PantryCategory.PROCESSED, pantryCategoryOf(cell("canh-du", "Canh dư")))
+        assertEquals(PantryCategory.PROCESSED, pantryCategoryOf(cell("do-an-du", "Đồ ăn dư")))
+    }
+
+    @Test
+    fun groupCellsByCategory_separatesGiaViFromDauNamAndPlacesToiInRauCu() {
+        val ingredients = listOf(
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("dau-phu", "Đậu phụ", "khac", 3, kind = "fresh"),
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("nam", "Nấm tươi", "khac", 3, kind = "fresh"),
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("toi", "Tỏi", "rau-cu", 30, kind = "fresh"),
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("nuoc-mam", "Nước mắm", "gia-vi", 365, kind = "seasoning"),
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("dau-an", "Dầu ăn", "gia-vi", 365, kind = "seasoning"),
+            com.loitu.yourrefri.feature.pantry.data.Ingredient("nuoc-tuong", "Nước tương", "gia-vi", 365, kind = "seasoning"),
+        )
+        val inputCells = ingredients.map { cell(it.id, it.nameVi, kind = it.kind, group = it.group) }
+        val groups = groupCellsByCategory(inputCells, ingredients).associateBy { it.label }
+
+        assertEquals(listOf("toi"), groups["Rau củ"]?.cells?.ids())
+        assertEquals(listOf("dau-phu", "nam"), groups["Đậu & nấm"]?.cells?.ids())
+        assertEquals(listOf("nuoc-mam", "dau-an", "nuoc-tuong"), groups["Gia vị"]?.cells?.ids())
+        assertEquals(
+            true,
+            quickAddGroupOptions().any { it.groupId == "gia-vi" && it.label == "Gia vị" },
+        )
+    }
+
     private fun cell(
         id: String,
         name: String,

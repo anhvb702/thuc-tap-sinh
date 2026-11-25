@@ -20,7 +20,8 @@ internal enum class PantryCategory(val labelVi: String) {
 
 internal val ALL_PANTRY_CATEGORIES: Set<PantryCategory> = PantryCategory.entries.toSet()
 
-private val leftoverNames = listOf("đồ ăn thừa", "leftover", "dư", "thừa", "cơm nguội")
+private val leftoverNames = listOf("đồ ăn thừa", "leftover", "thừa", "cơm nguội")
+private val leftoverWord = Regex("(?<!\\p{L})dư(?!\\p{L})")
 private val drinkNames = listOf("sữa", "nước", "trà", "cà phê", "nước ép")
 private val spiceNames = listOf("muối", "đường", "tiêu", "nước mắm", "nước tương", "dầu ăn", "dầu hào", "bột ngọt")
 
@@ -30,7 +31,8 @@ internal fun pantryCategoryOf(cell: PantryCell): PantryCategory {
     val name = cell.nameVi.lowercase()
     return when {
         kind == "leftover" || group == "leftover" || group == "do-an-thua" || kind == "ready" ||
-            leftoverNames.any(name::contains) || (group == "sua-trung" && drinkNames.any(name::contains)) ->
+            leftoverNames.any(name::contains) || leftoverWord.containsMatchIn(name) ||
+            (group == "sua-trung" && drinkNames.any(name::contains)) ->
             PantryCategory.PROCESSED
         kind == "seasoning" || group == "gia-vi" || spiceNames.any(name::contains) -> PantryCategory.SPICE
         else -> PantryCategory.UNPROCESSED
@@ -95,14 +97,15 @@ internal data class PantryCategoryGroup(
 }
 
 // Thứ tự nhóm cố định; nhóm lấy từ cùng trường `group` của bảng nguyên liệu như bộ chip "Hôm nay mua gì về?".
-private val CATEGORY_ORDER = listOf("rau-cu", "thit", "trai-cay", "sua-trung", "khac-dau-nam", "khac")
+private val CATEGORY_ORDER = listOf("rau-cu", "thit", "trai-cay", "sua-trung", "khac-dau-nam", "gia-vi", "khac")
 
-private fun categoryKeyOf(group: String?): String = when (group) {
-    "rau-cu", "rau-la" -> "rau-cu"
-    "thit", "ca" -> "thit"
-    "trai-cay" -> "trai-cay"
-    "sua-trung" -> "sua-trung"
-    "khac" -> "khac-dau-nam"
+private fun categoryKeyOf(cell: PantryCell, group: String?): String = when {
+    group == "gia-vi" || pantryCategoryOf(cell) == PantryCategory.SPICE -> "gia-vi"
+    group == "rau-cu" || group == "rau-la" -> "rau-cu"
+    group == "thit" || group == "ca" -> "thit"
+    group == "trai-cay" -> "trai-cay"
+    group == "sua-trung" -> "sua-trung"
+    group == "khac" -> "khac-dau-nam"
     else -> "khac"
 }
 
@@ -112,6 +115,7 @@ private fun categoryLabelOf(key: String): String = when (key) {
     "trai-cay" -> "Trái cây"
     "sua-trung" -> "Sữa & trứng"
     "khac-dau-nam" -> "Đậu & nấm"
+    "gia-vi" -> "Gia vị"
     else -> "Khác"
 }
 
@@ -121,7 +125,7 @@ internal fun groupCellsByCategory(
     ingredients: List<Ingredient>,
 ): List<PantryCategoryGroup> {
     val groupById = ingredients.associate { it.id to it.group }
-    val byKey = cells.groupBy { categoryKeyOf(groupById[it.ingredientId]) }
+    val byKey = cells.groupBy { categoryKeyOf(it, groupById[it.ingredientId]) }
     return CATEGORY_ORDER.mapNotNull { key ->
         byKey[key]?.takeIf { it.isNotEmpty() }?.let { PantryCategoryGroup(key, categoryLabelOf(key), it) }
     }

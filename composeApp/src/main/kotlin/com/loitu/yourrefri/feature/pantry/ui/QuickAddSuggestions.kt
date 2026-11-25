@@ -38,6 +38,7 @@ internal fun quickAddGroupOptions(): List<QuickAddGroupOption> = listOf(
     QuickAddGroupOption("trai-cay", "Trái cây"),
     QuickAddGroupOption("sua-trung", "Sữa & Trứng"),
     QuickAddGroupOption("khac", "Đậu & Nấm"),
+    QuickAddGroupOption("gia-vi", "Gia vị"),
 )
 
 fun quickAddSuggestions(

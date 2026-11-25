@@ -33,7 +33,7 @@ class ShelfTableTest {
     @Test
     fun groups_isExactlyTheAgreedSet() {
         assertEquals(
-            setOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "khac"),
+            setOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "gia-vi", "khac"),
             ShelfTable.GROUPS,
         )
     }
@@ -83,7 +83,7 @@ class ShelfTableTest {
 
     @Test
     fun parse_everyAgreedGroup_isAccepted() {
-        val groups = listOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "khac")
+        val groups = listOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "gia-vi", "khac")
         val json = array(*groups.mapIndexed { i, g -> entry("mon-$i", group = g) }.toTypedArray())
         assertEquals(groups, ShelfTable.parse(json).map { it.group })
     }
@@ -203,6 +203,7 @@ class ShelfTableTest {
         "rau-cu" to 30,
         "trai-cay" to 21,
         "sua-trung" to 30,
+        "gia-vi" to 30,
         "khac" to 30,
     )
 
@@ -260,6 +261,17 @@ class ShelfTableTest {
     fun bundle_leafyVegetablesAtMost7Days() {
         val tooLong = bundle.filter { it.group == "rau-la" }.filter { it.defaultShelfDays > 7 }
         assertEquals(emptyList(), tooLong)
+    }
+
+    @Test
+    fun bundle_seasoningsAndGarlicAreInTheRightGroups() {
+        val groupById = bundle.associate { it.id to it.group }
+        listOf("nuoc-mam", "dau-an", "nuoc-tuong").forEach { assertEquals("gia-vi", groupById[it], it) }
+        assertEquals("rau-cu", groupById["toi"])
+        assertEquals("khac", groupById["dau-phu"])
+        assertEquals("khac", groupById["nam"])
+        val seasoningsInKhac = bundle.filter { it.kind == "seasoning" && it.group == "khac" }.map { it.id }
+        assertEquals(emptyList(), seasoningsInKhac)
     }
 
     @Test
