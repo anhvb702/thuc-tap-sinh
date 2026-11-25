@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.ui.theme.AppIcons
@@ -49,6 +50,22 @@ internal fun SectionTitle(text: String, icon: ImageVector? = null) {
 @Composable
 internal fun SettingsCard(content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(AppTheme.colors.surface).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() }
+}
+
+@Composable
+internal fun SettingsNavRow(title: String, summary: String, icon: ImageVector, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(icon, null, tint = colors.accentText, modifier = Modifier.size(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
+            Text(summary, fontSize = 13.sp, color = colors.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        Icon(AppIcons.ArrowRight, null, tint = colors.muted, modifier = Modifier.size(20.dp))
+    }
 }
 
 @Composable
