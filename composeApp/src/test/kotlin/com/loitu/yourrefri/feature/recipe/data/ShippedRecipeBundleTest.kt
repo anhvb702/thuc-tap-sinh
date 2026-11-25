@@ -323,6 +323,19 @@ class ShippedRecipeBundleTest {
         assertCompleteMeasuresAndSeasonings(shippedRecipes().take(expectedIds.size), expectedIds)
     }
 
+    @Test
+    fun everyShippedRecipeHasCompleteMeasuresAndSeasonings() {
+        val recipes = shippedRecipes()
+        assertEquals(36, recipes.size)
+        assertCompleteMeasuresAndSeasonings(recipes, recipes.map { it.id })
+        recipes.forEach { recipe ->
+            recipe.seasonings.forEach { seasoning ->
+                assertTrue(seasoning.amountText.isNotBlank(), "${recipe.id}: ${seasoning.name} needs amountText")
+            }
+        }
+        assertEquals(6, recipes.count { it.isMystery })
+    }
+
     private fun assertCompleteMeasuresAndSeasonings(recipes: List<Recipe>, expectedIds: List<String>) {
         val forbiddenCopy = listOf(
             "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "streak", "chuỗi ngày liên tiếp", // lint-copy: rule
