@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -31,6 +32,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -77,6 +80,8 @@ internal fun RandomWheelDialog(
     onSpinAgain: () -> Unit,
     onOpenRecipe: (Recipe) -> Unit,
     onDismiss: () -> Unit,
+    onlyReadyIngredients: Boolean = true,
+    onToggleOnlyReady: ((Boolean) -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     var spinTrigger by remember { mutableIntStateOf(0) }
@@ -119,6 +124,36 @@ internal fun RandomWheelDialog(
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onToggleOnlyReady != null) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (onlyReadyIngredients) colors.primarySoft else colors.surfaceSoft,
+                        border = BorderStroke(1.dp, if (onlyReadyIngredients) colors.primary else colors.line),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = onlyReadyIngredients,
+                                role = Role.Switch,
+                                onValueChange = onToggleOnlyReady,
+                            ),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            if (onlyReadyIngredients) {
+                                Icon(AppIcons.Check, contentDescription = null, tint = colors.accentText, modifier = Modifier.width(16.dp).height(16.dp))
+                            }
+                            Text(
+                                text = RANDOM_WHEEL_READY_ONLY_LABEL,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (onlyReadyIngredients) colors.accentText else colors.muted,
+                            )
+                        }
+                    }
+                }
                 Text(
                     if (landed) "Món được chọn" else "Đang quay chọn món...",
                     style = MaterialTheme.typography.bodyMedium,

@@ -13,6 +13,7 @@ data class HomeUiState(
     val dashboard: HomeDashboardData = HomeDashboardData(),
     val meal: MealSlot = MealSlot.DINNER,
     val randomPick: RandomRecipePick? = null,
+    val randomOnlyReady: Boolean = true,
     val showRandomWheel: Boolean = false,
     val showNoCookableDialog: Boolean = false,
     val weatherCity: WeatherCity = WeatherCity.HANOI,
@@ -29,6 +30,7 @@ sealed interface HomeIntent {
     ) : HomeIntent
     data object OpenRandomWheel : HomeIntent
     data object SpinRandomAgain : HomeIntent
+    data class SetRandomOnlyReady(val onlyReady: Boolean) : HomeIntent
     data object DismissRandomWheel : HomeIntent
     data object DismissNoCookableDialog : HomeIntent
     data class SelectRandomRecipe(val recipeId: String) : HomeIntent

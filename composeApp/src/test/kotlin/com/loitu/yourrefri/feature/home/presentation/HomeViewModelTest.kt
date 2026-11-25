@@ -82,6 +82,28 @@ class HomeViewModelTest {
     }
 
     @Test
+    fun setRandomOnlyReadyFalse_allowsPickingFromAllRecipesEvenWhenNoneCookable() {
+        val viewModel = HomeViewModel()
+        viewModel.onIntent(
+            HomeIntent.SyncInputs(
+                pantryState = state(withRice = false),
+                recipes = listOf(recipe("rice-recipe")),
+                meal = MealSlot.DINNER,
+                tasteProfile = com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile(),
+            ),
+        )
+        viewModel.onIntent(HomeIntent.OpenRandomWheel)
+        assertTrue(viewModel.state.value.showNoCookableDialog)
+        assertFalse(viewModel.state.value.showRandomWheel)
+
+        viewModel.onIntent(HomeIntent.SetRandomOnlyReady(false))
+        viewModel.onIntent(HomeIntent.OpenRandomWheel)
+        assertFalse(viewModel.state.value.showNoCookableDialog)
+        assertTrue(viewModel.state.value.showRandomWheel)
+        assertEquals("rice-recipe", viewModel.state.value.randomPick?.recipe?.id)
+    }
+
+    @Test
     fun loadWeather_fetchesCurrentCityAndUpdatesState() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {

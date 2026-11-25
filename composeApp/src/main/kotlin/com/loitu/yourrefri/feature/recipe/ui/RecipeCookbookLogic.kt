@@ -6,6 +6,15 @@ import com.loitu.yourrefri.feature.pantry.ui.normalizeFoodQuery
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 
 internal const val MYSTERY_RECIPE_LABEL = "Món bí mật"
+internal const val COOKBOOK_WEEKLY_SHORTCUT_LABEL = "Thực đơn"
+internal const val COOKBOOK_WEEKLY_SHORTCUT_DESC = "Mở thực đơn tuần"
+internal const val RANDOM_WHEEL_READY_ONLY_LABEL = "Chỉ quay từ đồ đang có"
+
+internal fun randomWheelPool(
+    cookableRecipes: List<Recipe>,
+    allRecipes: List<Recipe>,
+    onlyReadyIngredients: Boolean,
+): List<Recipe> = if (onlyReadyIngredients) cookableRecipes else allRecipes
 
 internal enum class CookbookDurationGroup(val labelVi: String) {
     QUICK("Nhanh ≤ 15p"),

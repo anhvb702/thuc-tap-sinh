@@ -13,5 +13,12 @@ class PickHomeRandomRecipeUseCase(
         cookable: List<Recipe>,
         state: PantryGridState,
         excludeId: String? = null,
-    ): RandomRecipePick? = pickRandomRecipe(cookable, state, excludeId = excludeId, random = random)
+        onlyCookable: Boolean = true,
+    ): RandomRecipePick? = pickRandomRecipe(
+        recipes = cookable,
+        state = state,
+        excludeId = excludeId,
+        random = random,
+        onlyCookable = onlyCookable,
+    )
 }

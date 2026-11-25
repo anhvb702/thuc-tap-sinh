@@ -136,6 +136,7 @@ fun RecipeScreen(
             onOpenRecipe = ::openRecipe,
             onToggleFavorite = onToggleFavorite,
             modifier = modifier,
+            onOpenWeeklyPlan = { updateMode(RecipeScreenMode.WEEKLY) },
         )
         if (showMysteryWheel) {
             MysteryUnlockWheel(

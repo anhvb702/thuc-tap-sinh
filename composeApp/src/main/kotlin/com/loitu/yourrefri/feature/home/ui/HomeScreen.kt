@@ -44,6 +44,7 @@ import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
 import com.loitu.yourrefri.feature.recipe.ui.RandomWheelDialog
 import com.loitu.yourrefri.feature.recipe.ui.ShortcutCard
+import com.loitu.yourrefri.feature.recipe.ui.randomWheelPool
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import kotlinx.coroutines.flow.collect
@@ -110,11 +111,13 @@ fun HomeScreen(
     val randomPick = homeState.randomPick
     if (homeState.showRandomWheel && randomPick != null) {
         RandomWheelDialog(
-            pool = dashboard.cookableRecipes,
+            pool = randomWheelPool(dashboard.cookableRecipes, suggestions, homeState.randomOnlyReady),
             pick = randomPick,
             onSpinAgain = { homeViewModel.onIntent(HomeIntent.SpinRandomAgain) },
             onOpenRecipe = { recipe -> homeViewModel.onIntent(HomeIntent.SelectRandomRecipe(recipe.id)) },
             onDismiss = { homeViewModel.onIntent(HomeIntent.DismissRandomWheel) },
+            onlyReadyIngredients = homeState.randomOnlyReady,
+            onToggleOnlyReady = { homeViewModel.onIntent(HomeIntent.SetRandomOnlyReady(it)) },
         )
     }
 
