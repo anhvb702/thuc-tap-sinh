@@ -9,6 +9,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
+import com.loitu.yourrefri.ui.components.pressScale
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -213,18 +216,25 @@ fun HandsFreeCookScreen(
             if (state.isFirst) {
                 Spacer(Modifier.weight(1f))
             } else {
+                val backInteractionSource = remember { MutableInteractionSource() }
                 Button(
                     onClick = { savedIndex = state.previous().stepIndex },
-                    modifier = Modifier.weight(1f).heightIn(min = NavButtonHeight),
+                    interactionSource = backInteractionSource,
+                    modifier = Modifier.weight(1f).heightIn(min = NavButtonHeight).pressScale(backInteractionSource),
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceSoft, contentColor = colors.text),
                 ) {
                     Text(HandsFreeCopy.BACK, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
+            val nextInteractionSource = remember { MutableInteractionSource() }
             Button(
                 onClick = { if (state.isLast) onFinished() else savedIndex = state.next().stepIndex },
-                modifier = Modifier.weight(if (state.isLast) 1.6f else 1f).heightIn(min = NavButtonHeight),
+                interactionSource = nextInteractionSource,
+                modifier = Modifier
+                    .weight(if (state.isLast) 1.6f else 1f)
+                    .heightIn(min = NavButtonHeight)
+                    .pressScale(nextInteractionSource),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
             ) {

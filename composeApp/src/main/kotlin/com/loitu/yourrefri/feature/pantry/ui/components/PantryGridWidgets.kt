@@ -10,6 +10,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -545,6 +546,7 @@ internal fun VoiceSheet(
     onCancel: () -> Unit,
     onRetry: () -> Unit,
     onManual: () -> Unit,
+    voiceLevel: Float = 0f,
 ) {
     val colors = AppTheme.colors
     ModalBottomSheet(
@@ -570,6 +572,21 @@ internal fun VoiceSheet(
                 )
             }
             if (phase == VoicePhase.LISTENING) {
+                val animatorsEnabled = areSystemAnimatorsEnabled()
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    voiceWaveBarHeights(voiceLevel, animatorsEnabled).forEach { fraction ->
+                        val height by animateDpAsState(
+                            targetValue = 24.dp * fraction,
+                            animationSpec = if (animatorsEnabled) tween(durationMillis = 100) else snap(),
+                            label = "voiceWaveBar",
+                        )
+                        Box(Modifier.width(4.dp).height(height).background(colors.cta, RoundedCornerShape(999.dp)))
+                    }
+                }
                 Text(
                     text = partial.ifBlank { VOICE_LISTENING_HINT },
                     style = MaterialTheme.typography.bodyLarge,

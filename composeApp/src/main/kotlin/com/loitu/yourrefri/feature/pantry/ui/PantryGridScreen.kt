@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,11 +66,16 @@ fun PantryGridScreen(
     var showMicExplain by remember { mutableStateOf(false) }
     var voicePhase by remember { mutableStateOf(VoicePhase.IDLE) }
     var voicePartial by remember { mutableStateOf("") }
+    var voiceLevel by remember { mutableFloatStateOf(0f) }
     var voiceNote by remember { mutableStateOf<String?>(null) }
     val voiceAvailable = voiceInputEnabled && remember { isVoiceInputAvailable(context) }
     val sessionHolder = remember { arrayOfNulls<VoiceSession>(1) }
 
-    fun endVoiceSession() { sessionHolder[0]?.destroy(); sessionHolder[0] = null }
+    fun endVoiceSession() {
+        sessionHolder[0]?.destroy()
+        sessionHolder[0] = null
+        voiceLevel = 0f
+    }
     fun dismissAdd() { showAdd = false; newFoodName = ""; newFoodDays = null; selectedGroup = null; selectedIds = emptySet(); voiceHeard = null; addFoodError = false; addFoodAlreadyPresent = false; addChoice = AddChoice.ADD_INGREDIENT }
     fun openAdd(prefill: String = "", preselected: Set<String> = emptySet(), heard: String? = null, choice: AddChoice = AddChoice.ADD_INGREDIENT) { addChoice = choice; newFoodName = prefill; selectedIds = preselected; voiceHeard = heard; newFoodDays = null; selectedGroup = null; addFoodError = false; addFoodAlreadyPresent = false; showAdd = true }
     fun note(message: String) { snackbarHostState?.let { host -> scope.launch { host.currentSnackbarData?.dismiss(); host.showSnackbar(message, duration = SnackbarDuration.Short) } } ?: run { voiceNote = message } }
@@ -86,7 +92,37 @@ fun PantryGridScreen(
         }
     }
     fun clearAll() { val actions = clearAllPantryActions(state); actions.forEach(onAction); snackbarHostState?.let { host -> scope.launch { host.currentSnackbarData?.dismiss(); val job = launch { if (host.showSnackbar("Đã dọn hết ${actions.size} món khỏi tủ", actionLabel = "Hoàn tác", duration = SnackbarDuration.Indefinite) == SnackbarResult.ActionPerformed) actions.forEach(onAction) }; delay(5_000); if (job.isActive) host.currentSnackbarData?.dismiss() } } }
-    fun startListening() { endVoiceSession(); voicePartial = ""; voicePhase = VoicePhase.LISTENING; val session = startVoiceSession(context, { voicePartial = it }, { text -> endVoiceSession(); val parsed = parseVoiceItems(text, state.ingredients); val addable = parsed.filter { state.pantry[it]?.have != true }; when { parsed.isEmpty() -> voicePhase = VoicePhase.NOT_HEARD; addable.isEmpty() -> { voicePhase = VoicePhase.IDLE; note(VOICE_ALREADY_HAVE) }; else -> { voicePhase = VoicePhase.IDLE; openAdd(preselected = addable.toSet(), heard = voiceHeardText(text)) } } }, { failure -> endVoiceSession(); voicePhase = if (failure == VoiceFailure.NOTHING_HEARD) VoicePhase.NOT_HEARD else VoicePhase.ERROR }); if (session == null) voicePhase = VoicePhase.ERROR else sessionHolder[0] = session }
+    fun startListening() {
+        endVoiceSession()
+        voicePartial = ""
+        voicePhase = VoicePhase.LISTENING
+        val session = startVoiceSession(
+            context = context,
+            onPartial = { voicePartial = it },
+            onResult = { text ->
+                endVoiceSession()
+                val parsed = parseVoiceItems(text, state.ingredients)
+                val addable = parsed.filter { state.pantry[it]?.have != true }
+                when {
+                    parsed.isEmpty() -> voicePhase = VoicePhase.NOT_HEARD
+                    addable.isEmpty() -> {
+                        voicePhase = VoicePhase.IDLE
+                        note(VOICE_ALREADY_HAVE)
+                    }
+                    else -> {
+                        voicePhase = VoicePhase.IDLE
+                        openAdd(preselected = addable.toSet(), heard = voiceHeardText(text))
+                    }
+                }
+            },
+            onFailure = { failure ->
+                endVoiceSession()
+                voicePhase = if (failure == VoiceFailure.NOTHING_HEARD) VoicePhase.NOT_HEARD else VoicePhase.ERROR
+            },
+            onRms = { voiceLevel = it },
+        )
+        if (session == null) voicePhase = VoicePhase.ERROR else sessionHolder[0] = session
+    }
     val micPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) startListening() else note(VOICE_MIC_DENIED) }
     DisposableEffect(Unit) { onDispose { endVoiceSession() } }
     BackHandler(enabled = addMenuOpen) { addMenuOpen = false }
@@ -185,5 +221,85 @@ fun PantryGridScreen(
             },
         )
     }
-    PantryGridDialogs(state, onAction, showClear, { showClear = false }, ::clearAll, showLeftover, { showLeftover = false }, { name -> if (name.isNotBlank()) { onAction(PantryGridAction.AddCustomFood(name, 2, "khac", "leftover", true)); note("Đã cất $name vào Đồ ăn thừa") }; showLeftover = false }, showMicExplain, { showMicExplain = false }, { micPermission.launch(Manifest.permission.RECORD_AUDIO) }, voicePhase, voicePartial, { sessionHolder[0]?.stop() }, { endVoiceSession(); voicePhase = VoicePhase.IDLE }, ::startListening, { endVoiceSession(); voicePhase = VoicePhase.IDLE; openAdd() }, showAdd, addChoice, newFoodName, newFoodDays, selectedGroup, selectedIds, addFoodError, addFoodAlreadyPresent, voiceHeard, { newFoodName = it; addFoodError = false; addFoodAlreadyPresent = false }, { newFoodDays = it }, { selectedGroup = it }, { selectedIds = toggleQuickAddSelection(selectedIds, it) }, { val existing = state.ingredients.map { it.nameVi }.toSet(); val actions = if (addChoice == AddChoice.ADD_OTHER) listOfNotNull(if (canAddOther(newFoodName, existing)) PantryGridAction.AddCustomFood(newFoodName.trim(), newFoodDays ?: 3, "khac", "fresh", false) else null) else ingredientOnlyConfirmActions(state, selectedIds, newFoodName, newFoodDays); if (actions.isNotEmpty()) { actions.forEach(onAction); dismissAdd() } else { addFoodError = true; addFoodAlreadyPresent = selectedIds.any { state.pantry[it]?.have == true } } }, ::dismissAdd, { combo -> val actions = comboActionsFor(combo, state); actions.forEach(onAction); showCombo = false; note("Đã thêm gói ${combo.titleVi} (${actions.size} món) vào tủ") }, showCombo, { showCombo = false })
+    PantryGridDialogs(
+        state = state,
+        onAction = onAction,
+        showClear = showClear,
+        onDismissClear = { showClear = false },
+        onClearAll = ::clearAll,
+        showLeftover = showLeftover,
+        onDismissLeftover = { showLeftover = false },
+        onSaveLeftover = { name ->
+            if (name.isNotBlank()) {
+                onAction(PantryGridAction.AddCustomFood(name, 2, "khac", "leftover", true))
+                note("Đã cất $name vào Đồ ăn thừa")
+            }
+            showLeftover = false
+        },
+        showMicExplain = showMicExplain,
+        onDismissMicExplain = { showMicExplain = false },
+        onRequestMic = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
+        voicePhase = voicePhase,
+        voicePartial = voicePartial,
+        onVoiceStop = {
+            voiceLevel = 0f
+            sessionHolder[0]?.stop()
+        },
+        onVoiceCancel = {
+            endVoiceSession()
+            voicePhase = VoicePhase.IDLE
+        },
+        onVoiceRetry = ::startListening,
+        onVoiceManual = {
+            endVoiceSession()
+            voicePhase = VoicePhase.IDLE
+            openAdd()
+        },
+        showAdd = showAdd,
+        addChoice = addChoice,
+        newFoodName = newFoodName,
+        newFoodDays = newFoodDays,
+        selectedGroup = selectedGroup,
+        selectedIds = selectedIds,
+        addFoodError = addFoodError,
+        addFoodAlreadyPresent = addFoodAlreadyPresent,
+        voiceHeard = voiceHeard,
+        onName = {
+            newFoodName = it
+            addFoodError = false
+            addFoodAlreadyPresent = false
+        },
+        onDays = { newFoodDays = it },
+        onGroup = { selectedGroup = it },
+        onToggleId = { selectedIds = toggleQuickAddSelection(selectedIds, it) },
+        onConfirmAdd = {
+            val existing = state.ingredients.map { it.nameVi }.toSet()
+            val actions = if (addChoice == AddChoice.ADD_OTHER) {
+                listOfNotNull(
+                    if (canAddOther(newFoodName, existing)) {
+                        PantryGridAction.AddCustomFood(newFoodName.trim(), newFoodDays ?: 3, "khac", "fresh", false)
+                    } else null,
+                )
+            } else {
+                ingredientOnlyConfirmActions(state, selectedIds, newFoodName, newFoodDays)
+            }
+            if (actions.isNotEmpty()) {
+                actions.forEach(onAction)
+                dismissAdd()
+            } else {
+                addFoodError = true
+                addFoodAlreadyPresent = selectedIds.any { state.pantry[it]?.have == true }
+            }
+        },
+        onDismissAdd = ::dismissAdd,
+        onCombo = { combo ->
+            val actions = comboActionsFor(combo, state)
+            actions.forEach(onAction)
+            showCombo = false
+            note("Đã thêm gói ${combo.titleVi} (${actions.size} món) vào tủ")
+        },
+        showCombo = showCombo,
+        onDismissCombo = { showCombo = false },
+        voiceLevel = voiceLevel,
+    )
 }
