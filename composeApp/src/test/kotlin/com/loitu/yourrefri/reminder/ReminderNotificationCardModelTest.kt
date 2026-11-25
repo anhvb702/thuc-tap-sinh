@@ -1,7 +1,9 @@
 package com.loitu.yourrefri.reminder
 
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ReminderNotificationCardModelTest {
@@ -38,6 +40,96 @@ class ReminderNotificationCardModelTest {
         assertTrue(model.hero.isNotBlank())
         assertTrue(model.subtitle.isNotBlank())
         assertNoBannedWords(model)
+    }
+
+    @Test
+    fun bigPictureUsesSpecifiedDimensionsAndHorizontalSafeZone() {
+        assertEquals(1080, ReminderCardRenderer.WIDTH)
+        assertEquals(450, ReminderCardRenderer.HEIGHT)
+        assertEquals(56, ReminderCardRenderer.SAFE_ZONE_HORIZONTAL_PX)
+        assertTrue(ReminderCardRenderer.CONTENT_SAFE_INSET_PX >= 150)
+    }
+
+    @Test
+    fun urgentBigPictureUsesExtraCountFromBodyEvenWithDishTitle() {
+        val content = buildReminderBigPictureContent(
+            title = "Tối nay nấu Canh rau ngót nhé",
+            body = "Mực tươi, Cá hồi và 2 món khác nên dùng trước (hạn ước tính).",
+        )
+
+        assertEquals("🍲 Canh rau ngót · Nên dùng sớm", content.contentTitle)
+        assertEquals("+2 món nữa nên dùng sớm", content.contentText)
+        assertEquals("Canh rau ngót", content.hero)
+        assertEquals("Dễ nấu, ấm bụng cho bữa cơm nhà", content.subtitle)
+        assertBigPictureCopy(content)
+    }
+
+    @Test
+    fun urgentBigPictureReadsPlusCount() {
+        val content = buildReminderBigPictureContent(
+            title = "Tối nay nấu Canh rau ngót nhé",
+            body = "+2 món nên dùng trước",
+        )
+
+        assertEquals("+2 món nữa nên dùng sớm", content.contentText)
+        assertBigPictureCopy(content)
+    }
+
+    @Test
+    fun urgentBigPictureWithoutExtraItemsInvitesOpeningSuggestion() {
+        val content = buildReminderBigPictureContent(
+            title = "Gợi ý từ tủ nhà mình",
+            body = "Mực tươi nên dùng trước (hạn ước tính).",
+        )
+
+        assertEquals("🍲 Mực tươi · Nên dùng sớm", content.contentTitle)
+        assertEquals("Mở xem gợi ý món ngon hôm nay", content.contentText)
+        assertBigPictureCopy(content)
+    }
+
+    @Test
+    fun nonUrgentBigPictureUsesTodaysSuggestion() {
+        val content = buildReminderBigPictureContent(
+            title = "Gợi ý bữa cơm: Canh rau ngót",
+            body = "Món Canh rau ngót dễ nấu, ấm bụng cho bữa cơm nhà.",
+        )
+
+        assertEquals("🍲 Canh rau ngót · Gợi ý hôm nay", content.contentTitle)
+        assertEquals("Mở xem gợi ý món ngon hôm nay", content.contentText)
+        assertBigPictureCopy(content)
+    }
+
+    @Test
+    fun bigPictureReturnsNullWhenRenderingRunsOutOfMemory() {
+        assertNull(resolveBigPictureStyle { throw OutOfMemoryError() })
+    }
+
+    @Test
+    fun bigPictureReturnsNullWhenRenderingFails() {
+        assertNull(resolveBigPictureStyle { throw IllegalStateException() })
+    }
+
+    @Test
+    fun bigPictureAttemptsRenderingAndAcceptsMissingBanner() {
+        var renderCalls = 0
+        val banner = resolveBigPictureStyle {
+            renderCalls++
+            null
+        }
+
+        assertNull(banner)
+        assertEquals(1, renderCalls)
+    }
+
+    private fun assertBigPictureCopy(content: ReminderBigPictureContent) {
+        assertEquals("Xem món & nấu ngay", content.actionLabel)
+        assertNoBannedWords(
+            ReminderCardModel(
+                content.contentTitle,
+                content.contentText,
+                "${content.hero} ${content.subtitle} ${content.actionLabel}",
+            ),
+        )
     }
 
     private fun assertNoBannedWords(model: ReminderCardModel) {
