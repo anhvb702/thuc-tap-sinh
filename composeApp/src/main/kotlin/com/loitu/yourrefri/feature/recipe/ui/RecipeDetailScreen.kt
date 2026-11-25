@@ -81,6 +81,7 @@ import com.loitu.yourrefri.feature.recipe.data.Seasoning
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.logic.formatSlotMeasure
 import com.loitu.yourrefri.feature.recipe.logic.measureEstimateNote
+import com.loitu.yourrefri.feature.recipe.logic.seasoningEstimateNote
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
@@ -230,7 +231,7 @@ fun RecipeDetailScreen(
                     }
                 }
                 if (recipe.seasonings.isNotEmpty()) {
-                    RecipeSeasonings(recipe.seasonings, recipe.servings)
+                    RecipeSeasonings(recipe.seasonings, recipe.servings, selectedServings)
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -395,7 +396,7 @@ private fun ServingSelector(selectedServings: Int, onSelect: (Int) -> Unit) {
 }
 
 @Composable
-private fun RecipeSeasonings(seasonings: List<Seasoning>, baseServings: Int) {
+private fun RecipeSeasonings(seasonings: List<Seasoning>, baseServings: Int, targetServings: Int) {
     val colors = AppTheme.colors
     Text(
         text = "Gia vị cần dùng",
@@ -404,7 +405,7 @@ private fun RecipeSeasonings(seasonings: List<Seasoning>, baseServings: Int) {
         modifier = Modifier.padding(top = 18.dp, bottom = 2.dp),
     )
     Text(
-        text = "Tham khảo cho khoảng $baseServings người · nêm theo khẩu vị",
+        text = seasoningEstimateNote(baseServings, targetServings),
         style = MaterialTheme.typography.bodySmall,
         color = colors.muted,
         modifier = Modifier.padding(bottom = 8.dp),

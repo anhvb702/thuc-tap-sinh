@@ -46,7 +46,12 @@ class RecipeMeasureFormatTest {
     fun formatScaledMeasureAndSlotMeasureRespectIngredientChoiceAndServings() {
         assertEquals("500 g", formatScaledMeasure(Measure(250.0, "g"), 2, 4))
         assertEquals("1/2 củ", formatScaledMeasure(Measure(1.0, "củ"), 2, 1))
-        assertEquals("1,5 quả", formatScaledMeasure(Measure(1.0, "quả"), 2, 3))
+        // P2d (Master Plan đã duyệt): đơn vị "quả" lẻ >= 1 làm tròn tự nhiên kiểu bếp.
+        assertEquals("khoảng 1–2 quả", formatScaledMeasure(Measure(1.0, "quả"), 2, 3))
+        assertEquals("khoảng 2–3 quả", formatScaledMeasure(Measure(5.0, "quả"), 4, 2))
+        assertEquals("2 quả", formatScaledMeasure(Measure(1.0, "quả"), 2, 4))
+        assertEquals("1/2 quả", formatScaledMeasure(Measure(1.0, "quả"), 2, 1))
+        assertEquals("11 quả", formatScaledMeasure(Measure(7.0, "quả"), 2, 3))
 
         val slot = Slot(
             anyOf = listOf("thit-heo", "thit-heo-xay"),
@@ -68,5 +73,13 @@ class RecipeMeasureFormatTest {
         listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { forbidden -> // lint-copy: rule
             assertFalse(forbidden in low)
         }
+    }
+
+    @Test
+    fun seasoningEstimateNote_isTruthfulWhenScaledAndClampsLowerBound() {
+        assertEquals("Tham khảo cho khoảng 2 người · nêm theo khẩu vị", seasoningEstimateNote(2, 2))
+        assertEquals("Khẩu phần chuẩn 2 người · tự gia giảm khi nấu 4 người", seasoningEstimateNote(2, 4))
+        assertEquals("Khẩu phần chuẩn 2 người · tự gia giảm khi nấu 1 người", seasoningEstimateNote(2, 1))
+        assertEquals("Tham khảo cho khoảng 1 người · nêm theo khẩu vị", seasoningEstimateNote(0, 0))
     }
 }
