@@ -21,9 +21,12 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.RecipeBundle
 import com.loitu.yourrefri.feature.recipe.data.SqlTasteProfileRepository
 import com.loitu.yourrefri.feature.recipe.data.TasteProfileRepository
+import com.loitu.yourrefri.feature.recipe.data.UnlockedRecipeRepository
+import com.loitu.yourrefri.feature.recipe.data.UnlockedRecipeRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepository
 import com.loitu.yourrefri.feature.recipe.data.WeeklyMealPlanRepositoryImpl
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesViewModel
+import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
 import com.loitu.yourrefri.shared.db.DriverFactory
@@ -38,6 +41,7 @@ interface AppContainer {
     val weeklyMealPlanRepository: WeeklyMealPlanRepository
     val tasteProfileRepository: TasteProfileRepository
     val favoriteRepository: FavoriteRecipeRepository
+    val unlockedRecipeRepository: UnlockedRecipeRepository
     val cookLogRepository: CookLogRepository
     val backupRepository: PantryBackupRepositoryImpl
     val ingredients: List<Ingredient>
@@ -49,6 +53,7 @@ interface AppContainer {
     fun recipeViewModelFactory(): ViewModelProvider.Factory
     fun weeklyMealPlanViewModelFactory(): ViewModelProvider.Factory
     fun favoriteRecipesViewModelFactory(): ViewModelProvider.Factory
+    fun unlockedRecipesViewModelFactory(): ViewModelProvider.Factory
     fun cookHistoryViewModelFactory(): ViewModelProvider.Factory
 }
 
@@ -64,6 +69,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val weeklyMealPlanRepository: WeeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO)
     override val tasteProfileRepository: TasteProfileRepository = SqlTasteProfileRepository(db, Dispatchers.IO)
     override val favoriteRepository: FavoriteRecipeRepository = FavoriteRecipeRepositoryImpl(db, Dispatchers.IO, clock)
+    override val unlockedRecipeRepository: UnlockedRecipeRepository = UnlockedRecipeRepositoryImpl(db, Dispatchers.IO)
     override val cookLogRepository: CookLogRepository = CookLogRepositoryImpl(db, Dispatchers.IO)
     override val backupRepository = PantryBackupRepositoryImpl(db, Dispatchers.IO)
     override val ingredients: List<Ingredient> = appContext.assets.open("shelf_table.json").bufferedReader().use {
@@ -89,6 +95,10 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override fun favoriteRecipesViewModelFactory() = singleViewModelFactory {
         FavoriteRecipesViewModel(favoriteRepository)
+    }
+
+    override fun unlockedRecipesViewModelFactory() = singleViewModelFactory {
+        UnlockedRecipesViewModel(unlockedRecipeRepository, clock, timeZone)
     }
 
     override fun cookHistoryViewModelFactory() = singleViewModelFactory {

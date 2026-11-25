@@ -567,5 +567,95 @@
       { "anyOf": ["nuoc-mam"] },
       { "anyOf": ["chanh"] }
     ]
+  },
+  {
+    "id": "bo-luc-lac-khoai-tay",
+    "title": "Bò lúc lắc khoai tây",
+    "mystery": true,
+    "minutes": 25,
+    "stepMinutes": [6, 8, 5, 3],
+    "steps": [
+      "Cắt bò và khoai tây thành khối vừa ăn. Bổ hành tây thành múi, băm tỏi rồi ướp bò với tỏi và nước tương.",
+      "Lau khô khoai tây rồi áp chảo với dầu, đảo đều đến khi các mặt vàng và ruột mềm. Gắp khoai ra đĩa.",
+      "Làm nóng lại chảo, xếp bò thành một lớp. Để mặt dưới xém nhẹ rồi đảo các mặt đến khi bò chín vừa.",
+      "Cho hành tây và khoai vào đảo trên lửa lớn đến khi hành vừa trong. Nêm thêm chút nước tương nếu thích."
+    ],
+    "required": [{"anyOf": ["thit-bo"]}, {"anyOf": ["khoai-tay"]}, {"anyOf": ["hanh-tay"]}],
+    "optional": [{"anyOf": ["toi"]}, {"anyOf": ["nuoc-tuong"]}, {"anyOf": ["dau-an"]}]
+  },
+  {
+    "id": "suon-xao-chua-ngot-bi-mat",
+    "title": "Sườn xào chua ngọt",
+    "mystery": true,
+    "minutes": 35,
+    "stepMinutes": [6, 9, 5, 12],
+    "steps": [
+      "Chần sườn trong nước sôi, vớt ra để ráo. Băm tỏi, thái nhỏ cà chua và cắt hành tây thành múi.",
+      "Làm nóng dầu rồi áp chảo sườn trên lửa vừa, trở đều cho các mặt xém vàng. Gắp sườn ra.",
+      "Phi thơm tỏi trong chảo, xào hành tây và cà chua đến khi mềm. Dằm nhẹ cà chua, thêm nước mắm và một ít nước.",
+      "Cho sườn trở lại, đậy nắp và om đến khi sườn chín mềm. Mở nắp cho sốt sánh lại, tắt bếp rồi vắt chanh vừa vị."
+    ],
+    "required": [{"anyOf": ["suon-heo"]}, {"anyOf": ["ca-chua"]}, {"anyOf": ["hanh-tay"]}],
+    "optional": [{"anyOf": ["toi"]}, {"anyOf": ["chanh"]}, {"anyOf": ["nuoc-mam"]}, {"anyOf": ["dau-an"]}]
+  },
+  {
+    "id": "tom-rim-toi-chay-canh",
+    "title": "Tôm rim tỏi cháy cạnh",
+    "mystery": true,
+    "minutes": 18,
+    "stepMinutes": [6, 3, 4, 3],
+    "steps": [
+      "Bóc vỏ và rút chỉ lưng tôm, thấm khô. Băm tỏi, thái hành lá và hòa nước mắm với một ít nước.",
+      "Phi tỏi với dầu trên lửa nhỏ. Khi tỏi vừa vàng nhạt, vớt một nửa ra để rắc lúc dọn món.",
+      "Tăng lửa, xếp tôm vào chảo thành một lớp. Trở tôm khi một mặt đã hồng và xém nhẹ.",
+      "Rưới nước mắm đã pha, đảo đến khi sốt bám quanh tôm và thịt tôm đục đều. Tắt bếp rồi rắc tỏi phi và hành lá."
+    ],
+    "required": [{"anyOf": ["tom"]}, {"anyOf": ["toi"]}],
+    "optional": [{"anyOf": ["nuoc-mam"]}, {"anyOf": ["hanh-la"]}, {"anyOf": ["dau-an"]}]
+  },
+  {
+    "id": "ca-hoi-ap-chao-sot-chanh",
+    "title": "Cá hồi áp chảo sốt chanh",
+    "mystery": true,
+    "minutes": 20,
+    "stepMinutes": [5, 6, 4, 3],
+    "steps": [
+      "Thấm khô miếng cá hồi, nhất là phần da. Băm tỏi và vắt chanh vào một chén riêng.",
+      "Làm nóng một lớp dầu mỏng. Đặt cá úp mặt da xuống, ấn nhẹ vài giây đầu rồi áp chảo đến khi da giòn.",
+      "Lật cá và hạ lửa, áp chảo đến khi thịt vừa chín và tách thớ dễ dàng. Gắp cá ra đĩa.",
+      "Xào thơm tỏi trong chảo, thêm chút nước và nước tương. Tắt bếp, khuấy nước chanh vào rồi rưới sốt quanh cá."
+    ],
+    "required": [{"anyOf": ["ca-hoi"]}, {"anyOf": ["chanh"]}],
+    "optional": [{"anyOf": ["toi"]}, {"anyOf": ["nuoc-tuong"]}, {"anyOf": ["dau-an"]}]
+  },
+  {
+    "id": "ga-kho-gung-nam",
+    "title": "Gà kho gừng nấm",
+    "mystery": true,
+    "minutes": 30,
+    "stepMinutes": [7, 5, 12, 4],
+    "steps": [
+      "Cắt gà thành miếng đều, thái gừng sợi và cắt nấm vừa ăn. Trộn gà với nửa phần gừng và chút nước mắm.",
+      "Phi phần gừng còn lại với dầu đến khi thơm. Cho gà vào đảo đến khi các mặt săn lại.",
+      "Thêm nước xâm xấp đáy chảo, đậy nắp và kho lửa nhỏ đến khi gà chín kỹ. Trở gà một lần giữa chừng.",
+      "Thêm nấm và mở nắp, đảo nhẹ đến khi nấm mềm và nước kho sánh lại. Nêm vừa miệng rồi rắc hành lá."
+    ],
+    "required": [{"anyOf": ["thit-ga"]}, {"anyOf": ["gung"]}, {"anyOf": ["nam"]}],
+    "optional": [{"anyOf": ["nuoc-mam"]}, {"anyOf": ["hanh-la"]}, {"anyOf": ["dau-an"]}]
+  },
+  {
+    "id": "muc-xao-bong-cai",
+    "title": "Mực xào bông cải xanh",
+    "mystery": true,
+    "minutes": 15,
+    "stepMinutes": [5, 3, 3, 2],
+    "steps": [
+      "Làm sạch mực, khía nhẹ mặt trong rồi cắt miếng vừa ăn. Tách bông cải thành nhánh nhỏ và băm tỏi.",
+      "Chần bông cải trong nước sôi khoảng hai phút, vớt ra để ráo để bông cải còn giòn.",
+      "Phi thơm tỏi với dầu, tăng lửa rồi đảo nhanh mực đến khi miếng mực cong nhẹ và chuyển màu trắng đục.",
+      "Cho bông cải vào chảo cùng chút nước tương. Đảo đến khi bông cải nóng đều rồi dọn ra đĩa."
+    ],
+    "required": [{"anyOf": ["muc"]}, {"anyOf": ["bong-cai"]}],
+    "optional": [{"anyOf": ["toi"]}, {"anyOf": ["nuoc-tuong"]}, {"anyOf": ["dau-an"]}]
   }
 ]

@@ -1,0 +1,14 @@
+CREATE TABLE UnlockedRecipeEntity (
+    recipeId TEXT NOT NULL PRIMARY KEY,
+    unlockedOn TEXT NOT NULL
+);
+
+insertOrIgnore:
+INSERT OR IGNORE INTO UnlockedRecipeEntity(recipeId, unlockedOn)
+VALUES (:recipeId, :unlockedOn);
+
+selectAllIds:
+SELECT recipeId FROM UnlockedRecipeEntity ORDER BY unlockedOn DESC, recipeId ASC;
+
+deleteAll:
+DELETE FROM UnlockedRecipeEntity;

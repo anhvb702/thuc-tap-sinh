@@ -49,6 +49,7 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import com.loitu.yourrefri.feature.recipe.ui.RecipeDetailScreen
 import com.loitu.yourrefri.feature.recipe.ui.RecipeScreen
 import com.loitu.yourrefri.feature.recipe.ui.HandsFreeCookScreen
@@ -63,6 +64,7 @@ import com.loitu.yourrefri.feature.recipe.ui.freezerIngredientNames
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
+import com.loitu.yourrefri.feature.recipe.logic.availableRecipesForPlanning
 import com.loitu.yourrefri.feature.recipe.logic.isDietFilterTooStrict
 import com.loitu.yourrefri.feature.settings.ui.SettingsPresentation
 import androidx.compose.material3.SnackbarDuration
@@ -145,6 +147,10 @@ fun MainScaffold(
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
     homeViewModel: com.loitu.yourrefri.feature.home.presentation.HomeViewModel? = null,
+    unlockedIds: Set<String> = emptySet(),
+    mysteryRewardsReady: Boolean = true,
+    mysteryUnlockFailedId: String? = null,
+    onUnlockMysteryRecipe: (Recipe) -> Unit = {},
 ) {
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var showWeeklyOverlay by remember { mutableStateOf(false) }
@@ -173,6 +179,7 @@ fun MainScaffold(
     BackHandler(enabled = handsFreeRecipeId != null) { handsFreeRecipeId = null }
     BackHandler(enabled = handsFreeRecipeId == null && openedRecipeId != null) { openedRecipeId = null }
     val scope = rememberCoroutineScope()
+    val recipeScreenState = rememberSaveableStateHolder()
 
     // Bữa người dùng chọn ở Trang chủ; null = chưa chọn thì theo giờ. Giữ ở đây để không mất khi đổi tab.
     var chosenMeal by rememberSaveable { mutableStateOf<com.loitu.yourrefri.feature.recipe.data.MealSlot?>(null) }
@@ -191,11 +198,12 @@ fun MainScaffold(
     BackHandler(enabled = cookDone != null) { goHomeAfterCook() }
 
     // Chế độ ăn lọc danh sách gợi ý một lần ở đây, mọi màn dùng chung. Lọc hết món thì nới ra và nhắn nhẹ.
-    val dietTooStrict = remember(recipes, dietRestriction, state.ingredients) {
-        isDietFilterTooStrict(recipes, dietRestriction, state.ingredients)
+    val availableRecipes = remember(recipes, unlockedIds) { availableRecipesForPlanning(recipes, unlockedIds) }
+    val dietTooStrict = remember(availableRecipes, dietRestriction, state.ingredients) {
+        isDietFilterTooStrict(availableRecipes, dietRestriction, state.ingredients)
     }
-    val visibleRecipes = remember(recipes, dietRestriction, dietTooStrict, state.ingredients) {
-        if (dietTooStrict) recipes else filterRecipesByDiet(recipes, dietRestriction, state.ingredients)
+    val visibleRecipes = remember(availableRecipes, dietRestriction, dietTooStrict, state.ingredients) {
+        if (dietTooStrict) availableRecipes else filterRecipesByDiet(availableRecipes, dietRestriction, state.ingredients)
     }
     val globalWeeklyPlan = remember(
         visibleRecipes, state, weeklyMealPlanState.goal, weeklyMealPlanState.preferences,
@@ -221,7 +229,7 @@ fun MainScaffold(
     LaunchedEffect(dietTooStrict, dietRestriction) {
         if (dietTooStrict) snackbarHostState.showSnackbar(SettingsPresentation.dietTooStrictNotice)
     }
-    val handsFreeRecipe = findRecipeById(handsFreeRecipeId, visibleRecipes, recipes)
+    val handsFreeRecipe = findRecipeById(handsFreeRecipeId, visibleRecipes, availableRecipes)
 
     // Một chỗ duy nhất khi nấu xong (cả ba luồng): trừ nguyên liệu đang có, ghi một dòng vào "Đã nấu", hiện màn chúc mừng.
     fun completeCook(recipe: Recipe, consumedIds: List<String>) {
@@ -296,6 +304,7 @@ fun MainScaffold(
                         selected = isSelected,
                         onClick = {
                             if (tab != currentTab) requestedRecipeId = null
+                            if (tab == NavTab.RECIPES) requestedRecipeMode = RecipeScreenMode.DAILY
                             cookDone = null
                             showHistory = false
                             openedRecipeId = null
@@ -358,7 +367,7 @@ fun MainScaffold(
             } else if (showHistory && currentTab == NavTab.HOME) {
                 com.loitu.yourrefri.feature.cooklog.ui.CookHistoryScreen(
                     state = cookHistoryState,
-                    recipes = recipes,
+                    recipes = availableRecipes,
                     onDelete = onDeleteCook,
                     onOpenRecipe = { recipeId ->
                         // Mở lại công thức ở tab Món ăn; dùng danh sách chưa lọc nên món cũ ngoài chế độ ăn vẫn mở được.
@@ -376,7 +385,8 @@ fun MainScaffold(
                         NavTab.HOME -> HomeScreen(
                             homeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() },
                             state = state,
-                            recipes = visibleRecipes,
+                            recipes = availableRecipes,
+                            dietRestriction = if (dietTooStrict) DietRestriction.NONE else dietRestriction,
                             onNavigateToPantry = { currentTab = NavTab.PANTRY },
                             onOpenShopping = {
                                 requestedRecipeMode = RecipeScreenMode.SHOPPING
@@ -422,7 +432,7 @@ fun MainScaffold(
                                 if (isCurrentTab) lastOpenedRecipeId.value = displayedRecipeId
                             }
                             // Nút "Nấu ngẫu nhiên" bỏ qua chế độ ăn nên món mở ra có thể không nằm trong danh sách đã lọc.
-                            val opened = findRecipeById(displayedRecipeId, visibleRecipes, recipes)
+                            val opened = findRecipeById(displayedRecipeId, visibleRecipes, availableRecipes)
                             if (opened != null) {
                                 RecipeDetailScreen(
                                     recipe = opened,
@@ -435,47 +445,41 @@ fun MainScaffold(
                                     snackbarHostState = snackbarHostState,
                                     showDoneSnackbar = false,
                                 )
-                            } else RecipeScreen(
-                                state = state,
-                                recipes = visibleRecipes,
-                                weekStart = weeklyMealPlanState.weekStart,
-                                favoriteIds = favoriteIds,
-                                onToggleFavorite = onToggleFavorite,
-                                onOpenHandsFree = { handsFreeRecipeId = it },
-                                randomPool = recipes,
-                                dietRestriction = dietRestriction,
-                                initialRecipeId = requestedRecipeId,
-                                initialMode = requestedRecipeMode,
-                                onWeeklyAction = onWeeklyMealPlanAction,
-                                weeklyGoal = weeklyMealPlanState.goal,
-                                weeklyPreferences = weeklyMealPlanState.preferences,
-                                weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
-                                weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
-                                weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
-                                onWeeklyIncludeLunchMealPrepChange = { enabled ->
-                                    onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
-                                },
-                                onModeChange = { requestedRecipeMode = it },
-                                onBackHome = { currentTab = NavTab.HOME },
-                                onOpenRecipe = { openedRecipeId = it },
-                                onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
-                                tasteProfile = tasteProfile,
-                                onStockIngredients = { ids ->
-                                    ids.groupingBy { it }.eachCount().forEach { (id, needed) ->
-                                        val alreadyHave = state.pantry[id]?.have == true
-                                        if (!alreadyHave) {
-                                            onAction(PantryGridAction.AddIngredient(id, null))
-                                            repeat((needed - 1).coerceAtLeast(0)) {
-                                                onAction(PantryGridAction.IncreaseQuantity(id))
-                                            }
-                                        } else {
-                                            repeat(needed.coerceAtLeast(0)) {
-                                                onAction(PantryGridAction.IncreaseQuantity(id))
-                                            }
-                                        }
-                                    }
-                                },
-                            )
+                            } else {
+                                recipeScreenState.SaveableStateProvider("recipe-screen") {
+                                    RecipeScreen(
+                                        state = state,
+                                        recipes = recipes,
+                                        unlockedIds = unlockedIds,
+                                        totalCookCount = cookHistoryState.weeks.sumOf { it.entries.size },
+                                        mysteryRewardsReady = mysteryRewardsReady,
+                                        mysteryUnlockFailedId = mysteryUnlockFailedId,
+                                        onUnlockMysteryRecipe = onUnlockMysteryRecipe,
+                                        weekStart = weeklyMealPlanState.weekStart,
+                                        favoriteIds = favoriteIds,
+                                        onToggleFavorite = onToggleFavorite,
+                                        onOpenHandsFree = { handsFreeRecipeId = it },
+                                        dietRestriction = dietRestriction,
+                                        initialRecipeId = requestedRecipeId,
+                                        initialMode = requestedRecipeMode,
+                                        onWeeklyAction = onWeeklyMealPlanAction,
+                                        weeklyGoal = weeklyMealPlanState.goal,
+                                        weeklyPreferences = weeklyMealPlanState.preferences,
+                                        weeklySwappedOffsets = weeklyMealPlanState.swappedOffsets,
+                                        weeklyUncheckedIds = weeklyMealPlanState.uncheckedIds,
+                                        weeklyIncludeLunchMealPrep = weeklyMealPlanState.includeLunchMealPrep,
+                                        onWeeklyIncludeLunchMealPrepChange = { enabled ->
+                                            onWeeklyMealPlanAction(WeeklyMealPlanAction.SetLunchMealPrep(enabled))
+                                        },
+                                        onModeChange = { requestedRecipeMode = it },
+                                        onBackHome = { currentTab = NavTab.HOME },
+                                        onOpenRecipe = { openedRecipeId = it },
+                                        onCookRecipe = { cooked, ingredientIds -> completeCook(cooked, ingredientIds) },
+                                        tasteProfile = tasteProfile,
+                                        onStockIngredients = ::stockIngredients,
+                                    )
+                                }
+                            }
                         }
                         NavTab.SETTINGS -> SettingsScreen(
                             backupStatus = backupStatus,
@@ -521,7 +525,7 @@ fun MainScaffold(
                 GlobalFloatingActionButtons(
                     onOpenWeeklyPlan = { showWeeklyOverlay = true },
                     onOpenRandomWheel = {
-                        val cookable = cookableRecipes(recipes, state)
+                        val cookable = cookableRecipes(availableRecipes, state)
                         if (cookable.isEmpty()) showGlobalNoCookable = true
                         else {
                             globalRandomPick = pickRandomRecipe(cookable, state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default)
@@ -556,9 +560,9 @@ fun MainScaffold(
                 )
             }
             val globalPick = globalRandomPick
-            if (showGlobalRandomWheel && globalPick != null) RandomWheelDialog(
-                pool = cookableRecipes(recipes, state), pick = globalPick,
-                onSpinAgain = { globalRandomPick = pickRandomRecipe(cookableRecipes(recipes, state), state, globalRandomPick?.recipe?.id, kotlin.random.Random.Default) },
+            if (showGlobalRandomWheel && globalPick != null && availableRecipes.any { it.id == globalPick.recipe.id }) RandomWheelDialog(
+                pool = cookableRecipes(availableRecipes, state), pick = globalPick,
+                onSpinAgain = { globalRandomPick = pickRandomRecipe(availableRecipes, state, globalPick.recipe.id, kotlin.random.Random.Default) },
                 onOpenRecipe = { recipe -> showGlobalRandomWheel = false; showHistory = false; cookDone = null; handsFreeRecipeId = null; openedRecipeId = recipe.id; currentTab = NavTab.RECIPES },
                 onDismiss = { showGlobalRandomWheel = false },
             )
