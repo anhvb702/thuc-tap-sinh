@@ -1,28 +1,39 @@
 package com.loitu.yourrefri.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.layout.heightIn
@@ -36,9 +47,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -89,6 +104,11 @@ import com.loitu.yourrefri.feature.recipe.ui.RandomRecipeCopy
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanSection
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyShoppingSection
 import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
+import com.loitu.yourrefri.ui.components.TAB_TRANSITION_MS
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
+import com.loitu.yourrefri.ui.components.navItemScaleTarget
+import com.loitu.yourrefri.ui.components.tabContentDurationMs
+import com.loitu.yourrefri.ui.components.tabSlideDirection
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.ThemeMode
@@ -292,54 +312,20 @@ fun MainScaffold(
             }
         },
         bottomBar = {
-            val colors = AppTheme.colors
             // Đang nấu rảnh tay thì ẩn thanh tab để màn hình tập trung vào bước nấu.
-            if (handsFreeRecipe == null) NavigationBar(
-                containerColor = colors.surface,
-                tonalElevation = 0.dp,
-            ) {
-                NavTab.entries.forEach { tab ->
-                    val isSelected = currentTab == tab
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = {
-                            if (tab != currentTab) requestedRecipeId = null
-                            if (tab == NavTab.RECIPES) requestedRecipeMode = RecipeScreenMode.DAILY
-                            cookDone = null
-                            showHistory = false
-                            openedRecipeId = null
-                            currentTab = tab
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp),
-                            )
-                        },
-                        label = {
-                            Text(
-                                text = tab.label,
-                                fontSize = navLabelFontSizeSp(LocalDensity.current.fontScale).sp,
-                                maxLines = NAV_LABEL_MAX_LINES,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth(),
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) colors.ctaText else colors.muted
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = Color.Transparent,
-                            selectedIconColor = colors.ctaText,
-                            unselectedIconColor = colors.muted,
-                            selectedTextColor = colors.ctaText,
-                            unselectedTextColor = colors.muted,
-                        )
-                    )
+            if (handsFreeRecipe == null) {
+                FloatingTabBar(currentTab) { tab ->
+                    if (tab != currentTab) requestedRecipeId = null
+                    if (tab == NavTab.RECIPES) requestedRecipeMode = RecipeScreenMode.DAILY
+                    cookDone = null
+                    showHistory = false
+                    openedRecipeId = null
+                    currentTab = tab
                 }
             }
         }
     ) { innerPadding ->
+        val animatorsEnabled = areSystemAnimatorsEnabled()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -380,7 +366,24 @@ fun MainScaffold(
                     onBack = { showHistory = false },
                 )
             } else {
-                Crossfade(targetState = currentTab, animationSpec = tween(180), label = "mainTabCrossfade") { tab ->
+                val duration = tabContentDurationMs(animatorsEnabled)
+                AnimatedContent(
+                    targetState = currentTab,
+                    modifier = Modifier.clipToBounds(),
+                    transitionSpec = {
+                        val dir = tabSlideDirection(initialState.ordinal, targetState.ordinal)
+                        val transition = if (duration > 0) {
+                            (slideInHorizontally(tween(duration)) { dir * (it / 12) } + fadeIn(tween(duration)))
+                                .togetherWith(
+                                    slideOutHorizontally(tween(duration)) { -dir * (it / 12) } + fadeOut(tween(duration)),
+                                )
+                        } else {
+                            fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                        }
+                        transition.using(null)
+                    },
+                    label = "mainTabTransition",
+                ) { tab ->
                     when (tab) {
                         NavTab.HOME -> HomeScreen(
                             homeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() },
@@ -516,8 +519,8 @@ fun MainScaffold(
             val showHomeFabs = shouldShowGlobalFloatingActions(currentTab, cookDone != null, handsFreeRecipe != null, showHistory)
             AnimatedVisibility(
                 visible = showHomeFabs,
-                enter = fadeIn(tween(180)),
-                exit = fadeOut(tween(140)),
+                enter = fadeIn(tween(if (animatorsEnabled) 180 else 0)),
+                exit = fadeOut(tween(if (animatorsEnabled) 140 else 0)),
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 16.dp, bottom = 16.dp),
@@ -577,4 +580,92 @@ fun MainScaffold(
             }
         }, text = { Text(RandomRecipeCopy.noCookable, color = AppTheme.colors.muted) }, confirmButton = {},
     )
+}
+
+@Composable
+private fun FloatingTabBar(currentTab: NavTab, onSelectTab: (NavTab) -> Unit) {
+    val colors = AppTheme.colors
+    val animatorsEnabled = areSystemAnimatorsEnabled()
+    val labelSize = navLabelFontSizeSp(LocalDensity.current.fontScale).sp
+    Box(
+        Modifier.fillMaxWidth()
+            .background(Color.Transparent)
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Surface(
+            shape = RoundedCornerShape(32.dp),
+            color = colors.navContainer,
+            shadowElevation = 8.dp,
+        ) {
+            Row(
+                Modifier.fillMaxWidth()
+                    .selectableGroup()
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NavTab.entries.forEach { tab ->
+                    val isSelected = currentTab == tab
+                    val interaction = remember { MutableInteractionSource() }
+                    val pressed by interaction.collectIsPressedAsState()
+                    val targetColor = if (isSelected) colors.cta else Color.Transparent
+                    val targetScale = navItemScaleTarget(isSelected, pressed, animatorsEnabled)
+                    val backgroundColor = if (animatorsEnabled) {
+                        animateColorAsState(targetColor, tween(TAB_TRANSITION_MS), label = "tabPillColor").value
+                    } else {
+                        targetColor
+                    }
+                    val scale = if (animatorsEnabled) {
+                        animateFloatAsState(
+                            targetValue = targetScale,
+                            animationSpec = spring(dampingRatio = 0.65f, stiffness = 500f),
+                            label = "tabPillScale",
+                        ).value
+                    } else {
+                        targetScale
+                    }
+                    val contentColor = if (isSelected) colors.onCta else colors.navUnselected
+                    val shape = RoundedCornerShape(26.dp)
+                    Box(
+                        modifier = Modifier.weight(1f)
+                            .heightIn(min = 52.dp)
+                            .clip(shape)
+                            .selectable(
+                                selected = isSelected,
+                                interactionSource = interaction,
+                                indication = LocalIndication.current,
+                                role = Role.Tab,
+                                onClick = { onSelectTab(tab) },
+                            )
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                                .background(backgroundColor, shape)
+                                .padding(vertical = 4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+                        ) {
+                            Icon(tab.icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(22.dp))
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = labelSize,
+                                maxLines = NAV_LABEL_MAX_LINES,
+                                textAlign = TextAlign.Center,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = contentColor,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

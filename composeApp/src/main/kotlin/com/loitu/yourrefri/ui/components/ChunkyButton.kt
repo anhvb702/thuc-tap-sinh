@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Nút nổi có cạnh dưới: khi nhấn, mặt nút trượt xuống che cạnh, tạo cảm giác bấm thật.
- * Chỉ đổi vị trí (không đổi kích thước), nên bố cục xung quanh không bị nhảy.
  */
 @Composable
 fun ChunkyButton(
@@ -50,12 +49,16 @@ fun ChunkyButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
-    val sink by animateDpAsState(
-        targetValue = if (pressed) depth else 0.dp,
-        animationSpec = tween(durationMillis = 90),
-        label = "chunkySink",
-    )
-    Box(modifier = modifier) {
+    val sink = if (areSystemAnimatorsEnabled()) {
+        animateDpAsState(
+            targetValue = if (pressed) depth else 0.dp,
+            animationSpec = tween(durationMillis = 90),
+            label = "chunkySink",
+        ).value
+    } else {
+        0.dp
+    }
+    Box(modifier = modifier.pressScale(interaction)) {
         // Cạnh dưới: nằm cả vùng nút, mặt nút che lên trên khi không nhấn.
         Box(
             modifier = Modifier
