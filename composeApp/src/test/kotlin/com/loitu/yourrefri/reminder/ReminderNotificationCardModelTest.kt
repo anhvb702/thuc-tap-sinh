@@ -1,5 +1,8 @@
 package com.loitu.yourrefri.reminder
 
+import androidx.compose.ui.graphics.toArgb
+import com.loitu.yourrefri.ui.theme.LightAppColors
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -119,6 +122,54 @@ class ReminderNotificationCardModelTest {
 
         assertNull(banner)
         assertEquals(1, renderCalls)
+    }
+
+    @Test
+    fun accentColorArgb_matchesNotifyHeroStartToken() {
+        assertEquals(LightAppColors.notifyHeroStart.toArgb(), ReminderCardRenderer.accentColorArgb())
+    }
+
+    @Test
+    fun dishBleedLayout_bleedsAsymmetricallyPastRightEdge() {
+        val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = true)
+        val rightEdge = layout.centerX + layout.diameter / 2f
+        assertTrue(rightEdge > ReminderCardRenderer.WIDTH)
+        assertEquals(1100f, rightEdge)
+        assertEquals(225f, layout.centerY)
+    }
+
+    @Test
+    fun dishBleedLayout_keepsClearGapBetweenTextAndDish() {
+        val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = true)
+        val textRight = ReminderCardRenderer.CONTENT_SAFE_INSET_PX + layout.textWidth
+        val dishLeft = layout.centerX - layout.diameter / 2f
+        assertTrue(textRight < dishLeft)
+        assertEquals(28f, dishLeft - textRight)
+    }
+
+    @Test
+    fun dishBleedLayout_withoutPictureExpandsTextWidthToRightInset() {
+        val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = false)
+        assertEquals(776, layout.textWidth)
+    }
+
+    @Test
+    fun rendererConstants_keepPixelFullBleedGeometry() {
+        assertEquals(1080, ReminderCardRenderer.WIDTH)
+        assertEquals(450, ReminderCardRenderer.HEIGHT)
+        assertEquals(340f, ReminderCardRenderer.DISH_DIAMETER_PX)
+        assertEquals(20f, ReminderCardRenderer.DISH_RIGHT_BLEED_PX)
+        assertEquals(152, ReminderCardRenderer.CONTENT_SAFE_INSET_PX)
+    }
+
+    @Test
+    fun reminderNotifier_setsAccentColorAndAvoidsRemoteViews() {
+        val path = "src/main/kotlin/com/loitu/yourrefri/reminder/ReminderNotifier.kt"
+        val source = listOf(File(path), File("composeApp", path)).first { it.isFile }.readText()
+        assertTrue(source.contains(".setColor(ReminderCardRenderer.accentColorArgb())"))
+        assertFalse(source.contains("setCustomContentView"))
+        assertFalse(source.contains("setCustomBigContentView"))
+        assertFalse(source.contains("RemoteViews"))
     }
 
     private fun assertBigPictureCopy(content: ReminderBigPictureContent) {

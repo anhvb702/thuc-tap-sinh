@@ -42,6 +42,7 @@ object ReminderNotifier {
         }
         val builder = NotificationCompat.Builder(context, ReminderChannel.ID)
             .setSmallIcon(R.drawable.ic_notification_fridge)
+            .setColor(ReminderCardRenderer.accentColorArgb())
             .setContentTitle(content.contentTitle)
             .setContentText(content.contentText)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
