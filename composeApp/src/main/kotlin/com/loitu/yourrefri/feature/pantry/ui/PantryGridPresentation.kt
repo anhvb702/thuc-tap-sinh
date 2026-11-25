@@ -6,7 +6,28 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.Urgency
 
 internal fun pantryGridContentPadding(): PaddingValues =
-    PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp)
+    PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 148.dp)
+
+internal data class PantryItemMenuCopy(
+    val title: String,
+    val editShelfLabel: String,
+    val editUnitLabel: String,
+    val markOutLabel: String,
+    val moreButtonDescription: String,
+    val closeLabel: String,
+)
+
+internal fun pantryItemMenuCopy(nameVi: String, unit: String): PantryItemMenuCopy {
+    val cleanUnit = unit.trim()
+    return PantryItemMenuCopy(
+        title = nameVi,
+        editShelfLabel = "Sửa hạn ước tính",
+        editUnitLabel = if (cleanUnit.isEmpty()) "Đổi đơn vị" else "Đổi đơn vị ($cleanUnit)",
+        markOutLabel = "Đánh dấu hết món",
+        moreButtonDescription = "Tùy chọn khác cho $nameVi",
+        closeLabel = "Đóng",
+    )
+}
 
 internal data class PantryGridPresentation(
     val presentCount: Int,
