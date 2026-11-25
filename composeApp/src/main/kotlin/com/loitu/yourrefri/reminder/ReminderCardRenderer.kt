@@ -16,10 +16,6 @@ import android.text.TextUtils
 import androidx.compose.ui.graphics.toArgb
 import com.loitu.yourrefri.ui.theme.LightAppColors
 
-/**
- * Vẽ cả thẻ nhắc (nền terracotta, chữ, ảnh món tròn) thành một ảnh để hiện bằng BigPictureStyle.
- * Cách này lấp đầy khung thông báo; layout tự vẽ (RemoteViews) luôn bị khung hệ thống bọc quanh.
- */
 object ReminderCardRenderer {
     const val WIDTH = 960
     const val HEIGHT = 440
@@ -81,6 +77,13 @@ object ReminderCardRenderer {
         return out
     }
 
+    fun renderDishArt(picture: Bitmap, size: Int = 360): Bitmap {
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val radius = size / 2f
+        Canvas(out).drawCircle(radius, radius, radius, dishPaint(picture, size.toFloat(), radius, radius))
+        return out
+    }
+
     private fun drawLayout(canvas: Canvas, layout: StaticLayout, top: Float) {
         canvas.save()
         canvas.translate(PAD, top)
@@ -113,21 +116,24 @@ object ReminderCardRenderer {
         }
         canvas.drawCircle(centerX, centerY, radius, frame)
 
-        val scale = PICTURE_SIZE / minOf(picture.width, picture.height)
-        val crop = Matrix().apply {
-            setScale(scale, scale)
-            postTranslate(centerX - picture.width * scale / 2f, centerY - picture.height * scale / 2f)
-        }
-        val photo = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            shader = BitmapShader(picture, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
-                setLocalMatrix(crop)
-            }
-        }
-        canvas.drawCircle(centerX, centerY, radius, photo)
+        canvas.drawCircle(centerX, centerY, radius, dishPaint(picture, PICTURE_SIZE, centerX, centerY))
 
         frame.clearShadowLayer()
         frame.style = Paint.Style.STROKE
         frame.strokeWidth = 8f
         canvas.drawCircle(centerX, centerY, radius, frame)
+    }
+
+    private fun dishPaint(picture: Bitmap, diameter: Float, centerX: Float, centerY: Float): Paint {
+        val scale = diameter / minOf(picture.width, picture.height)
+        val crop = Matrix().apply {
+            setScale(scale, scale)
+            postTranslate(centerX - picture.width * scale / 2f, centerY - picture.height * scale / 2f)
+        }
+        return Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            shader = BitmapShader(picture, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+                setLocalMatrix(crop)
+            }
+        }
     }
 }
