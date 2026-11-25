@@ -57,14 +57,20 @@ class PantryGridSearchTest {
 
     @Test
     fun group_putsCellsIntoDisplayCategoriesInFixedOrder() {
-        val groups = groupCellsByCategory(cells, ingredients)
+        val spiceIngredients = listOf(
+            Ingredient("giam", "Giấm", "gia-vi", 30),
+            Ingredient("nuoc-mam", "Nước mắm", "khac", 30),
+        )
+        val spiceCells = spiceIngredients.map { cell(it.id, it.nameVi) }
+        val groups = groupCellsByCategory(cells + spiceCells, ingredients + spiceIngredients)
         assertEquals(
-            listOf("Rau củ", "Thịt & cá", "Trái cây", "Sữa & trứng", "Đậu & nấm", "Khác"),
+            listOf("Rau củ", "Thịt & cá", "Trái cây", "Sữa & trứng", "Đậu & nấm", "Gia vị", "Khác"),
             groups.map { it.label },
         )
         assertEquals(listOf("ca-chua", "hanh-la"), groups[0].cells.ids())
         assertEquals(listOf("thit-bo", "ca-basa"), groups[1].cells.ids())
-        assertEquals(listOf("la-la"), groups[5].cells.ids())
+        assertEquals(listOf("giam", "nuoc-mam"), groups[5].cells.ids())
+        assertEquals(listOf("la-la"), groups[6].cells.ids())
     }
 
     @Test

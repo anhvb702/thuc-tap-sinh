@@ -5,7 +5,7 @@ import kotlinx.serialization.json.Json
 
 // Hạn trong bảng là ƯỚC TÍNH để nhắc "nên dùng trước", không phải lời khuyên an toàn thực phẩm.
 object ShelfTable {
-    val GROUPS: Set<String> = setOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "khac")
+    val GROUPS: Set<String> = setOf("thit", "ca", "rau-la", "rau-cu", "trai-cay", "sua-trung", "gia-vi", "khac")
 
     private const val MIN_SHELF_DAYS = 1
     private const val MAX_SHELF_DAYS = 365

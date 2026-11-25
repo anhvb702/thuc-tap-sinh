@@ -259,6 +259,7 @@ class QuickAddSuggestionsTest {
                 "trai-cay" to "Trái cây",
                 "sua-trung" to "Sữa & Trứng",
                 "khac" to "Đậu & Nấm",
+                "gia-vi" to "Gia vị",
             ),
             quickAddGroupOptions().map { it.groupId to it.label },
         )
