@@ -20,6 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -30,6 +31,7 @@ class CookHistoryViewModelTest {
         val added = mutableListOf<Triple<String, LocalDate, List<String>>>()
         val addedMeals = mutableListOf<MealSlot?>()
         var failAdd = false
+        var failDelete = false
         var failObserve = false
         private var nextId = 100L
         override fun observeAll(): Flow<List<CookLog>> = flow {
@@ -45,6 +47,7 @@ class CookHistoryViewModelTest {
             return id
         }
         override suspend fun delete(id: Long) {
+            if (failDelete) throw IllegalStateException("delete failed")
             logs.value = logs.value.filterNot { it.id == id }
         }
     }
@@ -165,5 +168,68 @@ class CookHistoryViewModelTest {
         runCurrent()
         assertTrue(viewModel.state.value.loaded)
         assertEquals(listOf<CookHistoryEffect>(CookHistoryEffect.LoadFailed), effects)
+    }
+
+    @Test
+    fun onIntent_delete_removesEntryAndEmitsSaveFailedOnError() = runTest {
+        val date = LocalDate(2026, 11, 12)
+        val kept = CookLog(6, "b", date, null, emptyList())
+        val repo = FakeRepository(listOf(CookLog(5, "a", date, null, emptyList()), kept))
+        val viewModel = vm(repo)
+        val effects = mutableListOf<CookHistoryEffect>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.effects.collect(effects::add) }
+        runCurrent()
+        viewModel.onIntent(CookHistoryIntent.Delete(5))
+        runCurrent()
+        assertEquals(listOf(kept), viewModel.uiState.value.weeks.single().entries)
+        assertTrue(effects.isEmpty())
+
+        repo.failDelete = true
+        viewModel.onIntent(CookHistoryIntent.Delete(6))
+        runCurrent()
+        assertEquals(listOf(kept), viewModel.uiState.value.weeks.single().entries)
+        assertEquals(listOf<CookHistoryEffect>(CookHistoryEffect.SaveFailed), effects)
+    }
+
+    @Test
+    fun onIntent_reload_restartsObservation() = runTest {
+        val repo = FakeRepository().apply { failObserve = true }
+        val viewModel = vm(repo)
+        runCurrent()
+        val entry = CookLog(5, "a", LocalDate(2026, 11, 12), null, emptyList())
+        repo.logs.value = listOf(entry)
+        repo.failObserve = false
+        assertTrue(viewModel.uiState.value.weeks.isEmpty())
+        viewModel.onIntent(CookHistoryIntent.Reload)
+        runCurrent()
+        assertEquals(listOf(entry), viewModel.uiState.value.weeks.single().entries)
+
+        viewModel.onIntent(CookHistoryIntent.Reload)
+        runCurrent()
+        assertEquals(1, repo.logs.subscriptionCount.value)
+    }
+
+    @Test
+    fun onIntent_record_recordsEntryAndRejectsBlankRecipeId() = runTest {
+        val repo = FakeRepository()
+        val viewModel = vm(repo)
+        val ids = mutableListOf<Long?>()
+        viewModel.onIntent(CookHistoryIntent.Record("canh", listOf("ca"), MealSlot.LUNCH) { ids.add(it) })
+        runCurrent()
+        viewModel.onIntent(CookHistoryIntent.Record(" \t", emptyList()) { ids.add(it) })
+        assertEquals(listOf<Long?>(100L, null), ids)
+        runCurrent()
+        assertEquals(listOf(Triple("canh", LocalDate(2026, 11, 13), listOf("ca"))), repo.added)
+        assertEquals(listOf<MealSlot?>(MealSlot.LUNCH), repo.addedMeals)
+        assertEquals(listOf<Long?>(100L, null), ids)
+    }
+
+    @Test
+    fun uiState_matchesStateFlow() = runTest {
+        val viewModel = vm(FakeRepository())
+        assertSame(viewModel.state, viewModel.uiState)
+        assertFalse(viewModel.uiState.value.loaded)
+        runCurrent()
+        assertTrue(viewModel.uiState.value.loaded)
     }
 }

@@ -5,7 +5,6 @@ package com.loitu.yourrefri.feature.cooklog.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.loitu.yourrefri.feature.cooklog.data.CookLogRepository
-import com.loitu.yourrefri.feature.cooklog.logic.CookHistoryWeek
 import com.loitu.yourrefri.feature.cooklog.logic.groupCookHistory
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import kotlinx.coroutines.CancellationException
@@ -21,21 +20,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
 
-/** Lịch sử nấu đã gom theo tuần; [loaded] false cho tới khi đọc xong lần đầu. */
-data class CookHistoryState(
-    val weeks: List<CookHistoryWeek> = emptyList(),
-    val loaded: Boolean = false,
-)
-
-sealed interface CookHistoryAction {
-    data class Delete(val id: Long) : CookHistoryAction
-}
-
-sealed interface CookHistoryEffect {
-    data object SaveFailed : CookHistoryEffect
-    data object LoadFailed : CookHistoryEffect
-}
-
 class CookHistoryViewModel(
     private val repository: CookLogRepository,
     private val clock: Clock,
@@ -47,38 +31,44 @@ class CookHistoryViewModel(
     private val mutableEffects = Channel<CookHistoryEffect>(Channel.BUFFERED)
     private var collectJob: Job? = null
 
-    val state: StateFlow<CookHistoryState> = mutableState.asStateFlow()
+    val uiState: StateFlow<CookHistoryState> = mutableState.asStateFlow()
+    val state: StateFlow<CookHistoryState> get() = uiState
     val effects = mutableEffects.receiveAsFlow()
 
     init {
         startCollecting()
     }
 
-    fun dispatch(action: CookHistoryAction) {
-        when (action) {
-            is CookHistoryAction.Delete -> workerScope.launch {
+    fun onIntent(intent: CookHistoryIntent) {
+        when (intent) {
+            is CookHistoryIntent.Delete -> workerScope.launch {
                 try {
-                    repository.delete(action.id)
+                    repository.delete(intent.id)
                 } catch (error: CancellationException) {
                     throw error
                 } catch (_: Exception) {
                     mutableEffects.send(CookHistoryEffect.SaveFailed)
                 }
             }
+            CookHistoryIntent.Reload -> startCollecting()
+            is CookHistoryIntent.Record -> recordCook(intent.recipeId, intent.savedIngredientIds, intent.meal, intent.onResult)
         }
     }
 
+    fun dispatch(action: CookHistoryAction) = onIntent(action)
+
     /** Đọc lại từ DB, dùng sau khi khôi phục sao lưu. */
-    fun reload() {
-        startCollecting()
-    }
+    fun reload() = onIntent(CookHistoryIntent.Reload)
 
     /**
      * Ghi một lần nấu xong, kể cả khi không có nguyên liệu nào được trừ. [onResult] nhận id bản ghi
      * (để Hoàn tác xóa đúng bản ghi này) hoặc null khi không ghi được.
      * Ruling: dùng callback thay vì Effect vì Hoàn tác cần id ngay sau khi ghi.
      */
-    fun record(recipeId: String, savedIngredientIds: List<String>, meal: MealSlot? = null, onResult: (Long?) -> Unit) {
+    fun record(recipeId: String, savedIngredientIds: List<String>, meal: MealSlot? = null, onResult: (Long?) -> Unit) =
+        onIntent(CookHistoryIntent.Record(recipeId, savedIngredientIds, meal, onResult))
+
+    private fun recordCook(recipeId: String, savedIngredientIds: List<String>, meal: MealSlot?, onResult: (Long?) -> Unit) {
         if (recipeId.isBlank()) {
             onResult(null)
             return
