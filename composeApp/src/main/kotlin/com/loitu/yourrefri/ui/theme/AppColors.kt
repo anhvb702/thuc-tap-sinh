@@ -45,6 +45,8 @@ class AppColors(
     val primaryEdge: Color,
     val ctaEdge: Color,
     val badgeRed: Color,
+    val navContainer: Color,
+    val navUnselected: Color,
 )
 
 private val LightPrimaryEdge = Color(0xFF3B4F3C)
@@ -53,6 +55,9 @@ private val DarkPrimaryEdge = Color(0xFF5E7A5D)
 private val DarkCtaEdge = Color(0xFF9A6A58)
 private val LightBadgeRed = Color(0xFFD93829)
 private val DarkBadgeRed = Color(0xFFFF6B5E)
+private val LightNavContainer = Color(0xFF2B302B)
+private val DarkNavContainer = Color(0xFF242924)
+private val NavUnselectedLabel = Color(0xFFC5CCC5)
 
 internal val LightAppColors = AppColors(
     isDark = false,
@@ -82,6 +87,8 @@ internal val LightAppColors = AppColors(
     primaryEdge = LightPrimaryEdge,
     ctaEdge = LightCtaEdge,
     badgeRed = LightBadgeRed,
+    navContainer = LightNavContainer,
+    navUnselected = NavUnselectedLabel,
 )
 
 internal val DarkAppColors = AppColors(
@@ -112,6 +119,8 @@ internal val DarkAppColors = AppColors(
     primaryEdge = DarkPrimaryEdge,
     ctaEdge = DarkCtaEdge,
     badgeRed = DarkBadgeRed,
+    navContainer = DarkNavContainer,
+    navUnselected = NavUnselectedLabel,
 )
 
 fun appColorsFor(dark: Boolean): AppColors = if (dark) DarkAppColors else LightAppColors

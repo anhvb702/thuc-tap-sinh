@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -84,6 +85,7 @@ import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.components.FoodThumb
+import com.loitu.yourrefri.ui.components.pressScale
 import kotlinx.coroutines.launch
 
 /**
@@ -235,17 +237,23 @@ fun RecipeDetailScreen(
 
             Surface(color = colors.background, border = BorderStroke(1.dp, colors.line)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val manualInteraction = remember { MutableInteractionSource() }
                     Button(
                         onClick = { showManualChecklist = true },
                         colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
-                        shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1.3f).heightIn(min = 52.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.weight(1.3f).heightIn(min = 52.dp).pressScale(manualInteraction),
+                        interactionSource = manualInteraction,
                     ) { Text("Nấu thủ công", fontWeight = FontWeight.Bold) }
                     if (onStartHandsFree != null) {
+                        val handsFreeInteraction = remember { MutableInteractionSource() }
                         OutlinedButton(
                             onClick = onStartHandsFree,
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.text),
                             border = BorderStroke(1.dp, colors.line),
-                            shape = RoundedCornerShape(16.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.weight(1f).heightIn(min = 52.dp).pressScale(handsFreeInteraction),
+                            interactionSource = handsFreeInteraction,
                         ) {
                             Icon(AppIcons.ChefHat, contentDescription = null, modifier = Modifier.size(20.dp))
                             Text("Rảnh tay", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
