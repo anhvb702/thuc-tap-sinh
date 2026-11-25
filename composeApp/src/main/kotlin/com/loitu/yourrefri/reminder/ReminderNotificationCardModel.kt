@@ -1,9 +1,21 @@
 package com.loitu.yourrefri.reminder
 
+import android.graphics.Bitmap
+
 internal data class ReminderCardModel(
     val badge: String,
     val hero: String,
     val subtitle: String,
+)
+
+internal const val REMINDER_ACTION_LABEL = "Xem món & nấu ngay"
+
+internal data class ReminderBigPictureContent(
+    val contentTitle: String,
+    val contentText: String,
+    val hero: String,
+    val subtitle: String,
+    val actionLabel: String = REMINDER_ACTION_LABEL,
 )
 
 private const val URGENT_PHRASE = "nên dùng trước"
@@ -12,8 +24,23 @@ private const val DEFAULT_SUBTITLE = "Mở xem gợi ý từ tủ lạnh nhà m�
 private const val URGENT_SUBTITLE = "Nên dùng trước · mở xem gợi ý"
 private val whitespace = Regex("\\s+")
 private val otherItems = Regex(" và (\\d+) món khác\\b", RegexOption.IGNORE_CASE)
+private val extraItems = Regex("(?:\\b(\\d+)\\s+món\\s+khác\\b|\\+(\\d+)\\s+món\\b)", RegexOption.IGNORE_CASE)
 private val bannedWords = Regex("hết hạn|lãng phí|bỏ lỡ|bạn quên|streak|tồn kho", RegexOption.IGNORE_CASE) // lint-copy: rule
 private val dishTitle = Regex("^(?:Tối nay nấu |Gợi ý bữa cơm: )(.+)$", RegexOption.IGNORE_CASE)
+
+internal fun buildReminderBigPictureContent(title: String, body: String): ReminderBigPictureContent {
+    val card = buildReminderCardModel(title, body)
+    val titleSuffix = if (card.badge.contains("Nên dùng sớm")) "Nên dùng sớm" else "Gợi ý hôm nay"
+    val extraCount = extraItems.find(body)?.destructured?.let { (count, plusCount) ->
+        count.ifEmpty { plusCount }.toIntOrNull()
+    } ?: 0
+    val contentText = if (extraCount > 0) "+$extraCount món nữa nên dùng sớm"
+    else "Mở xem gợi ý món ngon hôm nay"
+    return ReminderBigPictureContent("🍲 ${card.hero} · $titleSuffix", contentText, card.hero, card.subtitle)
+}
+
+internal fun resolveBigPictureStyle(renderBanner: () -> Bitmap?): Bitmap? =
+    runCatching { renderBanner() }.getOrNull()
 
 internal fun buildReminderCardModel(title: String, body: String): ReminderCardModel {
     val cleanTitle = title.replace(whitespace, " ").trim()

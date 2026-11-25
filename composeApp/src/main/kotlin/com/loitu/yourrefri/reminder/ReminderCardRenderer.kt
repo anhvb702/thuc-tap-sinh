@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
-import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.Layout
@@ -17,10 +16,12 @@ import androidx.compose.ui.graphics.toArgb
 import com.loitu.yourrefri.ui.theme.LightAppColors
 
 object ReminderCardRenderer {
-    const val WIDTH = 960
-    const val HEIGHT = 440
-    private const val PAD = 48f
-    private const val PICTURE_SIZE = 300f
+    const val WIDTH = 1080
+    const val HEIGHT = 450
+    const val SAFE_ZONE_HORIZONTAL_PX = 56
+    internal const val CONTENT_SAFE_INSET_PX = 152
+    private const val PAD = CONTENT_SAFE_INSET_PX.toFloat()
+    private const val PICTURE_SIZE = 280f
     private const val BADGE = "YOURREFRI · GỢI Ý BẾP NHÀ"
 
     fun render(title: String, body: String, picture: Bitmap?): Bitmap {
@@ -35,6 +36,7 @@ object ReminderCardRenderer {
             )
         }
         canvas.drawRect(0f, 0f, WIDTH.toFloat(), HEIGHT.toFloat(), background)
+        canvas.clipRect(PAD, 0f, WIDTH - PAD, HEIGHT.toFloat())
         if (picture != null) drawDish(canvas, picture, onHero)
 
         val reserved = if (picture != null) PICTURE_SIZE + 32f else 0f
@@ -55,7 +57,7 @@ object ReminderCardRenderer {
 
         val titlePaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = onHero
-            textSize = 52f
+            textSize = 44f
             typeface = Typeface.DEFAULT_BOLD
         }
         val titleLayout = layout(title, titlePaint, textWidth, maxLines = 2)
@@ -64,23 +66,11 @@ object ReminderCardRenderer {
 
         val bodyPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xFFF7EBE6.toInt()
-            textSize = 34f
+            textSize = 30f
         }
         val bodyTop = titleTop + titleLayout.height + 12f
         drawLayout(canvas, layout(body, bodyPaint, textWidth, maxLines = 2), bodyTop)
 
-        val hint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFF0D7CC.toInt()
-            textSize = 26f
-        }
-        canvas.drawText("Chạm để mở công thức →", PAD, HEIGHT - PAD, hint)
-        return out
-    }
-
-    fun renderDishArt(picture: Bitmap, size: Int = 360): Bitmap {
-        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val radius = size / 2f
-        Canvas(out).drawCircle(radius, radius, radius, dishPaint(picture, size.toFloat(), radius, radius))
         return out
     }
 
@@ -102,26 +92,14 @@ object ReminderCardRenderer {
         val radius = PICTURE_SIZE / 2f
         val centerX = WIDTH - PAD - radius
         val centerY = HEIGHT / 2f
-        val glowRadius = radius + 80f
-        val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            shader = RadialGradient(
-                centerX, centerY, glowRadius, 0x66FFC0A1, 0x00FFC0A1, Shader.TileMode.CLAMP,
-            )
-        }
-        canvas.drawCircle(centerX, centerY, glowRadius, glow)
+        canvas.drawCircle(centerX, centerY, radius, dishPaint(picture, PICTURE_SIZE, centerX, centerY))
 
         val frame = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = frameColor
-            setShadowLayer(18f, 0f, 10f, 0x80421C15.toInt())
+            style = Paint.Style.STROKE
+            strokeWidth = 8f
         }
-        canvas.drawCircle(centerX, centerY, radius, frame)
-
-        canvas.drawCircle(centerX, centerY, radius, dishPaint(picture, PICTURE_SIZE, centerX, centerY))
-
-        frame.clearShadowLayer()
-        frame.style = Paint.Style.STROKE
-        frame.strokeWidth = 8f
-        canvas.drawCircle(centerX, centerY, radius, frame)
+        canvas.drawCircle(centerX, centerY, radius - frame.strokeWidth / 2f, frame)
     }
 
     private fun dishPaint(picture: Bitmap, diameter: Float, centerX: Float, centerY: Float): Paint {
