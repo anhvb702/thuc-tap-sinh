@@ -330,6 +330,7 @@
     "id": "ga-ap-chao",
     "title": "Thịt gà áp chảo",
     "minutes": 20,
+    "servings": 2,
     "stepMinutes": [null, 15, 10, null],
     "steps": [
       "Đùi gà rửa sạch, thấm khô, khứa nhẹ mặt da và ướp với tiêu, muối, tỏi băm nếu có.",
@@ -338,16 +339,23 @@
       "Cắt miếng, dọn cùng hành lá và dùng nóng với cơm."
     ],
     "required": [
-      { "anyOf": ["thit-ga"] }
+      { "anyOf": ["thit-ga"], "measures": { "thit-ga": { "amount": 350, "unit": "g" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Muối", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tỏi băm", "amountText": "2 tép" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" }
     ]
   },
   {
     "id": "canh-bi-thit-bam",
     "title": "Canh bí xanh nấu thịt bằm",
     "minutes": 20,
+    "servings": 2,
     "stepMinutes": [null, 10, 5, null],
     "steps": [
       "Bí xanh gọt vỏ, thái miếng vừa ăn; thịt heo bằm ướp chút muối và tiêu.",
@@ -356,17 +364,30 @@
       "Nêm vừa ăn, rắc hành lá và dọn ra bát cùng cơm nóng."
     ],
     "required": [
-      { "anyOf": ["bi-xanh"] },
-      { "anyOf": ["thit-heo-xay", "thit-heo"] }
+      { "anyOf": ["bi-xanh"], "measures": { "bi-xanh": { "amount": 350, "unit": "g" } } },
+      {
+        "anyOf": ["thit-heo-xay", "thit-heo"],
+        "measures": {
+          "thit-heo-xay": { "amount": 150, "unit": "g" },
+          "thit-heo": { "amount": 150, "unit": "g" }
+        }
+      }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Muối", "amountText": "1/2 thìa cà phê" },
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Nước mắm", "amountText": "1 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "rau-muong-xao-toi",
     "title": "Rau muống xào tỏi",
     "minutes": 10,
+    "servings": 2,
     "stepMinutes": [null, 5, 5, null],
     "steps": [
       "Rau muống nhặt ngọn, rửa sạch và để ráo; tỏi đập dập và băm nhỏ.",
@@ -375,14 +396,21 @@
       "Nêm vừa ăn rồi dọn ra đĩa, dùng cùng cơm nóng."
     ],
     "required": [
-      { "anyOf": ["rau-muong"] },
-      { "anyOf": ["toi"] }
+      { "anyOf": ["rau-muong"], "measures": { "rau-muong": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 4, "unit": "tép" } } }
+    ],
+    "seasonings": [
+      { "name": "Dầu ăn", "amountText": "1,5 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Nước mắm", "amountText": "1/2 muỗng canh" },
+      { "name": "Muối", "amountText": "vừa miệng" }
     ]
   },
   {
     "id": "suon-xao-chua-ngot",
     "title": "Sườn xào chua ngọt",
     "minutes": 30,
+    "servings": 2,
     "stepMinutes": [null, 15, 10, null],
     "steps": [
       "Sườn heo rửa sạch, chặt miếng vừa ăn, chần sơ qua nước sôi cho thơm; cà chua bổ múi cau.",
@@ -391,19 +419,26 @@
       "Rắc hành lá nếu có, múc ra đĩa và dùng nóng với cơm trắng."
     ],
     "required": [
-      { "anyOf": ["suon-heo"] },
-      { "anyOf": ["ca-chua"] }
+      { "anyOf": ["suon-heo"], "measures": { "suon-heo": { "amount": 400, "unit": "g" } } },
+      { "anyOf": ["ca-chua"], "measures": { "ca-chua": { "amount": 2, "unit": "quả" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] },
-      { "anyOf": ["nuoc-mam"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } },
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 2, "unit": "muỗng canh" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Đường", "amountText": "1,5 muỗng canh" },
+      { "name": "Giấm hoặc cốt chanh", "amountText": "1,5 muỗng canh" },
+      { "name": "Tỏi băm", "amountText": "2 tép" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "muc-xao-can-toi",
     "title": "Mực xào dưa leo",
     "minutes": 15,
+    "servings": 2,
     "stepMinutes": [null, 4, 5, null],
     "steps": [
       "Mực tươi làm sạch, khía vảy rồng và cắt miếng vừa ăn; dưa leo rửa sạch, bỏ ruột và thái lát xéo.",
@@ -412,19 +447,25 @@
       "Nêm vừa ăn rồi dọn ra đĩa, dùng nóng cho giòn ngọt."
     ],
     "required": [
-      { "anyOf": ["muc"] },
-      { "anyOf": ["dua-leo"] }
+      { "anyOf": ["muc"], "measures": { "muc": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["dua-leo"], "measures": { "dua-leo": { "amount": 2, "unit": "quả" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-tay"] },
-      { "anyOf": ["toi"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["hanh-tay"], "measures": { "hanh-tay": { "amount": 0.5, "unit": "củ" } } },
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Dầu hào", "amountText": "1 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "cai-thia-xao-nam",
     "title": "Cải thìa xào nấm",
     "minutes": 12,
+    "servings": 2,
     "stepMinutes": [null, 3, 4, null],
     "steps": [
       "Cải thìa tách bẹ rửa sạch; nấm tươi cắt gốc, rửa nhẹ và thái miếng vừa ăn.",
@@ -433,18 +474,24 @@
       "Nêm nhạt vừa miệng, bày ra đĩa và dùng nóng với cơm."
     ],
     "required": [
-      { "anyOf": ["cai-thia"] },
-      { "anyOf": ["nam"] }
+      { "anyOf": ["cai-thia"], "measures": { "cai-thia": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["nam"], "measures": { "nam": { "amount": 150, "unit": "g" } } }
     ],
     "optional": [
-      { "anyOf": ["toi"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Dầu hào", "amountText": "1 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1/2 thìa cà phê" },
+      { "name": "Muối", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "canh-suon-bi-xanh",
     "title": "Canh sườn bí xanh",
     "minutes": 30,
+    "servings": 2,
     "stepMinutes": [null, 20, 8, null],
     "steps": [
       "Sườn heo rửa sạch, chần sơ nước sôi; bí xanh gọt vỏ, bỏ ruột và cắt khúc vừa ăn.",
@@ -453,18 +500,24 @@
       "Rắc hành lá nếu có, múc canh ra tô dùng nóng."
     ],
     "required": [
-      { "anyOf": ["suon-heo"] },
-      { "anyOf": ["bi-xanh"] }
+      { "anyOf": ["suon-heo"], "measures": { "suon-heo": { "amount": 350, "unit": "g" } } },
+      { "anyOf": ["bi-xanh"], "measures": { "bi-xanh": { "amount": 350, "unit": "g" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] },
-      { "anyOf": ["nuoc-mam"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } },
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Muối", "amountText": "1/2 thìa cà phê" },
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "trung-chien-hanh-la",
     "title": "Trứng chiên hành lá",
     "minutes": 10,
+    "servings": 2,
     "stepMinutes": [null, 4, 3, null],
     "steps": [
       "Đập trứng gà vào bát, thêm hành lá thái nhỏ và chút nước mắm rồi đánh đều tay.",
@@ -473,18 +526,23 @@
       "Cắt trứng thành miếng vừa ăn, dọn ra đĩa dùng cùng cơm nóng."
     ],
     "required": [
-      { "anyOf": ["trung-ga"] },
-      { "anyOf": ["hanh-la"] }
+      { "anyOf": ["trung-ga"], "measures": { "trung-ga": { "amount": 3, "unit": "quả" } } },
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
     ],
     "optional": [
-      { "anyOf": ["nuoc-mam"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 1, "unit": "thìa cà phê" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Muối", "amountText": "1 nhúm nhỏ" }
     ]
   },
   {
     "id": "thit-ba-chi-rang-chay-canh",
     "title": "Thịt ba chỉ rang cháy cạnh",
     "minutes": 20,
+    "servings": 2,
     "stepMinutes": [null, 10, 5, null],
     "steps": [
       "Thịt ba chỉ rửa sạch, thấm khô và thái miếng vừa ăn; hành lá cắt khúc.",
@@ -493,17 +551,23 @@
       "Rắc hành lá vào đảo nhanh rồi múc ra đĩa dùng nóng với cơm trắng."
     ],
     "required": [
-      { "anyOf": ["ba-chi"] }
+      { "anyOf": ["ba-chi"], "measures": { "ba-chi": { "amount": 350, "unit": "g" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] },
-      { "anyOf": ["nuoc-mam"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } },
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 2, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/2 thìa cà phê" },
+      { "name": "Hành tím băm", "amountText": "1 củ" }
     ]
   },
   {
     "id": "ca-thu-sot-ca-chua",
     "title": "Cá thu sốt cà chua",
     "minutes": 25,
+    "servings": 2,
     "stepMinutes": [null, 8, 10, null],
     "steps": [
       "Cá thu rửa sạch, thấm khô; cà chua thái hạt lựu, hành lá cắt nhỏ.",
@@ -512,19 +576,25 @@
       "Rắc hành lá và chút tiêu, dọn ra đĩa dùng nóng với cơm."
     ],
     "required": [
-      { "anyOf": ["ca-thu"] },
-      { "anyOf": ["ca-chua"] }
+      { "anyOf": ["ca-thu"], "measures": { "ca-thu": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["ca-chua"], "measures": { "ca-chua": { "amount": 2, "unit": "quả" } } }
     ],
     "optional": [
-      { "anyOf": ["hanh-la"] },
-      { "anyOf": ["nuoc-mam"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } },
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 2, "unit": "muỗng canh" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Hành tím băm", "amountText": "1 củ" }
     ]
   },
   {
     "id": "ga-kho-gung",
     "title": "Gà kho gừng",
     "minutes": 30,
+    "servings": 2,
     "stepMinutes": [null, 5, 18, null],
     "steps": [
       "Thịt gà rửa sạch, chặt miếng vừa ăn; gừng tươi cạo vỏ, thái sợi mỏng.",
@@ -533,18 +603,25 @@
       "Thêm phần gừng sợi còn lại cho thơm, múc ra tô dùng nóng."
     ],
     "required": [
-      { "anyOf": ["thit-ga"] },
-      { "anyOf": ["gung"] }
+      { "anyOf": ["thit-ga"], "measures": { "thit-ga": { "amount": 400, "unit": "g" } } },
+      { "anyOf": ["gung"], "measures": { "gung": { "amount": 1, "unit": "củ" } } }
     ],
     "optional": [
-      { "anyOf": ["nuoc-mam"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["nuoc-mam"], "measures": { "nuoc-mam": { "amount": 2.5, "unit": "muỗng canh" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Hành tím băm", "amountText": "1 củ" },
+      { "name": "Tiêu xay", "amountText": "1/2 thìa cà phê" },
+      { "name": "Muối", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
     "id": "bo-xao-bong-cai",
     "title": "Thịt bò xào bông cải xanh",
     "minutes": 15,
+    "servings": 2,
     "stepMinutes": [null, 4, 4, null],
     "steps": [
       "Thịt bò thái lát mỏng, ướp nhẹ với tỏi băm và nước tương; bông cải xanh tách nhánh rửa sạch.",
@@ -553,13 +630,18 @@
       "Tắt bếp, dọn ra đĩa dùng nóng cùng cơm trắng."
     ],
     "required": [
-      { "anyOf": ["thit-bo"] },
-      { "anyOf": ["bong-cai"] }
+      { "anyOf": ["thit-bo"], "measures": { "thit-bo": { "amount": 250, "unit": "g" } } },
+      { "anyOf": ["bong-cai"], "measures": { "bong-cai": { "amount": 300, "unit": "g" } } }
     ],
     "optional": [
-      { "anyOf": ["toi"] },
-      { "anyOf": ["nuoc-tuong"] },
-      { "anyOf": ["dau-an"] }
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } },
+      { "anyOf": ["nuoc-tuong"], "measures": { "nuoc-tuong": { "amount": 1.5, "unit": "muỗng canh" } } },
+      { "anyOf": ["dau-an"], "measures": { "dau-an": { "amount": 1.5, "unit": "muỗng canh" } } }
+    ],
+    "seasonings": [
+      { "name": "Dầu hào", "amountText": "1 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
   },
   {
