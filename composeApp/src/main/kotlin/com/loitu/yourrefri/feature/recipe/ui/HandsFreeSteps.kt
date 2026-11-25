@@ -25,6 +25,12 @@ fun stepTimerSeconds(recipe: Recipe, stepIndex: Int): Int? {
         ?.times(60)
 }
 
+/** Hướng trượt khi đổi giá trị: +1 tiến, -1 lùi, 0 không đổi. Dùng cho bước rảnh tay và bộ chọn khẩu phần. */
+internal fun slideDirection(from: Int, to: Int): Int = to.compareTo(from).coerceIn(-1, 1)
+
+/** Thang bắt đầu của hiệu ứng bật lên ở màn nấu xong; tắt animation hệ thống thì hiện đủ cỡ ngay. */
+internal fun celebrationPopStartScale(animatorsEnabled: Boolean): Float = if (animatorsEnabled) 0.6f else 1f
+
 /** Vị trí bước hiện tại; luôn nằm trong [0, totalSteps - 1] khi tạo bằng [of]. */
 data class HandsFreeState(val stepIndex: Int, val totalSteps: Int) {
     val isEmpty: Boolean get() = totalSteps <= 0

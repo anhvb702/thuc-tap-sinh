@@ -1,5 +1,13 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.ui.components.RecipeThumb
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -115,6 +124,7 @@ fun HandsFreeCookScreen(
         )
 
         val stepText = recipe.steps[state.stepIndex]
+        val animatorsEnabled = areSystemAnimatorsEnabled()
         val timerSeconds = stepTimerSeconds(recipe, state.stepIndex)
         val config = LocalConfiguration.current
         val fontScale = LocalDensity.current.fontScale
@@ -147,19 +157,33 @@ fun HandsFreeCookScreen(
                         shape = RoundedCornerShape(20.dp),
                     )
                 }
-                Text(
-                    text = stepText,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 30.sp,
-                        lineHeight = 42.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    ),
-                    color = colors.text,
-                    modifier = Modifier.semantics {
-                        liveRegion = LiveRegionMode.Polite
-                        contentDescription = state.announcement(stepText)
+                AnimatedContent(
+                    targetState = state.stepIndex to stepText,
+                    transitionSpec = {
+                        val dir = slideDirection(initialState.first, targetState.first)
+                        if (!animatorsEnabled || dir == 0) {
+                            fadeIn(snap()) togetherWith fadeOut(snap())
+                        } else {
+                            (slideInHorizontally(tween(260)) { it / 4 * dir } + fadeIn(tween(220))) togetherWith
+                                (slideOutHorizontally(tween(200)) { -it / 4 * dir } + fadeOut(tween(160)))
+                        }
                     },
-                )
+                    label = "handsFreeStep",
+                ) { (_, text) ->
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontSize = 30.sp,
+                            lineHeight = 42.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = colors.text,
+                        modifier = Modifier.semantics {
+                            liveRegion = LiveRegionMode.Polite
+                            contentDescription = state.announcement(text)
+                        },
+                    )
+                }
                 if (timerSeconds != null && compactTimerScroll) {
                     CookTimerCard(
                         modifier = Modifier.padding(top = 4.dp),

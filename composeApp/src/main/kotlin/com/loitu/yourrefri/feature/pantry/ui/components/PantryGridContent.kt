@@ -1,5 +1,12 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.pantry.logic.PantryCell
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -62,6 +70,7 @@ internal fun PantryGridHeader(
     onClear: () -> Unit,
 ) {
     val colors = AppTheme.colors
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     val focusRequester = remember { FocusRequester() }
     var focusRequested by rememberSaveable(searchOpen) { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
@@ -93,7 +102,11 @@ internal fun PantryGridHeader(
                 }
             }
         }
-        if (searchOpen) {
+        AnimatedVisibility(
+            visible = searchOpen,
+            enter = fadeIn(if (animatorsEnabled) tween(180) else snap()) + expandVertically(if (animatorsEnabled) tween(180) else snap()),
+            exit = fadeOut(if (animatorsEnabled) tween(140) else snap()) + shrinkVertically(if (animatorsEnabled) tween(140) else snap()),
+        ) {
             OutlinedTextField(
                 value = query,
                 onValueChange = onQueryChange,
