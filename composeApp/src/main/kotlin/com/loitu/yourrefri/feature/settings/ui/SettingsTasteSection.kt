@@ -1,5 +1,9 @@
 package com.loitu.yourrefri.feature.settings.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.logic.DishStyle
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.TasteFlavor
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -94,13 +99,20 @@ internal fun FamilyTasteSettingsCard(
     onProfileChange: (FamilyTasteProfile) -> Unit,
 ) {
     val colors = AppTheme.colors
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     var expanded by remember { mutableStateOf(false) }
     var draft by remember(profile) { mutableStateOf(profile) }
     var savedNotice by remember { mutableStateOf(false) }
     val hasChanges = draft != profile
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().animateContentSize(
+            animationSpec = if (animatorsEnabled) {
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            } else {
+                snap()
+            },
+        ),
         shape = RoundedCornerShape(20.dp),
         color = colors.surface,
         border = BorderStroke(1.dp, colors.line),
@@ -125,7 +137,7 @@ internal fun FamilyTasteSettingsCard(
                         text = tasteProfileSummaryVi(profile),
                         style = MaterialTheme.typography.bodySmall,
                         color = colors.muted,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }

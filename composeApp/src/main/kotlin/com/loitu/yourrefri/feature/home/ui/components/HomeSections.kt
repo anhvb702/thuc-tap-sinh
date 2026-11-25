@@ -83,6 +83,7 @@ import com.loitu.yourrefri.feature.recipe.ui.shortReasonLabel
 import com.loitu.yourrefri.ui.components.ChunkyButton
 import com.loitu.yourrefri.ui.components.FoodThumb
 import com.loitu.yourrefri.ui.components.RecipeThumb
+import com.loitu.yourrefri.ui.components.pressScale
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.theme.SageGreenStrong // guard:allow
@@ -498,10 +499,12 @@ internal fun DailySpotlightRecommendationSection(
                                     Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                     Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                 }
+                                val interactionSource = remember { MutableInteractionSource() }
                                 Button(
                                     onClick = { onNavigateToRecipe(suggestion.recipe.id) },
                                     enabled = isCurrentSuggestion,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    interactionSource = interactionSource,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).pressScale(interactionSource),
                                     shape = RoundedCornerShape(14.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
                                 ) {

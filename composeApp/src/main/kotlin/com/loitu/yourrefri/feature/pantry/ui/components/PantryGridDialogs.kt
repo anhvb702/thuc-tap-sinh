@@ -139,6 +139,7 @@ internal fun PantryGridDialogs(
     onCombo: (GroceryCombo) -> Unit,
     showCombo: Boolean,
     onDismissCombo: () -> Unit,
+    voiceLevel: Float = 0f,
 ) {
     val colors = AppTheme.colors
     if (showCombo) GroceryComboDialog(GROCERY_COMBOS, onPick = onCombo, onDismiss = onDismissCombo)
@@ -151,7 +152,9 @@ internal fun PantryGridDialogs(
         AlertDialog(onDismissRequest = { onAction(PantryGridAction.CancelShelfEditor) }, containerColor = colors.surface, title = { Text("Hạn ước tính", color = colors.text) }, text = { Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState())) { ShelfDayOption("Theo gợi ý mặc định", editor.selectedDays == null) { onAction(PantryGridAction.PickShelfDays(null)) }; SHELF_DAY_OPTIONS.forEach { d -> ShelfDayOption("$d ngày", editor.selectedDays == d) { onAction(PantryGridAction.PickShelfDays(d)) } } } }, confirmButton = { TextButton(onClick = { onAction(PantryGridAction.SaveShelfEditor) }) { Text("Lưu", color = colors.accentText) } }, dismissButton = { TextButton(onClick = { onAction(PantryGridAction.CancelShelfEditor) }) { Text("Hủy", color = colors.muted) } })
     }
     if (showMicExplain) AlertDialog(onDismissRequest = onDismissMicExplain, containerColor = colors.surface, title = { Text(VOICE_MIC_TITLE, color = colors.text) }, text = { Text(VOICE_MIC_EXPLAIN, color = colors.muted) }, confirmButton = { TextButton(onClick = { onDismissMicExplain(); onRequestMic() }) { Text("Tiếp tục", color = colors.accentText) } }, dismissButton = { TextButton(onClick = onDismissMicExplain) { Text("Để sau", color = colors.muted) } })
-    if (voicePhase != VoicePhase.IDLE) VoiceSheet(voicePhase, voicePartial, onVoiceStop, onVoiceCancel, onVoiceRetry, onVoiceManual)
+    if (voicePhase != VoicePhase.IDLE) {
+        VoiceSheet(voicePhase, voicePartial, onVoiceStop, onVoiceCancel, onVoiceRetry, onVoiceManual, voiceLevel = voiceLevel)
+    }
     if (showAdd) PantryAddFoodSheet(state, addChoice, newFoodName, newFoodDays, selectedGroup, selectedIds, addFoodError, addFoodAlreadyPresent, voiceHeard, onName, onDays, onGroup, onToggleId, onConfirmAdd, onDismissAdd)
 }
 

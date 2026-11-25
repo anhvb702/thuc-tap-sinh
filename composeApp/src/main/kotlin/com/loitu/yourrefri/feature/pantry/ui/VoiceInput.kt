@@ -36,15 +36,25 @@ internal interface VoiceSession {
     fun destroy()
 }
 
+internal fun normalizeVoiceRms(rmsdB: Float): Float =
+    if (rmsdB.isFinite()) ((rmsdB + 2f) / 12f).coerceIn(0f, 1f) else 0f
+
+internal fun voiceWaveBarHeights(normalizedLevel: Float, animatorsEnabled: Boolean): List<Float> {
+    if (!animatorsEnabled) return List(5) { 0.45f }
+    val amplitude = 0.25f + 0.75f * normalizedLevel.coerceIn(0f, 1f)
+    return listOf(0.45f, 0.78f, 1f, 0.78f, 0.45f).map { it * amplitude }
+}
+
 /** Tạo phiên nghe on-device; trả null khi máy không hỗ trợ (khi đó nút giọng nói đã bị ẩn). */
 internal fun startVoiceSession(
     context: Context,
     onPartial: (String) -> Unit,
     onResult: (String) -> Unit,
     onFailure: (VoiceFailure) -> Unit,
+    onRms: (Float) -> Unit = {},
 ): VoiceSession? {
     if (!isVoiceInputAvailable(context)) return null
-    return OnDeviceVoiceSession(context, onPartial, onResult, onFailure)
+    return OnDeviceVoiceSession(context, onPartial, onResult, onFailure, onRms)
 }
 
 @RequiresApi(Build.VERSION_CODES.TIRAMISU)
@@ -53,11 +63,13 @@ private class OnDeviceVoiceSession(
     private val onPartial: (String) -> Unit,
     private val onResult: (String) -> Unit,
     private val onFailure: (VoiceFailure) -> Unit,
+    private val onRms: (Float) -> Unit,
 ) : VoiceSession {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
     private var lastPartial = ""
     private var finished = false
+    private var stopRequested = false
 
     init {
         try {
@@ -66,7 +78,9 @@ private class OnDeviceVoiceSession(
             object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {}
                 override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onRmsChanged(rmsdB: Float) {
+                    if (!finished && !stopRequested) onRms(normalizeVoiceRms(rmsdB))
+                }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
                 override fun onEvent(eventType: Int, params: Bundle?) {}
@@ -126,6 +140,7 @@ private class OnDeviceVoiceSession(
         bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }
 
     override fun stop() {
+        stopRequested = true
         try {
             recognizer?.stopListening()
         } catch (_: Exception) {
@@ -134,11 +149,11 @@ private class OnDeviceVoiceSession(
     }
 
     override fun destroy() {
+        finished = true
         mainHandler.post { destroyNow() }
     }
 
     private fun destroyNow() {
-        finished = true
         recognizer?.let {
             try {
                 it.cancel()
