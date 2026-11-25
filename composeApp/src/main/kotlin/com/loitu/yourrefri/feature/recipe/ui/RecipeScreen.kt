@@ -4,13 +4,9 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -71,7 +67,6 @@ fun RecipeScreen(
     var pendingRecipe by remember { mutableStateOf<Recipe?>(null) }
     var selectedRecipeId by rememberSaveable(initialRecipeId) { mutableStateOf(initialRecipeId) }
     var showMysteryWheel by remember { mutableStateOf(false) }
-    var showMysteryHint by rememberSaveable { mutableStateOf(false) }
 
     val available = remember(recipes, unlockedIds) { availableRecipesForPlanning(recipes, unlockedIds) }
     val selectedRecipe = available.firstOrNull { it.id == selectedRecipeId }
@@ -138,10 +133,6 @@ fun RecipeScreen(
             favoriteIds = favoriteIds,
             reward = reward,
             onSpin = { showMysteryWheel = true },
-            onLockedRecipe = {
-                if (canSpin) showMysteryWheel = true
-                else showMysteryHint = true
-            },
             onOpenRecipe = ::openRecipe,
             onToggleFavorite = onToggleFavorite,
             modifier = modifier,
@@ -158,24 +149,6 @@ fun RecipeScreen(
                     openRecipe(recipe)
                 },
                 onDismiss = { showMysteryWheel = false },
-            )
-        }
-        if (showMysteryHint && reward != null && !reward.allUnlocked) {
-            AlertDialog(
-                onDismissRequest = { showMysteryHint = false },
-                containerColor = colors.surface,
-                title = { Text(MYSTERY_RECIPE_LABEL, color = colors.text) },
-                text = {
-                    Text(
-                        "Nấu thêm ${reward.cooksNeededForNext} bữa tại nhà để nhận lượt quay mở món bí mật nhé!",
-                        color = colors.muted,
-                    )
-                },
-                confirmButton = {
-                    TextButton(onClick = { showMysteryHint = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("Đóng", color = colors.accentText)
-                    }
-                },
             )
         }
         return

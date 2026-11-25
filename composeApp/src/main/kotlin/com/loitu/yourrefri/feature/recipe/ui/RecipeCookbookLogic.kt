@@ -7,13 +7,43 @@ import com.loitu.yourrefri.feature.recipe.data.Recipe
 
 internal const val MYSTERY_RECIPE_LABEL = "Món bí mật"
 
-internal enum class RecipeCookbookFilter(val labelVi: String) {
-    ALL("Tất cả"),
-    CAN_COOK("Đủ nguyên liệu"),
-    FAVORITE("Yêu thích"),
+internal enum class CookbookDurationGroup(val labelVi: String) {
     QUICK("Nhanh ≤ 15p"),
-    MYSTERY(MYSTERY_RECIPE_LABEL),
+    MEDIUM("Vừa 16–30p"),
+    SLOW("Nấu kỹ > 30p"),
 }
+
+internal val ALL_COOKBOOK_DURATIONS: Set<CookbookDurationGroup> = CookbookDurationGroup.entries.toSet()
+
+internal data class CookbookFilters(
+    val canCookOnly: Boolean = false,
+    val favoriteOnly: Boolean = false,
+    val selectedDurations: Set<CookbookDurationGroup> = ALL_COOKBOOK_DURATIONS,
+) {
+    fun resetDurations() = copy(selectedDurations = ALL_COOKBOOK_DURATIONS)
+    fun resetAll() = CookbookFilters()
+}
+
+internal fun cookbookDurationOf(minutes: Int?): CookbookDurationGroup = when {
+    minutes != null && minutes <= 15 -> CookbookDurationGroup.QUICK
+    minutes != null && minutes <= 30 -> CookbookDurationGroup.MEDIUM
+    else -> CookbookDurationGroup.SLOW
+}
+
+internal fun toggleCookbookDuration(
+    selected: Set<CookbookDurationGroup>,
+    group: CookbookDurationGroup,
+): Set<CookbookDurationGroup> = if (group in selected) selected - group else selected + group
+
+internal fun Set<CookbookDurationGroup>.toDurationMask(): Int = fold(0) { mask, group ->
+    mask or (1 shl group.ordinal)
+}
+
+internal fun Int.toCookbookDurations(): Set<CookbookDurationGroup> =
+    CookbookDurationGroup.entries.filterTo(mutableSetOf()) { this and (1 shl it.ordinal) != 0 }
+
+internal fun cookbookPresenceSwitchLabel(canCookOnly: Boolean): String =
+    if (canCookOnly) "Đủ nguyên liệu nấu ngay" else "Tất cả món ăn"
 
 internal data class CookbookEntry(
     val recipe: Recipe,
@@ -37,20 +67,17 @@ internal fun buildCookbookEntries(
 internal fun filterCookbookEntries(
     entries: List<CookbookEntry>,
     favoriteIds: Set<String>,
-    filter: RecipeCookbookFilter,
+    filters: CookbookFilters,
     query: String,
 ): List<CookbookEntry> {
-    val filtered = when (filter) {
-        RecipeCookbookFilter.ALL -> entries.sortedByDescending { it.unlocked }
-        RecipeCookbookFilter.CAN_COOK -> entries.filter { it.unlocked && it.canCookNow }
-        RecipeCookbookFilter.FAVORITE -> entries.filter { it.unlocked && it.recipe.id in favoriteIds }
-        RecipeCookbookFilter.QUICK -> entries.filter { it.unlocked && (it.recipe.minutes ?: Int.MAX_VALUE) <= 15 }
-        RecipeCookbookFilter.MYSTERY -> entries.filter { it.recipe.isMystery }.sortedBy { it.unlocked }
-    }
+    val unlocked = entries.filter { it.unlocked }
+    if (filters.selectedDurations.isEmpty()) return emptyList()
+    val filterByDuration = filters.selectedDurations.size < CookbookDurationGroup.entries.size
     val normalized = normalizeFoodQuery(query)
-    if (normalized.isEmpty()) return filtered
-    return filtered.filter { entry ->
-        val searchableTitle = if (entry.unlocked) entry.recipe.title else MYSTERY_RECIPE_LABEL
-        matchesFoodQuery(searchableTitle, normalized)
+    return unlocked.filter { entry ->
+        (!filters.canCookOnly || entry.canCookNow) &&
+            (!filters.favoriteOnly || entry.recipe.id in favoriteIds) &&
+            (!filterByDuration || cookbookDurationOf(entry.recipe.minutes) in filters.selectedDurations) &&
+            (normalized.isEmpty() || matchesFoodQuery(entry.recipe.title, normalized))
     }
 }
