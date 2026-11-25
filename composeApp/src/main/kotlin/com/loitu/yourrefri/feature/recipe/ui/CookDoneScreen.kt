@@ -1,5 +1,9 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,8 +28,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
@@ -37,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 
 internal object CookDoneCopy {
     const val title = "Xong rồi, dọn cơm thôi!"
@@ -100,8 +107,17 @@ internal fun CookDoneScreen(
             )
             Spacer(Modifier.height(20.dp))
         }
+        val animatorsEnabled = areSystemAnimatorsEnabled()
+        var popped by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { popped = true }
+        val popScale by animateFloatAsState(
+            targetValue = if (popped) 1f else celebrationPopStartScale(animatorsEnabled),
+            animationSpec = if (animatorsEnabled) spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow) else snap(),
+            label = "cookDonePop",
+        )
         Box(
-            modifier = Modifier.size(112.dp).clip(CircleShape).background(colors.primarySoft),
+            modifier = Modifier.size(112.dp).graphicsLayer { scaleX = popScale; scaleY = popScale }
+                .clip(CircleShape).background(colors.primarySoft),
             contentAlignment = Alignment.Center,
         ) {
             Icon(AppIcons.Check, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(56.dp))

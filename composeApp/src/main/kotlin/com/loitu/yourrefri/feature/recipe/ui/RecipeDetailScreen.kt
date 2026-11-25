@@ -1,11 +1,15 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -365,6 +369,7 @@ private fun ManualCookChecklistDialog(
 @Composable
 private fun ServingSelector(selectedServings: Int, onSelect: (Int) -> Unit) {
     val colors = AppTheme.colors
+    val animatorsEnabled = com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled()
     Text("Khẩu phần (người)", style = MaterialTheme.typography.labelLarge, color = colors.muted)
     Row(
         Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 6.dp).selectableGroup(),
@@ -387,12 +392,26 @@ private fun ServingSelector(selectedServings: Int, onSelect: (Int) -> Unit) {
             }
         }
     }
-    Text(
-        text = measureEstimateNote(selectedServings),
-        style = MaterialTheme.typography.bodySmall,
-        color = colors.muted,
-        modifier = Modifier.padding(bottom = 8.dp),
-    )
+    AnimatedContent(
+        targetState = selectedServings,
+        transitionSpec = {
+            val dir = slideDirection(initialState, targetState)
+            if (!animatorsEnabled || dir == 0) {
+                fadeIn(snap()) togetherWith fadeOut(snap())
+            } else {
+                (slideInVertically(tween(200)) { it / 2 * dir } + fadeIn(tween(180))) togetherWith
+                    (slideOutVertically(tween(160)) { -it / 2 * dir } + fadeOut(tween(120)))
+            }
+        },
+        label = "servingNote",
+    ) { servings ->
+        Text(
+            text = measureEstimateNote(servings),
+            style = MaterialTheme.typography.bodySmall,
+            color = colors.muted,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+    }
 }
 
 @Composable

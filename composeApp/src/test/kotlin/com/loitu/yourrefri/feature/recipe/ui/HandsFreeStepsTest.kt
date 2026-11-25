@@ -111,4 +111,19 @@ class HandsFreeStepsTest {
         listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { assertFalse(it in all) }
         assertEquals("Thoát chế độ nấu rảnh tay", HandsFreeCopy.CLOSE_DESCRIPTION)
     }
+
+    @Test
+    fun slideDirection_followsNavigationDirection() {
+        assertEquals(1, slideDirection(from = 0, to = 1))
+        assertEquals(1, slideDirection(from = 1, to = 4))
+        assertEquals(-1, slideDirection(from = 3, to = 2))
+        assertEquals(-1, slideDirection(from = 4, to = 1))
+        assertEquals(0, slideDirection(from = 2, to = 2))
+    }
+
+    @Test
+    fun celebrationPopScale_startsSmallAndPopsToFullSizeWithReduceMotionSafe() {
+        assertEquals(0.6f, celebrationPopStartScale(animatorsEnabled = true))
+        assertEquals(1f, celebrationPopStartScale(animatorsEnabled = false))
+    }
 }
