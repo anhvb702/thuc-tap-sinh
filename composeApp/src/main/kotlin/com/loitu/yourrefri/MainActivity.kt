@@ -39,6 +39,8 @@ import com.loitu.yourrefri.di.AppContainer
 import com.loitu.yourrefri.shared.db.DatabaseTooNewException
 import com.loitu.yourrefri.ui.DatabaseTooNewNotice
 import com.loitu.yourrefri.ui.MainScaffold
+import com.loitu.yourrefri.ui.MainScaffoldCollectionBinding
+import com.loitu.yourrefri.ui.MainScaffoldSettingsBinding
 import com.loitu.yourrefri.ui.theme.ThemePrefs
 import com.loitu.yourrefri.ui.theme.YourRefriTheme
 import com.loitu.yourrefri.reminder.ReminderIntents
@@ -185,6 +187,7 @@ private fun App(dependencies: AppContainer, settingsViewModel: SettingsViewModel
                     weeklyMealPlanViewModel.reloadSettings()
                     favoriteViewModel.reload()
                     cookHistoryViewModel.reload()
+                    unlockedRecipesVm.reload()
                 }
                 SettingsEffect.RequestNotificationPermission -> notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 SettingsEffect.TriggerTestReminder -> context.sendBroadcast(
@@ -225,39 +228,38 @@ private fun App(dependencies: AppContainer, settingsViewModel: SettingsViewModel
         snackbarHostState = snackbarHostState,
         recipes = dependencies.recipes,
         onAction = viewModel::dispatch,
-        onTestReminder = { settingsViewModel.onIntent(SettingsIntent.RequestTestReminder(hasNotificationPermission())) },
-        reminderEnabled = settingsState.reminderEnabled,
-        onReminderChanged = { settingsViewModel.onIntent(SettingsIntent.RequestReminderChange(it, hasNotificationPermission())) },
-        themeMode = settingsState.themeMode,
-        onThemeModeChange = { settingsViewModel.onIntent(SettingsIntent.SetThemeMode(it)) },
-        favoriteIds = favoriteState.ids,
-        onToggleFavorite = { favoriteViewModel.dispatch(FavoriteRecipesAction.Toggle(it)) },
-        unlockedIds = unlockedIds,
-        mysteryRewardsReady = unlocksLoaded && cookHistoryState.loaded,
-        mysteryUnlockFailedId = mysteryUnlockFailedId,
-        onUnlockMysteryRecipe = { unlockedRecipesVm.unlock(it.id) },
-        dietRestriction = settingsState.dietRestriction,
-        onDietRestrictionChange = { settingsViewModel.onIntent(SettingsIntent.SetDietRestriction(it)) },
-        appVersionName = appVersionName,
-        cookHistoryState = cookHistoryState,
-        onDeleteCook = { id -> cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(id)) },
-        onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
         currentHour = { Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).hour },
-        sundayTime = settingsState.sundayTime,
-        onSundayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetSundayTime(it)) },
-        backupStatus = settingsState.backupStatus,
-        restoreConfirmationPending = settingsState.restoreConfirmationPending,
-        onExportBackup = {
-            settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
-            exportPicker.launch("yourrefri_backup.json")
-        },
-        onImportBackup = {
-            settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
-            importPicker.launch(arrayOf("application/json", "text/json"))
-        },
-        onConfirmRestore = { settingsViewModel.onIntent(SettingsIntent.ConfirmRestore) },
-        onCancelRestore = { settingsViewModel.onIntent(SettingsIntent.CancelRestore) },
-        tasteProfile = settingsState.tasteProfile,
-        onTasteProfileChange = { settingsViewModel.onIntent(SettingsIntent.SetTasteProfile(it)) },
+        settings = MainScaffoldSettingsBinding(
+            uiState = settingsState,
+            appVersionName = appVersionName,
+            onExportBackup = {
+                settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
+                exportPicker.launch("yourrefri_backup.json")
+            },
+            onImportBackup = {
+                settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
+                importPicker.launch(arrayOf("application/json", "text/json"))
+            },
+            onConfirmRestore = { settingsViewModel.onIntent(SettingsIntent.ConfirmRestore) },
+            onCancelRestore = { settingsViewModel.onIntent(SettingsIntent.CancelRestore) },
+            onReminderChanged = { settingsViewModel.onIntent(SettingsIntent.RequestReminderChange(it, hasNotificationPermission())) },
+            onTestReminder = { settingsViewModel.onIntent(SettingsIntent.RequestTestReminder(hasNotificationPermission())) },
+            onThemeModeChange = { settingsViewModel.onIntent(SettingsIntent.SetThemeMode(it)) },
+            onDietRestrictionChange = { settingsViewModel.onIntent(SettingsIntent.SetDietRestriction(it)) },
+            onSundayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetSundayTime(it)) },
+            onWeekdayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekdayTime(it)) },
+            onTasteProfileChange = { settingsViewModel.onIntent(SettingsIntent.SetTasteProfile(it)) },
+        ),
+        collections = MainScaffoldCollectionBinding(
+            favoriteIds = favoriteState.ids,
+            onToggleFavorite = { favoriteViewModel.dispatch(FavoriteRecipesAction.Toggle(it)) },
+            cookHistoryState = cookHistoryState,
+            onRecordCook = { recipeId, ids, meal, onResult -> cookHistoryViewModel.record(recipeId, ids, meal, onResult) },
+            onDeleteCook = { id -> cookHistoryViewModel.dispatch(com.loitu.yourrefri.feature.cooklog.ui.CookHistoryAction.Delete(id)) },
+            unlockedIds = unlockedIds,
+            mysteryRewardsReady = unlocksLoaded && cookHistoryState.loaded,
+            mysteryUnlockFailedId = mysteryUnlockFailedId,
+            onUnlockMysteryRecipe = { unlockedRecipesVm.unlock(it.id) },
+        ),
     )
 }

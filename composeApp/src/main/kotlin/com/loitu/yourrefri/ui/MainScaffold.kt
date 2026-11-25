@@ -77,7 +77,6 @@ import com.loitu.yourrefri.feature.recipe.ui.cookDoneSummary
 import com.loitu.yourrefri.feature.recipe.ui.buildDirectCookPlan
 import com.loitu.yourrefri.feature.recipe.ui.freezerIngredientNames
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
-import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.recipe.logic.availableRecipesForPlanning
 import com.loitu.yourrefri.feature.recipe.logic.isDietFilterTooStrict
@@ -111,7 +110,6 @@ import com.loitu.yourrefri.ui.components.tabContentDurationMs
 import com.loitu.yourrefri.ui.components.tabSlideDirection
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
-import com.loitu.yourrefri.ui.theme.ThemeMode
 import com.loitu.yourrefri.reminder.ReminderPopupBoxDialog
 import com.loitu.yourrefri.reminder.buildReminderPopupData
 
@@ -140,38 +138,23 @@ fun MainScaffold(
     snackbarHostState: SnackbarHostState,
     recipes: List<Recipe>,
     onAction: (PantryGridAction) -> Unit,
-    backupStatus: String? = null,
-    restoreConfirmationPending: Boolean = false,
-    onExportBackup: () -> Unit = {},
-    onImportBackup: () -> Unit = {},
-    onConfirmRestore: () -> Unit = {},
-    onCancelRestore: () -> Unit = {},
-    reminderEnabled: Boolean = false,
-    onReminderChanged: (Boolean) -> Unit = {},
-    onTestReminder: () -> Unit = {},
-    themeMode: ThemeMode = ThemeMode.SYSTEM,
-    onThemeModeChange: (ThemeMode) -> Unit = {},
-    favoriteIds: Set<String> = emptySet(),
-    onToggleFavorite: (String) -> Unit = {},
-    dietRestriction: DietRestriction = DietRestriction.NONE,
-    onDietRestrictionChange: (DietRestriction) -> Unit = {},
-    appVersionName: String = "",
-    sundayTime: kotlinx.datetime.LocalTime = kotlinx.datetime.LocalTime(8, 0),
-    onSundayTimeChange: (kotlinx.datetime.LocalTime) -> Unit = {},
-    // Ghi "Đã nấu": nhận id bản ghi (hoặc null nếu không ghi được) để Hoàn tác xóa đúng bản ghi đó.
-    onRecordCook: (recipeId: String, savedIngredientIds: List<String>, meal: com.loitu.yourrefri.feature.recipe.data.MealSlot, onResult: (Long?) -> Unit) -> Unit = { _, _, _, done -> done(null) },
+    settings: MainScaffoldSettingsBinding = MainScaffoldSettingsBinding(),
+    collections: MainScaffoldCollectionBinding = MainScaffoldCollectionBinding(),
     currentHour: (() -> Int)? = null,
-    cookHistoryState: com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState = com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState(),
-    onDeleteCook: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
-    tasteProfile: FamilyTasteProfile = FamilyTasteProfile(),
-    onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
     homeViewModel: com.loitu.yourrefri.feature.home.presentation.HomeViewModel? = null,
-    unlockedIds: Set<String> = emptySet(),
-    mysteryRewardsReady: Boolean = true,
-    mysteryUnlockFailedId: String? = null,
-    onUnlockMysteryRecipe: (Recipe) -> Unit = {},
 ) {
+    val dietRestriction = settings.uiState.dietRestriction
+    val tasteProfile = settings.uiState.tasteProfile
+    val favoriteIds = collections.favoriteIds
+    val onToggleFavorite = collections.onToggleFavorite
+    val cookHistoryState = collections.cookHistoryState
+    val onRecordCook = collections.onRecordCook
+    val onDeleteCook = collections.onDeleteCook
+    val unlockedIds = collections.unlockedIds
+    val mysteryRewardsReady = collections.mysteryRewardsReady
+    val mysteryUnlockFailedId = collections.mysteryUnlockFailedId
+    val onUnlockMysteryRecipe = collections.onUnlockMysteryRecipe
     var currentTab by remember { mutableStateOf(NavTab.HOME) } // Mặc định mở Trang chủ theo triết lý Warm Minimalism
     var showWeeklyOverlay by remember { mutableStateOf(false) }
     var showShoppingOverlay by remember { mutableStateOf(false) }
@@ -384,6 +367,22 @@ fun MainScaffold(
                     },
                     label = "mainTabTransition",
                 ) { tab ->
+                    val backupStatus = settings.uiState.backupStatus
+                    val restoreConfirmationPending = settings.uiState.restoreConfirmationPending
+                    val reminderEnabled = settings.uiState.reminderEnabled
+                    val themeMode = settings.uiState.themeMode
+                    val sundayTime = settings.uiState.sundayTime
+                    val appVersionName = settings.appVersionName
+                    val onExportBackup = settings.onExportBackup
+                    val onImportBackup = settings.onImportBackup
+                    val onConfirmRestore = settings.onConfirmRestore
+                    val onCancelRestore = settings.onCancelRestore
+                    val onReminderChanged = settings.onReminderChanged
+                    val onTestReminder = settings.onTestReminder
+                    val onThemeModeChange = settings.onThemeModeChange
+                    val onDietRestrictionChange = settings.onDietRestrictionChange
+                    val onSundayTimeChange = settings.onSundayTimeChange
+                    val onTasteProfileChange = settings.onTasteProfileChange
                     when (tab) {
                         NavTab.HOME -> HomeScreen(
                             homeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() },
@@ -508,6 +507,8 @@ fun MainScaffold(
                             dietRestriction = dietRestriction,
                             onDietRestrictionChange = onDietRestrictionChange,
                             appVersionName = appVersionName,
+                            weekdayTime = settings.uiState.weekdayTime,
+                            onWeekdayTimeChange = settings.onWeekdayTimeChange,
                             sundayTime = sundayTime,
                             onSundayTimeChange = onSundayTimeChange,
                             tasteProfile = tasteProfile,
