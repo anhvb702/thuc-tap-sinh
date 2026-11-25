@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -108,5 +109,23 @@ class FavoriteRecipesViewModelTest {
         runCurrent()
         assertEquals(setOf("restored", "more"), viewModel.state.value.ids)
         assertFalse(viewModel.state.value.ids.isEmpty())
+    }
+
+    @Test fun onIntentToggleUpdatesUiStateAndLegacyState() = runTest {
+        val viewModel = vm(FakeRepository())
+        assertSame(viewModel.uiState, viewModel.state)
+        viewModel.onIntent(FavoriteRecipesIntent.Toggle("soup"))
+        runCurrent()
+        assertEquals(setOf("soup"), viewModel.uiState.value.ids)
+    }
+
+    @Test fun onIntentReloadRestartsObservation() = runTest {
+        val repo = FakeRepository()
+        val viewModel = vm(repo)
+        runCurrent()
+        viewModel.onIntent(FavoriteRecipesIntent.Reload)
+        runCurrent()
+        assertEquals(2, repo.observeCount)
+        assertEquals(1, repo.ids.subscriptionCount.value)
     }
 }
