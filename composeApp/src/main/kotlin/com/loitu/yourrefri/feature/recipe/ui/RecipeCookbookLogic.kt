@@ -79,5 +79,5 @@ internal fun filterCookbookEntries(
             (!filters.favoriteOnly || entry.recipe.id in favoriteIds) &&
             (!filterByDuration || cookbookDurationOf(entry.recipe.minutes) in filters.selectedDurations) &&
             (normalized.isEmpty() || matchesFoodQuery(entry.recipe.title, normalized))
-    }
+    }.sortedBy { it.missingCount }
 }

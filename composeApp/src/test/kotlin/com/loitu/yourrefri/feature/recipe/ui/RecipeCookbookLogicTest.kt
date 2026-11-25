@@ -36,7 +36,7 @@ class RecipeCookbookLogicTest {
     @Test
     fun lockedMysteryRecipesAreHiddenFromTheDefaultListAndSearch() {
         assertEquals(listOf(false, true), entries.filter { it.recipe.isMystery }.map { it.unlocked })
-        assertEquals(listOf(quick, missing, untimed, unlocked), filtered())
+        assertEquals(listOf(quick, untimed, unlocked, missing), filtered())
         assertEquals(emptyList(), filtered(query = "bo luc lac"))
         assertEquals(emptyList(), filtered(query = "mon bi mat"))
     }
@@ -74,7 +74,7 @@ class RecipeCookbookLogicTest {
     @Test
     fun canCookOnlyAndFavoriteOnlyWorkIndependentlyAndCombined() {
         assertEquals(listOf(quick, untimed, unlocked), filtered(CookbookFilters(canCookOnly = true)))
-        assertEquals(listOf(missing, unlocked), filtered(CookbookFilters(favoriteOnly = true)))
+        assertEquals(listOf(unlocked, missing), filtered(CookbookFilters(favoriteOnly = true)))
         assertEquals(listOf(unlocked), filtered(CookbookFilters(canCookOnly = true, favoriteOnly = true)))
     }
 
@@ -85,11 +85,33 @@ class RecipeCookbookLogicTest {
         val quickAndSlow = quickOnly + CookbookDurationGroup.SLOW
         assertEquals(emptyList(), filtered(CookbookFilters(selectedDurations = emptySet())))
         assertEquals(listOf(quick), filtered(CookbookFilters(selectedDurations = quickOnly)))
-        assertEquals(listOf(missing, unlocked), filtered(CookbookFilters(selectedDurations = mediumOnly)))
+        assertEquals(listOf(unlocked, missing), filtered(CookbookFilters(selectedDurations = mediumOnly)))
         assertEquals(listOf(quick, untimed), filtered(CookbookFilters(selectedDurations = quickAndSlow)))
         assertEquals(
-            listOf(quick, missing, untimed, unlocked),
+            listOf(quick, untimed, unlocked, missing),
             filtered(CookbookFilters(selectedDurations = ALL_COOKBOOK_DURATIONS)),
+        )
+    }
+
+    @Test
+    fun sortsFilteredRecipesByMissingCountAscendingPreservingOrderOnTies() {
+        val twoMissing = CookbookEntry(recipe("m2", "Gà rán", 25), unlocked = true, canCookNow = false, missingCount = 2)
+        val readyFirst = CookbookEntry(recipe("r1", "Gà luộc", 15), unlocked = true, canCookNow = true, missingCount = 0)
+        val oneMissing = CookbookEntry(recipe("m1", "Gà kho", 20), unlocked = true, canCookNow = false, missingCount = 1)
+        val readySecond = CookbookEntry(recipe("r2", "Gà hấp", 35), unlocked = true, canCookNow = true, missingCount = 0)
+        val customEntries = listOf(twoMissing, readyFirst, oneMissing, readySecond)
+        assertEquals(
+            listOf("r1", "r2", "m1", "m2"),
+            filterCookbookEntries(customEntries, emptySet(), CookbookFilters(), "").map { it.recipe.id },
+        )
+        assertEquals(
+            listOf("r1", "m1", "m2"),
+            filterCookbookEntries(
+                customEntries,
+                emptySet(),
+                CookbookFilters(selectedDurations = setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.MEDIUM)),
+                "ga",
+            ).map { it.recipe.id },
         )
     }
 

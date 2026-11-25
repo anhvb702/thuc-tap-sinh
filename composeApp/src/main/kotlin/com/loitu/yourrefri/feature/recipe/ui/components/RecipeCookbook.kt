@@ -471,7 +471,7 @@ private fun CookbookRecipeCard(
                 Text(recipe.title, color = colors.text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, minLines = 2)
                 recipe.minutes?.let { Text("$it phút", color = colors.muted, style = MaterialTheme.typography.bodySmall) }
                 Text(
-                    if (entry.canCookNow) "Đủ đồ" else "Thiếu ${entry.missingCount} món",
+                    if (entry.canCookNow) "Đủ đồ" else "Thiếu ${entry.missingCount} nguyên liệu",
                     Modifier
                         .background(if (entry.canCookNow) colors.primarySoft else colors.beigeSoft, CircleShape)
                         .padding(horizontal = 8.dp, vertical = 4.dp),

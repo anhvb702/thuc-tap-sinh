@@ -30,7 +30,6 @@ import com.loitu.yourrefri.feature.home.presentation.HomeIntent
 import com.loitu.yourrefri.feature.home.presentation.HomeViewModel
 import com.loitu.yourrefri.feature.home.domain.model.formatHomeWeatherLine
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
-import com.loitu.yourrefri.feature.pantry.ui.estimateDaysText
 import com.loitu.yourrefri.feature.pantry.ui.isFreezerItem
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -161,7 +160,7 @@ fun HomeScreen(
             PantryOverviewBucket.FREEZER -> dashboard.haveItems.filter { isFreezerItem(it.ingredientId) }
             PantryOverviewBucket.URGENT -> dashboard.urgentItems
         }
-        PantryBucketPopupDialog(bucket, items, onDismiss = { activeBucket = null })
+        PantryBucketPopupDialog(bucket, sortBucketItemsByExpiry(items), onDismiss = { activeBucket = null })
     }
 }
 @Composable

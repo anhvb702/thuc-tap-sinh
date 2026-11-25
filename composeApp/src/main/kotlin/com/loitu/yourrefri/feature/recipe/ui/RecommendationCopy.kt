@@ -11,7 +11,7 @@ internal val emptyRecommendationCopy = EmptyRecommendationCopy(
 
 /** Nhãn rút gọn cho thẻ nhỏ (Trang chủ). Rỗng nghĩa là không hiện nhãn. Nhãn đầy đủ ở dưới vẫn dùng cho thẻ nổi bật. */
 internal fun shortReasonLabel(reason: RecommendationReason): String = when (reason) {
-    RecommendationReason.USE_SOON -> "Dùng đồ sắp dùng"
+    RecommendationReason.USE_SOON -> "Nên nấu sớm"
     RecommendationReason.READY -> "Nấu được ngay"
     RecommendationReason.QUICK -> "Nhanh"
     RecommendationReason.OTHER -> ""
