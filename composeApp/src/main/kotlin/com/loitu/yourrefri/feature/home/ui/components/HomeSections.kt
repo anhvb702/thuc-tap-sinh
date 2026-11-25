@@ -39,11 +39,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -56,6 +59,8 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -233,6 +238,10 @@ internal fun PantryBucketPopupDialog(
     onDismiss: () -> Unit,
 ) {
     val colors = AppTheme.colors
+    val supportsFilter = supportsBucketFreshnessFilter(bucket)
+    var filterEnabled by rememberSaveable(bucket) { mutableStateOf(false) }
+    var selectedFilter by rememberSaveable(bucket) { mutableStateOf(defaultBucketFreshnessFilter(items)) }
+    val visibleItems = filterBucketItems(items, supportsFilter && filterEnabled, selectedFilter)
     val title = when (bucket) {
         PantryOverviewBucket.FRIDGE -> "Ngăn mát"
         PantryOverviewBucket.FREEZER -> "Ngăn đông"
@@ -255,21 +264,63 @@ internal fun PantryBucketPopupDialog(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text)
-                    Text("${items.size} thực phẩm · Hạn là ước tính", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    Text("${visibleItems.size} thực phẩm · Hạn là ước tính", style = MaterialTheme.typography.bodySmall, color = colors.muted)
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                     Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text)
                 }
             }
+            if (supportsFilter) {
+                val chipColors = FilterChipDefaults.filterChipColors(
+                    containerColor = colors.surface,
+                    labelColor = colors.text,
+                    selectedContainerColor = colors.primary,
+                    selectedLabelColor = colors.onPrimary,
+                )
+                FilterChip(
+                    selected = filterEnabled,
+                    onClick = {
+                        filterEnabled = !filterEnabled
+                        if (filterEnabled) selectedFilter = defaultBucketFreshnessFilter(items)
+                    },
+                    label = { Text(if (filterEnabled) BUCKET_FILTER_BUTTON_ON else BUCKET_FILTER_BUTTON_OFF) },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    colors = chipColors,
+                )
+                if (filterEnabled) {
+                    Row(
+                        modifier = Modifier.selectableGroup(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        BucketFreshnessFilter.entries.forEach { filter ->
+                            FilterChip(
+                                selected = selectedFilter == filter,
+                                onClick = { selectedFilter = filter },
+                                label = { Text(filter.labelVi) },
+                                modifier = Modifier.weight(1f, fill = false).heightIn(min = 48.dp),
+                                colors = chipColors,
+                            )
+                        }
+                    }
+                }
+            }
             if (items.isEmpty()) {
                 Text("Chưa có thực phẩm nào trong mục này.", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            } else if (visibleItems.isEmpty()) {
+                Text(BUCKET_FILTER_EMPTY_MESSAGE, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+                TextButton(
+                    onClick = { filterEnabled = false },
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) {
+                    Text(BUCKET_FILTER_RESET_LABEL, color = colors.accentText)
+                }
             } else {
                 Text(BUCKET_SHEET_TAP_HINT, style = MaterialTheme.typography.labelMedium, color = colors.accentText)
                 LazyColumn(
                     modifier = Modifier.weight(1f, fill = false),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items, key = { it.ingredientId }) { item ->
+                    items(visibleItems, key = { it.ingredientId }) { item ->
                         val urgent = bucketItemIsUrgent(item.daysLeft)
                         Surface(
                             onClick = { onSelectItem(item) },

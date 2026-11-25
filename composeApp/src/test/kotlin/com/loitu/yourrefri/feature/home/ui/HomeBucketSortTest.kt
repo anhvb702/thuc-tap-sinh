@@ -5,6 +5,7 @@ import com.loitu.yourrefri.feature.pantry.logic.Urgency
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class HomeBucketSortTest {
@@ -50,7 +51,7 @@ class HomeBucketSortTest {
         assertEquals("Còn 3 ngày", bucketItemExpiryLabel(3))
         listOf(null, -2, 0, 3).forEach { d ->
             val text = bucketItemExpiryLabel(d)
-            listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên").forEach { banned ->
+            listOf("hết hạn", "lãng phí", "bỏ lỡ", "bạn quên").forEach { banned -> // lint-copy: rule
                 assertFalse(text.contains(banned, ignoreCase = true), text)
             }
         }
@@ -63,5 +64,62 @@ class HomeBucketSortTest {
         assertTrue(bucketItemIsUrgent(2))
         assertFalse(bucketItemIsUrgent(3))
         assertFalse(bucketItemIsUrgent(null))
+    }
+
+    @Test
+    fun supportsBucketFreshnessFilter_enabledForFridgeAndFreezerOnly() {
+        assertEquals(
+            listOf(PantryOverviewBucket.FRIDGE, PantryOverviewBucket.FREEZER),
+            PantryOverviewBucket.entries.filter(::supportsBucketFreshnessFilter),
+        )
+    }
+
+    @Test
+    fun filterBucketItems_disabledReturnsAllItems() {
+        val input = listOf(cell("past", -1), cell("today", 0), cell("unknown", null))
+        BucketFreshnessFilter.entries.forEach { filter ->
+            assertSame(input, filterBucketItems(input, enabled = false, filter = filter))
+        }
+    }
+
+    @Test
+    fun filterBucketItems_pastEstimateReturnsOnlyNegativeDaysLeft() {
+        val past = cell("past", -1)
+        val earlier = cell("earlier", -4)
+        val input = listOf(cell("today", 0), past, cell("unknown", null), earlier, cell("later", 3))
+        assertEquals(listOf(past, earlier), filterBucketItems(input, true, BucketFreshnessFilter.PAST_ESTIMATE))
+    }
+
+    @Test
+    fun filterBucketItems_usableReturnsZeroAndPositiveDaysLeft() {
+        val today = cell("today", 0)
+        val unknown = cell("unknown", null)
+        val later = cell("later", 3)
+        val input = listOf(later, cell("past", -1), unknown, today)
+        assertEquals(listOf(later, unknown, today), filterBucketItems(input, true, BucketFreshnessFilter.USABLE))
+    }
+
+    @Test
+    fun defaultBucketFreshnessFilter_picksPastEstimateWhenOverdueExistsElseUsable() {
+        val usable = listOf(cell("unknown", null), cell("today", 0), cell("later", 3))
+        assertEquals(BucketFreshnessFilter.PAST_ESTIMATE, defaultBucketFreshnessFilter(usable + cell("past", -1)))
+        assertEquals(BucketFreshnessFilter.USABLE, defaultBucketFreshnessFilter(usable))
+        assertEquals(BucketFreshnessFilter.USABLE, defaultBucketFreshnessFilter(emptyList()))
+    }
+
+    @Test
+    fun bucketFreshnessFilterLabels_containNoBannedCopy() {
+        val labels = BucketFreshnessFilter.entries.map { it.labelVi } + listOf(
+            BUCKET_FILTER_BUTTON_OFF,
+            BUCKET_FILTER_BUTTON_ON,
+            BUCKET_FILTER_RESET_LABEL,
+            BUCKET_FILTER_EMPTY_MESSAGE,
+        )
+        val bannedCopy = listOf("hết hạn", "bạn quên", "lãng phí", "bỏ lỡ") // lint-copy: rule
+        labels.forEach { label ->
+            bannedCopy.forEach { banned ->
+                assertFalse(label.contains(banned, ignoreCase = true), label)
+            }
+        }
     }
 }
