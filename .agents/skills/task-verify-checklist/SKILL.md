@@ -39,6 +39,7 @@ Dùng đúng khung sau, theo thứ tự. Mục nào không áp dụng thì ghi "
 - [ ] Spec có tiêu chí cho mọi hành vi trong mục Task (nếu thiếu, dừng và báo Planner).
 
 ### B. Sau khi code (lệnh, chạy đúng thứ tự, một tiến trình Gradle tại một lúc)
+- [ ] **File Ownership Check:** chạy `git status --short` và `git diff --stat` xác nhận 0 chạm file ngoài phạm vi được giao và 0 stage `gradle.properties` / file nháp.
 - [ ] `$env:JAVA_HOME` và `$env:ANDROID_HOME` đã đặt (xem `AGENTS.override.md`, mục Môi trường).
 - [ ] `.\gradlew.bat :shared:testDebugUnitTest`  (nếu đổi `:shared`)
 - [ ] `.\gradlew.bat :composeApp:testDebugUnitTest`  (nếu đổi `:composeApp`)
@@ -46,6 +47,8 @@ Dùng đúng khung sau, theo thứ tự. Mục nào không áp dụng thì ghi "
 - [ ] Chạy lại thật (không lấy cache): thêm `--rerun-tasks --no-configuration-cache --max-workers=1`, khi cần kết quả không cache.
 - [ ] Chạy một lớp: thêm `--tests '<package>.<LớpTest>'`.
 - [ ] Đọc kết quả trong `<module>/build/test-results/testDebugUnitTest/*.xml`: số test, lỗi, bỏ qua (phải 0 lỗi, 0 bỏ qua).
+- [ ] **Codex `high` soi chéo diff** (với `:shared` hoặc logic đa file): tìm 5 edge-case dễ gây bug nhất và viết test tự động kiểm chứng.
+- [ ] **Automated Proof Report:** chạy `.\scripts\jev.ps1 -Verify` xuất `docs/PROOF_REPORT.md` (≤ 25 dòng) đạt `READY_TO_MERGE`.
 
 ### C. Bảng test theo tiêu chí
 | Test | Input | Expected Output | Mutation bắt |
@@ -67,9 +70,12 @@ Ghi rõ file và hàm, không ghi chung chung "đổi logic".
 ### E. Biên và rủi ro
 - Rỗng, âm, trùng, dữ liệu lớn, mất quyền, múi giờ/DST (nếu task có thời gian), chuyển bản DB/backup (nếu có).
 
-### F. Mục tay
+### F. Mục tay (Quy tắc 3 Phút Nghiệm Thu Cuối)
 - [ ] (UI) Ảnh chụp emulator: màn hình, trạng thái, kích thước điện thoại; lưu file ảnh vào `docs/` hoặc đường dẫn người dùng chỉ định.
 - [ ] (UI — Cross-Model Visual Verify) Gửi trực tiếp các file ảnh PNG chụp từ emulator cho một model khác độc lập (Claude CLI `Read` hoặc Codex CLI `--image`) kiểm tra bố cục, cắt chữ, căn lề và độ khớp checklist.
+- [ ] (Integration Seam) Kiểm tra khớp nối giữa 2 màn: dữ liệu sửa ở màn A chảy đúng định dạng sang màn B.
+- [ ] (UX Feel & 1.35×) Kiểm tra cỡ chữ lớn Cô Hạnh `1.35×` và đảm bảo không bị che nút bởi Floating Pill Nav / FAB / bàn phím ảo.
+- [ ] (Kịch bản phá đám) Bấm đúp liên tục nút chính, nhập chuỗi rỗng/ký tự đặc biệt, hoặc tắt mạng giữa chừng.
 - [ ] (Thông báo/giờ) Đổi múi giờ, khởi động lại máy, tắt thông báo hệ thống: nội dung vẫn thấy khi mở app.
 - [ ] (Chữ hiển thị) `scripts/lint-copy.ps1 -Path <file>` không báo từ cấm.
 
@@ -77,13 +83,16 @@ Ghi rõ file và hàm, không ghi chung chung "đổi logic".
 | Kiểm tra | Kết quả | Bằng chứng (lệnh, kết quả) |
 | --- | --- | --- |
 | Expert check đề xuất | Chưa chạy | |
+| File Ownership Check (`git status` + `diff --stat`) | Chưa chạy | |
 | Test đỏ trước khi có code | Chưa chạy | |
 | `:shared:testDebugUnitTest` | Chưa chạy | |
 | `:composeApp:testDebugUnitTest` | Chưa chạy | |
 | `:composeApp:assembleDebug` | Chưa chạy | |
 | Mutation 1-6 | Chưa chạy | |
 | Review chéo code + Visual verify ảnh (model khác) | Chưa chạy | |
+| `docs/PROOF_REPORT.md` (≤ 25 dòng, `jev.ps1 -Verify`) | Chưa chạy | |
 | Ảnh emulator (task UI) | Chưa chạy | |
+| Known Risks (≤ 2 điểm cần lưu ý) | Chưa ghi | |
 ```
 
 ## Bước 4: Quy tắc khi điền
