@@ -41,14 +41,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -221,31 +223,65 @@ private fun PantryBucketButton(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun PantryBucketPopupDialog(bucket: PantryOverviewBucket, items: List<PantryCell>, onDismiss: () -> Unit) {
+internal fun PantryBucketPopupDialog(
+    bucket: PantryOverviewBucket,
+    items: List<PantryCell>,
+    onSelectItem: (PantryCell) -> Unit = {},
+    onDismiss: () -> Unit,
+) {
     val colors = AppTheme.colors
     val title = when (bucket) {
         PantryOverviewBucket.FRIDGE -> "Ngăn mát"
         PantryOverviewBucket.FREEZER -> "Ngăn đông"
         PantryOverviewBucket.URGENT -> "Cần dùng ngay"
     }
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxWidth(0.92f).heightIn(max = 560.dp), shape = RoundedCornerShape(24.dp), color = colors.surface) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f)) {
-                        Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text)
-                        Text("${items.size} thực phẩm · Hạn là ước tính", style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                    }
-                    IconButton(onClick = onDismiss) { Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text) }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        containerColor = colors.background,
+        contentColor = colors.text,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 560.dp)
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text)
+                    Text("${items.size} thực phẩm · Hạn là ước tính", style = MaterialTheme.typography.bodySmall, color = colors.muted)
                 }
-                if (items.isEmpty()) {
-                    Text("Chưa có thực phẩm nào trong mục này.", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(items, key = { it.ingredientId }) { item ->
-                            val urgent = bucketItemIsUrgent(item.daysLeft)
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                    Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text)
+                }
+            }
+            if (items.isEmpty()) {
+                Text("Chưa có thực phẩm nào trong mục này.", style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            } else {
+                Text(BUCKET_SHEET_TAP_HINT, style = MaterialTheme.typography.labelMedium, color = colors.accentText)
+                LazyColumn(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(items, key = { it.ingredientId }) { item ->
+                        val urgent = bucketItemIsUrgent(item.daysLeft)
+                        Surface(
+                            onClick = { onSelectItem(item) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = colors.surface,
+                            border = BorderStroke(1.dp, if (urgent) colors.warnSoft else colors.line),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
                                 Box {
                                     FoodThumb(item.ingredientId, size = 44.dp, shape = RoundedCornerShape(12.dp), urgent = urgent)
                                     if (urgent) {
@@ -264,11 +300,20 @@ internal fun PantryBucketPopupDialog(bucket: PantryOverviewBucket, items: List<P
                                         color = if (urgent) colors.warnText else colors.muted,
                                     )
                                 }
-                                if (item.quantity > 0) Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.bodySmall, color = colors.text)
+                                if (item.quantity > 0) {
+                                    Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.bodySmall, color = colors.text)
+                                }
+                                Icon(AppIcons.Chevron, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
+            }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
+                Text("Đóng", color = colors.text, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -435,22 +480,35 @@ internal fun DailySpotlightRecommendationSection(
                         shape = RoundedCornerShape(22.dp), color = colors.surface, shadowElevation = 6.dp, border = BorderStroke(1.dp, colors.line),
                     ) {
                         Column {
-                            Box(Modifier.fillMaxWidth().height(176.dp)) {
-                                RecipeThumb(suggestion.recipe.id, Modifier.fillMaxSize(), 176.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                            Box(Modifier.fillMaxWidth().height(152.dp)) {
+                                RecipeThumb(suggestion.recipe.id, Modifier.fillMaxSize(), 152.dp, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
                                 Text(shortReasonLabel(suggestion.reason), Modifier.align(Alignment.TopStart).padding(12.dp).clip(RoundedCornerShape(999.dp)).background(colors.surface.copy(alpha = 0.92f)).padding(horizontal = 10.dp, vertical = 6.dp), color = colors.text, style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
                                 Surface(Modifier.align(Alignment.TopEnd).padding(8.dp), shape = CircleShape, color = colors.surface.copy(alpha = 0.90f), shadowElevation = 2.dp) {
                                     IconButton(
                                         onClick = { onDismissSuggestion(suggestion.recipe.id) },
                                         enabled = isCurrentSuggestion,
-                                        modifier = Modifier.size(40.dp),
+                                        modifier = Modifier.size(48.dp),
                                     ) {
                                         Icon(AppIcons.Close, contentDescription = "Bỏ qua món này", modifier = Modifier.size(18.dp), tint = colors.text)
                                     }
                                 }
                             }
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(suggestion.recipe.title, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold), color = colors.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    Text(spotlightSubtitle(suggestion), style = MaterialTheme.typography.bodyMedium, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                }
+                                Button(
+                                    onClick = { onNavigateToRecipe(suggestion.recipe.id) },
+                                    enabled = isCurrentSuggestion,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
+                                ) {
+                                    Text(SPOTLIGHT_PRIMARY_CTA_LABEL, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold))
+                                    Spacer(Modifier.width(6.dp))
+                                    Icon(AppIcons.ArrowRight, contentDescription = null, modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
                     }

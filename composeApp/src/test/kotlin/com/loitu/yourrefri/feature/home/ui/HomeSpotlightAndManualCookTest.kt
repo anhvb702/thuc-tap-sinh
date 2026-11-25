@@ -1,5 +1,7 @@
 package com.loitu.yourrefri.feature.home.ui
 
+import com.loitu.yourrefri.feature.home.domain.model.HomeWeather
+import com.loitu.yourrefri.feature.home.domain.model.WeatherCity
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
 import com.loitu.yourrefri.feature.recipe.logic.RecipeRecommendation
@@ -74,5 +76,33 @@ class HomeSpotlightAndManualCookTest {
         assertEquals("Chào Andy", userGreetingText())
         assertEquals("Chào Andy", userGreetingText("   "))
         assertEquals("Chào Minh", userGreetingText("  Minh  "))
+    }
+
+    @Test
+    fun spotlightCtaAndBucketHint_useExpectedVietnameseCopyWithoutBannedWords() {
+        assertEquals("Xem & nấu ngay", SPOTLIGHT_PRIMARY_CTA_LABEL)
+        assertEquals("Chạm món để xem gợi ý nấu", BUCKET_SHEET_TAP_HINT)
+        val joined = "$SPOTLIGHT_PRIMARY_CTA_LABEL $BUCKET_SHEET_TAP_HINT"
+        for (w in listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "tồn kho")) {
+            assertFalse(joined.contains(w, ignoreCase = true))
+        }
+    }
+
+    @Test
+    fun homeHeaderWeatherLine_hidesLoadingPlaceholderWhenWeatherMissing() {
+        val weather = HomeWeather(city = WeatherCity.HANOI, temperatureC = 28, conditionVi = "Ít mây")
+        assertNull(homeHeaderWeatherLine(WeatherCity.HANOI, weather = null, loading = true))
+        assertEquals("Hà Nội · 28°C · Ít mây", homeHeaderWeatherLine(WeatherCity.HANOI, weather = weather, loading = true))
+        assertEquals("Hà Nội · 28°C · Ít mây", homeHeaderWeatherLine(WeatherCity.HANOI, weather = weather, loading = false))
+        assertEquals("TP.HCM · Thời tiết chưa sẵn sàng", homeHeaderWeatherLine(WeatherCity.HCM, weather = null, loading = false))
+    }
+
+    @Test
+    fun findRecipeIdForIngredient_prefersRecommendationThenFallbackRecipe() {
+        val eggRec = rec("egg-rec")
+        val porkRecipe = Recipe(id = "pork-dish", title = "Thịt kho", steps = listOf("b1"), required = listOf(Slot(listOf("thit-heo"))))
+        assertEquals("egg-rec", findRecipeIdForIngredient("egg", listOf(eggRec), listOf(porkRecipe)))
+        assertEquals("pork-dish", findRecipeIdForIngredient("thit-heo", listOf(eggRec), listOf(porkRecipe)))
+        assertNull(findRecipeIdForIngredient("ca-hoi", listOf(eggRec), listOf(porkRecipe)))
     }
 }
