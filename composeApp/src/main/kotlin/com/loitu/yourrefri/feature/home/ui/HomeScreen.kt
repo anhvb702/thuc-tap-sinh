@@ -1,5 +1,8 @@
 package com.loitu.yourrefri.feature.home.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -120,12 +123,12 @@ fun HomeScreen(
             .fillMaxSize()
             .background(colors.background)
             .verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 136.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 168.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         HomeHeader(
             greeting = userGreetingText(userName),
-            weatherLine = formatHomeWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
+            weatherLine = homeHeaderWeatherLine(homeState.weatherCity, homeState.weather, homeState.weatherLoading),
             onWeatherClick = { homeViewModel.onIntent(HomeIntent.ToggleWeatherCity) },
         )
         PantryOverviewSection(
@@ -160,21 +163,34 @@ fun HomeScreen(
             PantryOverviewBucket.FREEZER -> dashboard.haveItems.filter { isFreezerItem(it.ingredientId) }
             PantryOverviewBucket.URGENT -> dashboard.urgentItems
         }
-        PantryBucketPopupDialog(bucket, sortBucketItemsByExpiry(items), onDismiss = { activeBucket = null })
+        PantryBucketPopupDialog(
+            bucket = bucket,
+            items = sortBucketItemsByExpiry(items),
+            onSelectItem = { item ->
+                activeBucket = null
+                val recipeId = findRecipeIdForIngredient(item.ingredientId, dashboard.recommendations, suggestions)
+                if (recipeId != null) onNavigateToRecipe(recipeId) else onNavigateToRecipes()
+            },
+            onDismiss = { activeBucket = null },
+        )
     }
 }
 @Composable
-private fun HomeHeader(greeting: String, weatherLine: String, onWeatherClick: () -> Unit) {
+private fun HomeHeader(greeting: String, weatherLine: String?, onWeatherClick: () -> Unit) {
     val colors = AppTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(text = greeting, style = MaterialTheme.typography.headlineMedium, color = colors.text)
-        Text(
-            text = weatherLine,
-            style = MaterialTheme.typography.bodyMedium,
-            color = colors.muted,
-            modifier = Modifier
-                .heightIn(min = 36.dp)
-                .clickable(onClick = onWeatherClick),
-        )
+        AnimatedVisibility(visible = weatherLine != null, enter = fadeIn(), exit = fadeOut()) {
+            if (weatherLine != null) {
+                Text(
+                    text = weatherLine,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.muted,
+                    modifier = Modifier
+                        .heightIn(min = 36.dp)
+                        .clickable(onClick = onWeatherClick),
+                )
+            }
+        }
     }
 }
