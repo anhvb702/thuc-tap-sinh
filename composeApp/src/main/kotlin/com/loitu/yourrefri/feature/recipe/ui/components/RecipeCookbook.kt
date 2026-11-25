@@ -1,11 +1,14 @@
 package com.loitu.yourrefri.feature.recipe.ui.components
 
-import android.animation.ValueAnimator
-import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -14,8 +17,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +30,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,10 +40,10 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -58,27 +64,44 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.inset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.MysteryUnlockStatus
 import com.loitu.yourrefri.feature.recipe.ui.ALL_COOKBOOK_DURATIONS
 import com.loitu.yourrefri.feature.recipe.ui.CookbookDurationGroup
 import com.loitu.yourrefri.feature.recipe.ui.CookbookEntry
 import com.loitu.yourrefri.feature.recipe.ui.CookbookFilters
-import com.loitu.yourrefri.feature.recipe.ui.MysteryRewardButton
+import com.loitu.yourrefri.feature.recipe.ui.REWARD_BANNER_TAGLINE
 import com.loitu.yourrefri.feature.recipe.ui.cookbookPresenceSwitchLabel
 import com.loitu.yourrefri.feature.recipe.ui.filterCookbookEntries
+import com.loitu.yourrefri.feature.recipe.ui.isRewardFabReady
+import com.loitu.yourrefri.feature.recipe.ui.rewardFabContentDescription
+import com.loitu.yourrefri.feature.recipe.ui.rewardFabProgressFraction
+import com.loitu.yourrefri.feature.recipe.ui.rewardFabProgressLabel
+import com.loitu.yourrefri.feature.recipe.ui.rewardProgressHintMessage
+import com.loitu.yourrefri.feature.recipe.ui.shouldShowRewardFab
+import com.loitu.yourrefri.feature.recipe.ui.shouldShowRewardRedDot
+import com.loitu.yourrefri.feature.recipe.ui.shouldSpinRewardWheel
 import com.loitu.yourrefri.feature.recipe.ui.toCookbookDurations
 import com.loitu.yourrefri.feature.recipe.ui.toDurationMask
 import com.loitu.yourrefri.feature.recipe.ui.toggleCookbookDuration
 import com.loitu.yourrefri.ui.components.RecipeThumb
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
@@ -93,12 +116,13 @@ internal fun RecipeCookbook(
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
-    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     var canCookOnly by rememberSaveable { mutableStateOf(false) }
     var favoriteOnly by rememberSaveable { mutableStateOf(false) }
     var durationMask by rememberSaveable { mutableStateOf(ALL_COOKBOOK_DURATIONS.toDurationMask()) }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     var query by rememberSaveable { mutableStateOf("") }
+    var showRewardHint by rememberSaveable { mutableStateOf(false) }
     val selectedDurations = remember(durationMask) { durationMask.toCookbookDurations() }
     val filters = CookbookFilters(canCookOnly, favoriteOnly, selectedDurations)
     val visible = remember(entries, favoriteIds, filters, query) {
@@ -108,7 +132,7 @@ internal fun RecipeCookbook(
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 18.dp, end = 16.dp, bottom = 92.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 18.dp, end = 16.dp, bottom = 164.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -180,11 +204,30 @@ internal fun RecipeCookbook(
                 )
             }
         }
-        FavoriteFilterFab(
-            favoriteOnly = favoriteOnly,
-            onChange = { favoriteOnly = it },
-            animatorsEnabled = animatorsEnabled,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        Column(
+            Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            if (reward != null && shouldShowRewardFab(reward)) {
+                RewardProgressFab(reward, animatorsEnabled) {
+                    if (isRewardFabReady(reward)) onSpin() else showRewardHint = true
+                }
+            }
+            FavoriteFilterFab(favoriteOnly, { favoriteOnly = it }, animatorsEnabled)
+        }
+    }
+    if (showRewardHint && reward != null && !isRewardFabReady(reward) && !reward.allUnlocked) {
+        AlertDialog(
+            onDismissRequest = { showRewardHint = false },
+            containerColor = colors.surface,
+            title = { Text("Quà nấu tại nhà", color = colors.text, fontWeight = FontWeight.Bold) },
+            text = { Text(rewardProgressHintMessage(reward), color = colors.muted) },
+            confirmButton = {
+                TextButton(onClick = { showRewardHint = false }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Đã hiểu", color = colors.accentText, fontWeight = FontWeight.SemiBold)
+                }
+            },
         )
     }
 }
@@ -284,13 +327,106 @@ private fun CookbookDurationChips(
 }
 
 @Composable
+private fun RewardProgressFab(status: MysteryUnlockStatus, animatorsEnabled: Boolean, onClick: () -> Unit) {
+    val colors = AppTheme.colors
+    val ready = isRewardFabReady(status)
+    val foreground = if (ready) colors.onCta else colors.ctaText
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { entered = true }
+    val scale by animateFloatAsState(
+        targetValue = if (animatorsEnabled && (!entered || pressed)) 0.90f else 1f,
+        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioMediumBouncy) else snap(),
+        label = "reward FAB scale",
+    )
+    val fraction by animateFloatAsState(
+        targetValue = rewardFabProgressFraction(status),
+        animationSpec = if (animatorsEnabled) tween(300) else snap(),
+        label = "reward progress",
+    )
+    val description = rewardFabContentDescription(status)
+    val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
+    val badgeLabelSp = minOf(11f, 13.5f / fontScale).sp
+    Box(Modifier.size(56.dp).scale(scale)) {
+        Surface(
+            onClick = onClick,
+            interactionSource = interactionSource,
+            modifier = Modifier.fillMaxSize().semantics {
+                contentDescription = description
+            },
+            shape = CircleShape,
+            color = if (ready) colors.cta else colors.surface,
+            border = if (ready) BorderStroke(1.dp, colors.cta) else null,
+            shadowElevation = if (ready) 8.dp else 4.dp,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                if (!ready) {
+                    Canvas(Modifier.matchParentSize()) {
+                        val stroke = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                        inset(1.25.dp.toPx()) {
+                            drawCircle(colors.line, style = stroke)
+                            drawArc(colors.cta, -90f, 360f * fraction, useCenter = false, style = stroke)
+                        }
+                    }
+                }
+                val rotation = if (animatorsEnabled && shouldSpinRewardWheel(status)) {
+                    val transition = rememberInfiniteTransition(label = "reward wheel")
+                    val angle by transition.animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(tween(3200, easing = LinearEasing)),
+                        label = "reward wheel rotation",
+                    )
+                    angle
+                } else 0f
+                Column(Modifier.clearAndSetSemantics {}, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        AppIcons.Wheel,
+                        contentDescription = null,
+                        tint = foreground,
+                        modifier = Modifier.size(16.dp).graphicsLayer { rotationZ = rotation },
+                    )
+                    Text(
+                        rewardFabProgressLabel(status),
+                        color = foreground,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = badgeLabelSp,
+                        lineHeight = badgeLabelSp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
+        }
+        if (shouldShowRewardRedDot(status)) {
+            val pulse = if (animatorsEnabled) {
+                val transition = rememberInfiniteTransition(label = "reward badge")
+                val badgeScale by transition.animateFloat(
+                    initialValue = 1f,
+                    targetValue = 1.15f,
+                    animationSpec = infiniteRepeatable(tween(950), RepeatMode.Reverse),
+                    label = "reward badge pulse",
+                )
+                badgeScale
+            } else 1f
+            Box(
+                Modifier.align(Alignment.TopEnd).size(13.dp).scale(pulse)
+                    .background(colors.badgeRed, CircleShape).border(1.5.dp, colors.background, CircleShape),
+            )
+        }
+    }
+}
+
+@Composable
 private fun FavoriteFilterFab(
     favoriteOnly: Boolean,
     onChange: (Boolean) -> Unit,
     animatorsEnabled: Boolean,
-    modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
     val containerColor by animateColorAsState(
         targetValue = if (favoriteOnly) colors.cta else colors.surface,
         animationSpec = if (animatorsEnabled) tween(180) else snap(),
@@ -307,12 +443,22 @@ private fun FavoriteFilterFab(
         label = "favorite filter icon",
     )
     val scale by animateFloatAsState(
-        targetValue = if (favoriteOnly) 1.06f else 1f,
-        animationSpec = if (animatorsEnabled) spring(stiffness = Spring.StiffnessMediumLow) else snap(),
+        targetValue = when {
+            !animatorsEnabled -> 1f
+            pressed -> 0.90f
+            favoriteOnly -> 1.06f
+            else -> 1f
+        },
+        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioMediumBouncy) else snap(),
         label = "favorite filter scale",
     )
+    val heartScale by animateFloatAsState(
+        targetValue = if (animatorsEnabled && favoriteOnly) 1.14f else 1f,
+        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioHighBouncy) else snap(),
+        label = "favorite heart pop",
+    )
     Surface(
-        modifier = modifier.size(56.dp).scale(scale),
+        modifier = Modifier.size(56.dp).scale(scale),
         shape = CircleShape,
         shadowElevation = if (favoriteOnly) 8.dp else 4.dp,
         color = containerColor,
@@ -320,7 +466,13 @@ private fun FavoriteFilterFab(
     ) {
         Box(
             modifier = Modifier.fillMaxSize()
-                .toggleable(value = favoriteOnly, role = Role.Switch, onValueChange = onChange)
+                .toggleable(
+                    value = favoriteOnly,
+                    interactionSource = interactionSource,
+                    indication = androidx.compose.foundation.LocalIndication.current,
+                    role = Role.Switch,
+                    onValueChange = onChange,
+                )
                 .semantics {
                     contentDescription = if (favoriteOnly) {
                         "Đang chỉ xem món yêu thích, chạm để tắt"
@@ -334,7 +486,7 @@ private fun FavoriteFilterFab(
                 imageVector = if (favoriteOnly) AppIcons.HeartFilled else AppIcons.Heart,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(26.dp).scale(heartScale),
             )
         }
     }
@@ -381,48 +533,38 @@ private fun CookbookHeader(unlockedTotal: Int, total: Int, searchVisible: Boolea
 @Composable
 private fun MysteryRewardBanner(status: MysteryUnlockStatus, recipeCount: Int, onSpin: () -> Unit) {
     val colors = AppTheme.colors
-    val ready = status.availableSpins > 0
+    val ready = isRewardFabReady(status)
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = if (ready) colors.ctaSoft else colors.beigeSoft,
         border = BorderStroke(1.dp, lerp(colors.line, colors.cta, if (ready) 0.4f else 0.18f)),
     ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(
-                    if (status.allUnlocked) AppIcons.CheckCircle else AppIcons.Wheel,
-                    contentDescription = null,
-                    tint = colors.ctaText,
-                    modifier = Modifier.size(20.dp),
-                )
+        val tap = if (ready) Modifier.clickable(role = Role.Button, onClick = onSpin) else Modifier
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).then(tap).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                if (status.allUnlocked) AppIcons.CheckCircle else AppIcons.Wheel,
+                contentDescription = null,
+                tint = colors.ctaText,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    if (status.allUnlocked) "Đã mở trọn bộ $recipeCount món nhà làm!" else "Quà nấu tại nhà",
+                    if (status.allUnlocked) "Đã mở trọn bộ $recipeCount món nhà làm!" else REWARD_BANNER_TAGLINE,
                     color = colors.text,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                 )
-            }
-            if (ready) {
-                Text("Bạn có ${status.availableSpins} lượt quay mở món mới!", color = colors.ctaText)
-                MysteryRewardButton("Quay mở món mới", onSpin)
-            } else if (!status.allUnlocked) {
-                val progress by animateFloatAsState(
-                    targetValue = status.cooksIntoCurrentCycle.toFloat() / status.cooksPerUnlock,
-                    animationSpec = tween(300),
-                    label = "mysteryCookProgress",
-                )
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
-                    color = colors.cta,
-                    trackColor = colors.surface,
-                )
-                Text(
-                    "Đã nấu ${status.cooksIntoCurrentCycle}/${status.cooksPerUnlock} bữa tại nhà · " +
-                        "Thêm ${status.cooksNeededForNext} bữa để quay món mới",
-                    color = colors.beigeText,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                if (ready) {
+                    Text(
+                        "Bạn có ${status.availableSpins} lượt quay mở món mới",
+                        color = colors.ctaText,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         }
     }

@@ -1,9 +1,7 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
 import android.Manifest
-import android.animation.ValueAnimator
 import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -47,6 +45,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.core.content.ContextCompat
 import com.loitu.yourrefri.ui.components.ChunkyButton
 import com.loitu.yourrefri.ui.components.FoodThumb
+import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -134,7 +133,7 @@ import com.loitu.yourrefri.ui.theme.AppTheme
 @Composable
 internal fun PantryCategoryChips(selectedCategories: Set<PantryCategory>, onToggle: (PantryCategory) -> Unit) {
     val colors = AppTheme.colors
-    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         PantryCategory.entries.forEach { category ->
             val selected = category in selectedCategories
@@ -213,7 +212,16 @@ internal fun PantryAddSpeedDial(
     val changeOpen by rememberUpdatedState(onOpenChange)
     val launchFeature by rememberUpdatedState(onFeature)
     val radiusPx = with(LocalDensity.current) { 148.dp.toPx() }
-    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val animatorsEnabled = areSystemAnimatorsEnabled()
+    val fabInteractionSource = remember { MutableInteractionSource() }
+    val fabPressed by fabInteractionSource.collectIsPressedAsState()
+    var fabEntered by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { fabEntered = true }
+    val fabScale by animateFloatAsState(
+        targetValue = if (animatorsEnabled && (!fabEntered || fabPressed)) 0.90f else 1f,
+        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioMediumBouncy) else snap(),
+        label = "pantry add FAB scale",
+    )
     val offsets = remember(features, radiusPx) {
         radialFanAnglesDegrees(features.size).map { radialFanOffset(it, radiusPx) }
     }
@@ -363,10 +371,12 @@ internal fun PantryAddSpeedDial(
                             radiusPx = radiusPx,
                         )
                     }
-                },
+                }
+                .graphicsLayer { scaleX = fabScale; scaleY = fabScale },
             shape = CircleShape,
             containerColor = colors.primary,
             contentColor = colors.onPrimary,
+            interactionSource = fabInteractionSource,
         ) {
             Icon(
                 AppIcons.Add,
@@ -618,7 +628,7 @@ internal fun WarmFoodCard(
     val colors = AppTheme.colors
     val cardCopy = pantryCardCopy(cell.have, quantity)
     val urgent = pantryRowUrgent(cell.have, cell.daysLeft)
-    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     val containerColor by animateColorAsState(
         targetValue = if (cell.have) colors.surface else Color.Transparent,
         animationSpec = if (animatorsEnabled) tween(200) else snap(),
@@ -775,7 +785,7 @@ internal fun QuantityStepper(
     modifier: Modifier = Modifier,
 ) {
     val colors = AppTheme.colors
-    val animatorsEnabled = Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()
+    val animatorsEnabled = areSystemAnimatorsEnabled()
     val decInteraction = remember { MutableInteractionSource() }
     val decPressed by decInteraction.collectIsPressedAsState()
     val decScale by animateFloatAsState(
