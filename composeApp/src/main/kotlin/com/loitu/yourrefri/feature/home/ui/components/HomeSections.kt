@@ -244,11 +244,25 @@ internal fun PantryBucketPopupDialog(bucket: PantryOverviewBucket, items: List<P
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         items(items, key = { it.ingredientId }) { item ->
+                            val urgent = bucketItemIsUrgent(item.daysLeft)
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                FoodThumb(item.ingredientId, size = 44.dp, shape = RoundedCornerShape(12.dp), urgent = bucket == PantryOverviewBucket.URGENT)
+                                Box {
+                                    FoodThumb(item.ingredientId, size = 44.dp, shape = RoundedCornerShape(12.dp), urgent = urgent)
+                                    if (urgent) {
+                                        Box(
+                                            Modifier.align(Alignment.TopEnd)
+                                                .size(8.dp)
+                                                .background(colors.warnText, CircleShape),
+                                        )
+                                    }
+                                }
                                 Column(Modifier.weight(1f)) {
                                     Text(item.nameVi, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = colors.text)
-                                    Text(estimateDaysText(item.daysLeft ?: 0), style = MaterialTheme.typography.bodySmall, color = if ((item.daysLeft ?: 0) <= 2) colors.warnText else colors.muted)
+                                    Text(
+                                        bucketItemExpiryLabel(item.daysLeft),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (urgent) colors.warnText else colors.muted,
+                                    )
                                 }
                                 if (item.quantity > 0) Text("${item.quantity} ${item.unit}", style = MaterialTheme.typography.bodySmall, color = colors.text)
                             }

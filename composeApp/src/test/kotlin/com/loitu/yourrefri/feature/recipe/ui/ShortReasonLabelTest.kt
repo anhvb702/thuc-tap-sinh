@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 class ShortReasonLabelTest {
     @Test
     fun labelsAreShortAndExact() {
-        assertEquals("Dùng đồ sắp dùng", shortReasonLabel(RecommendationReason.USE_SOON))
+        assertEquals("Nên nấu sớm", shortReasonLabel(RecommendationReason.USE_SOON))
         assertEquals("Nấu được ngay", shortReasonLabel(RecommendationReason.READY))
         assertEquals("Nhanh", shortReasonLabel(RecommendationReason.QUICK))
         assertEquals("", shortReasonLabel(RecommendationReason.OTHER))
