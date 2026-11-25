@@ -24,7 +24,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.loitu.yourrefri.feature.backup.data.BackupCodec
+import com.loitu.yourrefri.feature.settings.presentation.SettingsEffect
+import com.loitu.yourrefri.feature.settings.presentation.SettingsIntent
+import com.loitu.yourrefri.feature.settings.presentation.SettingsViewModel
 import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesAction
 import com.loitu.yourrefri.feature.recipe.ui.FavoriteRecipesEffect
@@ -33,7 +35,6 @@ import com.loitu.yourrefri.feature.recipe.ui.UnlockedRecipesViewModel
 import com.loitu.yourrefri.feature.settings.ui.DietPrefs
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanViewModel
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
-import com.loitu.yourrefri.feature.settings.ui.SettingsBackupCopy
 import com.loitu.yourrefri.di.AppGraph
 import com.loitu.yourrefri.shared.db.DatabaseTooNewException
 import com.loitu.yourrefri.ui.DatabaseTooNewNotice
@@ -45,9 +46,8 @@ import com.loitu.yourrefri.reminder.ReminderIntents
 import com.loitu.yourrefri.reminder.ReminderOpenRequest
 import com.loitu.yourrefri.reminder.ReminderReceiver
 import com.loitu.yourrefri.reminder.ReminderScheduler
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
@@ -183,26 +183,27 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             snackbarHostState.showSnackbar(message)
         }
     }
-    var backupStatus by remember { mutableStateOf<String?>(null) }
-    var pendingRestoreJson by remember { mutableStateOf<String?>(null) }
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = remember(dependencies) { dependencies.settingsViewModelFactory() },
+    )
+    val settingsState by settingsViewModel.state.collectAsState()
+    LaunchedEffect(settingsViewModel) {
+        settingsViewModel.effects.filterIsInstance<SettingsEffect.BackupRestored>().collect {
+            weeklyMealPlanViewModel.reloadSettings()
+            favoriteViewModel.reload()
+            cookHistoryViewModel.reload()
+        }
+    }
 
+    val contentResolver = context.applicationContext.contentResolver
     val exportPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
     ) { uri ->
         if (uri != null) {
-            scope.launch {
-                backupStatus = try {
-                    withContext(Dispatchers.IO) {
-                        val json = dependencies.backupRepository.exportJson()
-                        val output = context.contentResolver.openOutputStream(uri)
-                            ?: error("Không mở được file để ghi")
-                        output.bufferedWriter(Charsets.UTF_8).use { it.write(json) }
-                    }
-                    SettingsBackupCopy.exportSuccess
-                } catch (_: Exception) {
-                    "Chưa thể lưu bản sao lưu. Hãy thử chọn vị trí khác."
-                }
-            }
+            settingsViewModel.onIntent(SettingsIntent.ExportBackup { json ->
+                val output = contentResolver.openOutputStream(uri) ?: error("Không mở được file để ghi")
+                output.bufferedWriter(Charsets.UTF_8).use { it.write(json) }
+            })
         }
     }
 
@@ -210,19 +211,10 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri != null) {
-            scope.launch {
-                try {
-                    val json = withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)
-                            ?.use { it.readText() } ?: error("Không mở được file")
-                    }
-                    BackupCodec.decode(json)
-                    pendingRestoreJson = json
-                    backupStatus = null
-                } catch (_: Exception) {
-                    backupStatus = SettingsBackupCopy.restoreFailure
-                }
-            }
+            settingsViewModel.onIntent(SettingsIntent.StageImportJson {
+                contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)
+                    ?.use { it.readText() } ?: error("Không mở được file")
+            })
         }
     }
 
@@ -276,32 +268,18 @@ private fun App(themeMode: ThemeMode, onThemeModeChange: (ThemeMode) -> Unit) {
             sundayTime = time
             ReminderScheduler.setSundayTime(context, time)
         },
-        backupStatus = backupStatus,
-        restoreConfirmationPending = pendingRestoreJson != null,
+        backupStatus = settingsState.backupStatus,
+        restoreConfirmationPending = settingsState.restoreConfirmationPending,
         onExportBackup = {
-            backupStatus = null
+            settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
             exportPicker.launch("yourrefri_backup.json")
         },
         onImportBackup = {
-            backupStatus = null
+            settingsViewModel.onIntent(SettingsIntent.ClearBackupStatus)
             importPicker.launch(arrayOf("application/json", "text/json"))
         },
-        onConfirmRestore = {
-            val json = pendingRestoreJson ?: return@MainScaffold
-            pendingRestoreJson = null
-            scope.launch {
-                backupStatus = try {
-                    withContext(Dispatchers.IO) { dependencies.backupRepository.restoreJson(json) }
-                    weeklyMealPlanViewModel.reloadSettings()
-                    favoriteViewModel.reload()
-                    cookHistoryViewModel.reload()
-                    "Đã khôi phục dữ liệu từ bản sao lưu."
-                } catch (_: Exception) {
-                    "Chưa thể khôi phục dữ liệu. Dữ liệu hiện tại vẫn được giữ nguyên."
-                }
-            }
-        },
-        onCancelRestore = { pendingRestoreJson = null },
+        onConfirmRestore = { settingsViewModel.onIntent(SettingsIntent.ConfirmRestore) },
+        onCancelRestore = { settingsViewModel.onIntent(SettingsIntent.CancelRestore) },
         tasteProfile = tasteProfile,
         onTasteProfileChange = { next -> scope.launch { dependencies.tasteProfileRepository.save(next) } },
     )
