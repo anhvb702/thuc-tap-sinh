@@ -306,12 +306,28 @@ class ShippedRecipeBundleTest {
             "canh-rau-ngot-thit-bam", "dau-phu-sot-ca-chua", "tom-rim-thit", "ga-kho-khoai-tay",
             "canh-bi-xanh-nau-tom", "ca-hoi-ap-chao-xa-lach", "trung-xao-ca-chua", "canh-cai-dau-phu",
         )
+        val recipes = shippedRecipes().take(expectedIds.size)
+        assertCompleteMeasuresAndSeasonings(recipes, expectedIds)
+    }
+
+    @Test
+    fun firstTwentyFourRecipesHaveCompleteMeasuresAndSeasonings() {
+        val expectedIds = listOf(
+            "canh-chua-ca-basa", "thit-kho-trung", "rau-muong-xao-hanh", "thit-bo-xao-hanh-tay",
+            "canh-rau-ngot-thit-bam", "dau-phu-sot-ca-chua", "tom-rim-thit", "ga-kho-khoai-tay",
+            "canh-bi-xanh-nau-tom", "ca-hoi-ap-chao-xa-lach", "trung-xao-ca-chua", "canh-cai-dau-phu",
+            "ga-ap-chao", "canh-bi-thit-bam", "rau-muong-xao-toi", "suon-xao-chua-ngot",
+            "muc-xao-can-toi", "cai-thia-xao-nam", "canh-suon-bi-xanh", "trung-chien-hanh-la",
+            "thit-ba-chi-rang-chay-canh", "ca-thu-sot-ca-chua", "ga-kho-gung", "bo-xao-bong-cai",
+        )
+        assertCompleteMeasuresAndSeasonings(shippedRecipes().take(expectedIds.size), expectedIds)
+    }
+
+    private fun assertCompleteMeasuresAndSeasonings(recipes: List<Recipe>, expectedIds: List<String>) {
         val forbiddenCopy = listOf(
             "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "streak", "chuỗi ngày liên tiếp", // lint-copy: rule
             "điểm số", "xếp hạng", "so với người khác", "đáng xấu hổ", // lint-copy: rule
         )
-        val recipes = shippedRecipes().take(expectedIds.size)
-
         assertEquals(expectedIds, recipes.map { it.id })
         recipes.forEach { recipe ->
             assertEquals(2, recipe.servings, recipe.id)
