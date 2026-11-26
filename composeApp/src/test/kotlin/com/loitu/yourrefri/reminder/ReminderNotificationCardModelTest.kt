@@ -50,7 +50,7 @@ class ReminderNotificationCardModelTest {
         assertEquals(1080, ReminderCardRenderer.WIDTH)
         assertEquals(450, ReminderCardRenderer.HEIGHT)
         assertEquals(56, ReminderCardRenderer.SAFE_ZONE_HORIZONTAL_PX)
-        assertTrue(ReminderCardRenderer.CONTENT_SAFE_INSET_PX >= 150)
+        assertEquals(48, ReminderCardRenderer.CONTENT_SAFE_INSET_PX)
     }
 
     @Test
@@ -130,11 +130,12 @@ class ReminderNotificationCardModelTest {
     }
 
     @Test
-    fun dishBleedLayout_bleedsAsymmetricallyPastRightEdge() {
+    fun dishBleedLayout_fitsFullyInsideRightEdge() {
         val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = true)
         val rightEdge = layout.centerX + layout.diameter / 2f
-        assertTrue(rightEdge > ReminderCardRenderer.WIDTH)
-        assertEquals(1100f, rightEdge)
+        assertTrue(rightEdge < ReminderCardRenderer.WIDTH)
+        assertEquals(1044f, rightEdge)
+        assertEquals(332f, layout.diameter)
         assertEquals(225f, layout.centerY)
     }
 
@@ -143,23 +144,23 @@ class ReminderNotificationCardModelTest {
         val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = true)
         val textRight = ReminderCardRenderer.CONTENT_SAFE_INSET_PX + layout.textWidth
         val dishLeft = layout.centerX - layout.diameter / 2f
-        assertTrue(textRight < dishLeft)
-        assertEquals(28f, dishLeft - textRight)
+        assertEquals(dishLeft, textRight + 32f)
     }
 
     @Test
     fun dishBleedLayout_withoutPictureExpandsTextWidthToRightInset() {
         val layout = ReminderCardRenderer.computeDishBleedLayout(hasPicture = false)
-        assertEquals(776, layout.textWidth)
+        assertEquals(ReminderCardRenderer.WIDTH - 2 * ReminderCardRenderer.CONTENT_SAFE_INSET_PX, layout.textWidth)
     }
 
     @Test
-    fun rendererConstants_keepPixelFullBleedGeometry() {
-        assertEquals(1080, ReminderCardRenderer.WIDTH)
-        assertEquals(450, ReminderCardRenderer.HEIGHT)
-        assertEquals(340f, ReminderCardRenderer.DISH_DIAMETER_PX)
-        assertEquals(20f, ReminderCardRenderer.DISH_RIGHT_BLEED_PX)
-        assertEquals(152, ReminderCardRenderer.CONTENT_SAFE_INSET_PX)
+    fun rendererConstants_matchBalancedBannerLayout() {
+        assertEquals(28f, ReminderCardRenderer.CARD_CORNER_RADIUS_PX)
+        assertEquals(332f, ReminderCardRenderer.DISH_DIAMETER_PX)
+        assertEquals(36f, ReminderCardRenderer.DISH_RIGHT_MARGIN_PX)
+        assertEquals(58f, ReminderCardRenderer.TITLE_TEXT_SIZE_PX)
+        assertEquals(36f, ReminderCardRenderer.BODY_TEXT_SIZE_PX)
+        assertEquals(26f, ReminderCardRenderer.BADGE_TEXT_SIZE_PX)
     }
 
     @Test
