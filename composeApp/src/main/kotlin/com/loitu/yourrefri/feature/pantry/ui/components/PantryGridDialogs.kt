@@ -136,13 +136,13 @@ internal fun PantryGridDialogs(
     onToggleId: (String) -> Unit,
     onConfirmAdd: () -> Unit,
     onDismissAdd: () -> Unit,
-    onCombo: (GroceryCombo) -> Unit,
+    onCombo: (GroceryCombo, Set<String>) -> Unit,
     showCombo: Boolean,
     onDismissCombo: () -> Unit,
     voiceLevel: Float = 0f,
 ) {
     val colors = AppTheme.colors
-    if (showCombo) GroceryComboDialog(GROCERY_COMBOS, onPick = onCombo, onDismiss = onDismissCombo)
+    if (showCombo) GroceryComboSheet(GROCERY_COMBOS, state, onCombo, onDismissCombo)
     if (showClear) AlertDialog(onDismissRequest = onDismissClear, containerColor = colors.surface, title = { Text("Dọn hết tủ lạnh?", color = colors.text) }, text = { Text("Đánh dấu hết toàn bộ món đang có trong tủ? Bạn vẫn có thể Hoàn tác ngay sau đó.", color = colors.muted) }, confirmButton = { Button(onClick = { onDismissClear(); onClearAll() }, modifier = Modifier.heightIn(min = 48.dp), colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary)) { Text("Dọn hết tủ") } }, dismissButton = { TextButton(onClick = onDismissClear, modifier = Modifier.heightIn(min = 48.dp)) { Text("Hủy", color = colors.muted) } })
     if (showLeftover) QuickLeftoverDialog(onSave = onSaveLeftover, onDismiss = onDismissLeftover)
     state.unitEditor?.let { editor ->

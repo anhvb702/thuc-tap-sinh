@@ -43,4 +43,61 @@ class PantryQuickActionsTest {
         listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "điểm số", "streak").forEach { assertFalse(copy.contains(it), it) } // lint-copy: rule
         assertTrue(copy.contains("hoàn tác"))
     }
+
+    @Test fun comboItemsFor_excludesUnknownIdsAndMarksAlreadyHave() {
+        val combo = GroceryCombo("x", "X", "X", listOf("trung-ga", "khong-co", "thit-heo", "tom"))
+        val pantryState = state.copy(
+            ingredients = state.ingredients + Ingredient("tom", "Tôm", "hai-san", 2),
+            pantry = state.pantry + ("trung-ga" to PantryItem("trung-ga", false, today)),
+        )
+        assertEquals(
+            listOf(
+                ComboIngredientItem("trung-ga", "Trứng gà", false),
+                ComboIngredientItem("thit-heo", "Thịt heo", true),
+                ComboIngredientItem("tom", "Tôm", false),
+            ),
+            comboItemsFor(combo, pantryState),
+        )
+    }
+
+    @Test fun comboActionsForSelected_addsNewAndIncreasesExistingOnlyForSelected() {
+        val combo = GroceryCombo("x", "X", "X", listOf("trung-ga", "ca-chua", "khong-co", "thit-heo"))
+        val pantryState = state.copy(
+            ingredients = state.ingredients + listOf(Ingredient("ca-chua", "Cà chua", "rau", 4), Ingredient("tom", "Tôm", "hai-san", 2)),
+            pantry = state.pantry + ("trung-ga" to PantryItem("trung-ga", false, today)),
+        )
+        assertEquals(
+            listOf(PantryGridAction.AddIngredient("trung-ga", null), PantryGridAction.IncreaseQuantity("thit-heo")),
+            comboActionsForSelected(combo, setOf("thit-heo", "khong-co", "trung-ga", "tom"), pantryState),
+        )
+    }
+
+    @Test fun comboActionsForSelected_emptySelectionReturnsNoActions() {
+        val combo = GroceryCombo("x", "X", "X", listOf("thit-heo", "trung-ga"))
+        assertEquals(emptyList(), comboActionsForSelected(combo, emptySet(), state))
+    }
+
+    @Test fun comboChipLabel_appendsPlusOneWhenAlreadyHave() {
+        assertEquals("Thịt heo +1", comboChipLabel(ComboIngredientItem("thit-heo", "Thịt heo", true)))
+        assertEquals("Trứng gà", comboChipLabel(ComboIngredientItem("trung-ga", "Trứng gà", false)))
+    }
+
+    @Test fun comboConfirmLabel_formatsCountAndZeroPrompt() {
+        assertEquals("Chọn ít nhất 1 món", comboConfirmLabel(0))
+        assertEquals("Thêm 1 món vào tủ", comboConfirmLabel(1))
+        assertEquals("Thêm 3 món vào tủ", comboConfirmLabel(3))
+    }
+
+    @Test fun comboLabels_containNoBannedCopy() {
+        val copy = GROCERY_COMBOS.map { it.titleVi } +
+            listOf(comboConfirmLabel(0), comboConfirmLabel(2)) +
+            listOf(
+                comboChipLabel(ComboIngredientItem("thit-heo", "Thịt heo", true)),
+                comboChipLabel(ComboIngredientItem("trung-ga", "Trứng gà", false)),
+            )
+        val banned = listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "điểm số", "so sánh", "streak", "chuỗi ngày liên tiếp", "xếp hạng", "so với người khác", "đáng xấu hổ") // lint-copy: rule
+        copy.forEach { label ->
+            banned.forEach { word -> assertFalse(label.contains(word, ignoreCase = true), label) }
+        }
+    }
 }
