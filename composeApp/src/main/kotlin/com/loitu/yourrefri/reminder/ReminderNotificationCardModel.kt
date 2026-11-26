@@ -18,6 +18,13 @@ internal data class ReminderBigPictureContent(
     val actionLabel: String = REMINDER_ACTION_LABEL,
 )
 
+internal data class ReminderNotificationViewsModel(
+    val collapsedTitle: String,
+    val collapsedSubtitle: String,
+    val bannerHero: String,
+    val bannerSubtitle: String,
+)
+
 private const val URGENT_PHRASE = "nên dùng trước"
 private const val DEFAULT_HERO = "Tối nay nhà mình ăn gì?"
 private const val DEFAULT_SUBTITLE = "Mở xem gợi ý từ tủ lạnh nhà mình"
@@ -27,6 +34,19 @@ private val otherItems = Regex(" và (\\d+) món khác\\b", RegexOption.IGNORE_C
 private val extraItems = Regex("(?:\\b(\\d+)\\s+món\\s+khác\\b|\\+(\\d+)\\s+món\\b)", RegexOption.IGNORE_CASE)
 private val bannedWords = Regex("hết hạn|lãng phí|bỏ lỡ|bạn quên|streak|tồn kho", RegexOption.IGNORE_CASE) // lint-copy: rule
 private val dishTitle = Regex("^(?:Tối nay nấu |Gợi ý bữa cơm: )(.+)$", RegexOption.IGNORE_CASE)
+private val reminderEmojiPrefix = Regex("^(?:🍲\\uFE0F?\\s*)+")
+
+internal fun buildReminderNotificationViewsModel(title: String, body: String): ReminderNotificationViewsModel {
+    val card = buildReminderCardModel(title.trimStart().replace(reminderEmojiPrefix, ""), body)
+    return ReminderNotificationViewsModel(
+        collapsedTitle = card.hero,
+        collapsedSubtitle = card.subtitle,
+        bannerHero = card.hero,
+        bannerSubtitle = card.subtitle,
+    )
+}
+
+internal fun useCustomExpandedBanner(banner: Any?): Boolean = banner != null
 
 internal fun buildReminderBigPictureContent(title: String, body: String): ReminderBigPictureContent {
     val card = buildReminderCardModel(title, body)

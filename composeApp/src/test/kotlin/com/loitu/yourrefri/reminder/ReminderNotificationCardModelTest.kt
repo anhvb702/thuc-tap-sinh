@@ -163,13 +163,84 @@ class ReminderNotificationCardModelTest {
     }
 
     @Test
-    fun reminderNotifier_setsAccentColorAndAvoidsRemoteViews() {
+    fun reminderNotifier_usesDecoratedCustomViewWithoutActionButton() {
         val path = "src/main/kotlin/com/loitu/yourrefri/reminder/ReminderNotifier.kt"
         val source = listOf(File(path), File("composeApp", path)).first { it.isFile }.readText()
+        assertTrue(source.contains("DecoratedCustomViewStyle"))
+        assertTrue(source.contains("setCustomContentView"))
+        assertTrue(source.contains("setCustomBigContentView"))
+        assertTrue(source.contains("RemoteViews"))
         assertTrue(source.contains(".setColor(ReminderCardRenderer.accentColorArgb())"))
-        assertFalse(source.contains("setCustomContentView"))
-        assertFalse(source.contains("setCustomBigContentView"))
-        assertFalse(source.contains("RemoteViews"))
+        assertTrue(source.contains(".setContentIntent(open)"))
+        assertTrue(source.contains(".putExtra(ReminderIntents.EXTRA_RECIPE_ID, recipeId)"))
+        assertTrue(source.contains("BigTextStyle().bigText(viewsModel.collapsedSubtitle)"))
+        assertFalse(source.contains(".addAction("))
+    }
+
+    @Test
+    fun notificationViewsUseDishNameAndDistinctWarmSubtitle() {
+        val model = buildReminderNotificationViewsModel(
+            title = "🍲 🍲 Tối nay nấu Canh rau ngót nhé",
+            body = "Món Canh rau ngót dễ nấu, ấm bụng cho bữa cơm nhà.",
+        )
+
+        assertEquals("Canh rau ngót", model.collapsedTitle)
+        assertEquals("Canh rau ngót", model.bannerHero)
+        assertEquals("Dễ nấu, ấm bụng cho bữa cơm nhà", model.bannerSubtitle)
+        assertNotificationViewsCopy(model)
+    }
+
+    @Test
+    fun notificationViewsKeepTheCountOfAdditionalItems() {
+        val model = buildReminderNotificationViewsModel(
+            title = "Gợi ý từ tủ nhà mình",
+            body = "Mực tươi, Cá hồi và 10 món khác nên dùng trước (hạn ước tính).",
+        )
+
+        assertEquals("Mực tươi, Cá hồi", model.collapsedTitle)
+        assertTrue(model.collapsedSubtitle.contains("10 món"))
+        assertTrue(model.bannerSubtitle.contains("10 món"))
+        assertNotificationViewsCopy(model)
+    }
+
+    @Test
+    fun notificationViewsFilterBannedWordsFromTitleAndBody() {
+        val bannedWords = listOf("HẾT HẠN", "lãng phí", "bỏ lỡ", "bạn quên", "streak", "tồn kho") // lint-copy: rule
+        for (word in bannedWords) {
+            assertNotificationViewsCopy(buildReminderNotificationViewsModel("Tối nay nấu $word nhé", ""))
+            assertNotificationViewsCopy(buildReminderNotificationViewsModel("Gợi ý từ tủ nhà mình", word))
+        }
+    }
+
+    @Test
+    fun notificationViewsUseWarmDefaultsWhenInputIsBlank() {
+        val model = buildReminderNotificationViewsModel("  ", "\n\t")
+
+        assertEquals("Tối nay nhà mình ăn gì?", model.collapsedTitle)
+        assertEquals("Mở xem gợi ý từ tủ lạnh nhà mình", model.collapsedSubtitle)
+        assertEquals(model.collapsedTitle, model.bannerHero)
+        assertEquals(model.collapsedSubtitle, model.bannerSubtitle)
+        assertNotificationViewsCopy(model)
+    }
+
+    @Test
+    fun customExpandedBannerRequiresANonNullBanner() {
+        assertTrue(useCustomExpandedBanner(Any()))
+        assertFalse(useCustomExpandedBanner(null))
+        assertFalse(useCustomExpandedBanner(resolveBigPictureStyle { throw IllegalStateException() }))
+    }
+
+    private fun assertNotificationViewsCopy(model: ReminderNotificationViewsModel) {
+        assertTrue(model.collapsedTitle.isNotBlank() && model.collapsedTitle.length <= 28)
+        assertTrue(model.collapsedSubtitle.isNotBlank() && model.collapsedSubtitle.length <= 48)
+        assertFalse(model.collapsedTitle.equals(model.collapsedSubtitle, ignoreCase = true))
+        assertNoBannedWords(
+            ReminderCardModel(
+                model.collapsedTitle,
+                model.collapsedSubtitle,
+                "${model.bannerHero} ${model.bannerSubtitle}",
+            ),
+        )
     }
 
     private fun assertBigPictureCopy(content: ReminderBigPictureContent) {

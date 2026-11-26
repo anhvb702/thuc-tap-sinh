@@ -7,6 +7,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import com.loitu.yourrefri.MainActivity
 import com.loitu.yourrefri.R
@@ -26,32 +27,35 @@ object ReminderNotifier {
                 .putExtra(ReminderIntents.EXTRA_RECIPE_ID, recipeId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val content = buildReminderBigPictureContent(title, body)
+        val viewsModel = buildReminderNotificationViewsModel(title, body)
         val banner = resolveBigPictureStyle {
-            picture?.let { ReminderCardRenderer.render(content.hero, content.subtitle, it) }
+            picture?.let { ReminderCardRenderer.render(viewsModel.bannerHero, viewsModel.bannerSubtitle, it) }
         }
-        val style = if (banner != null) {
-            NotificationCompat.BigPictureStyle()
-                .bigPicture(banner)
-                .bigLargeIcon(null as Bitmap?)
-                .also { pictureStyle ->
-                    if (Build.VERSION.SDK_INT >= 31) pictureStyle.showBigPictureWhenCollapsed(true)
-                }
-        } else {
-            NotificationCompat.BigTextStyle().bigText(content.contentText)
+        val collapsedView = RemoteViews(context.packageName, R.layout.notification_reminder_collapsed).apply {
+            setTextViewText(R.id.notification_collapsed_title, viewsModel.collapsedTitle)
+            setTextViewText(R.id.notification_collapsed_subtitle, viewsModel.collapsedSubtitle)
         }
         val builder = NotificationCompat.Builder(context, ReminderChannel.ID)
             .setSmallIcon(R.drawable.ic_notification_fridge)
             .setColor(ReminderCardRenderer.accentColorArgb())
-            .setContentTitle(content.contentTitle)
-            .setContentText(content.contentText)
+            .setContentTitle(viewsModel.collapsedTitle)
+            .setContentText(viewsModel.collapsedSubtitle)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setContentIntent(open)
-            .addAction(0, content.actionLabel, open)
             .setAutoCancel(true)
-            .setStyle(style)
+        if (useCustomExpandedBanner(banner)) {
+            val expandedView = RemoteViews(context.packageName, R.layout.notification_reminder_expanded).apply {
+                val scaledBanner = Bitmap.createScaledBitmap(checkNotNull(banner), 720, 300, true)
+                setImageViewBitmap(R.id.notification_expanded_banner, scaledBanner)
+            }
+            builder.setStyle(NotificationCompat.DecoratedCustomViewStyle())
+                .setCustomContentView(collapsedView)
+                .setCustomBigContentView(expandedView)
+        } else {
+            builder.setStyle(NotificationCompat.BigTextStyle().bigText(viewsModel.collapsedSubtitle))
+        }
         if (Build.VERSION.SDK_INT < 26) builder.setDefaults(NotificationCompat.DEFAULT_VIBRATE)
         manager.notify(NOTIFICATION_ID, builder.build())
     }
