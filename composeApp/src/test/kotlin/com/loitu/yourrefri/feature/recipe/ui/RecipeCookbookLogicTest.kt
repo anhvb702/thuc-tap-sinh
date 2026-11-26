@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RecipeCookbookLogicTest {
@@ -53,20 +54,20 @@ class RecipeCookbookLogicTest {
     }
 
     @Test
-    fun durationGroupsIncludeTheirUpperBoundAndPutUnknownMinutesInSlow() {
+    fun durationGroupsIncludeTheirUpperBoundAndPutUnknownMinutesInLong() {
         assertEquals(CookbookDurationGroup.QUICK, cookbookDurationOf(15))
         assertEquals(CookbookDurationGroup.MEDIUM, cookbookDurationOf(16))
         assertEquals(CookbookDurationGroup.MEDIUM, cookbookDurationOf(30))
-        assertEquals(CookbookDurationGroup.SLOW, cookbookDurationOf(31))
-        assertEquals(CookbookDurationGroup.SLOW, cookbookDurationOf(null))
+        assertEquals(CookbookDurationGroup.LONG, cookbookDurationOf(31))
+        assertEquals(CookbookDurationGroup.LONG, cookbookDurationOf(null))
     }
 
     @Test
     fun togglingADurationRemovesOrAddsOnlyThatGroup() {
-        val quickAndSlow = setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.SLOW)
-        val slowOnly = setOf(CookbookDurationGroup.SLOW)
-        assertEquals(slowOnly, toggleCookbookDuration(quickAndSlow, CookbookDurationGroup.QUICK))
-        assertEquals(quickAndSlow, toggleCookbookDuration(slowOnly, CookbookDurationGroup.QUICK))
+        val quickAndLong = setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.LONG)
+        val longOnly = setOf(CookbookDurationGroup.LONG)
+        assertEquals(longOnly, toggleCookbookDuration(quickAndLong, CookbookDurationGroup.QUICK))
+        assertEquals(quickAndLong, toggleCookbookDuration(longOnly, CookbookDurationGroup.QUICK))
     }
 
     @Test
@@ -86,11 +87,11 @@ class RecipeCookbookLogicTest {
     fun selectedDurationsMatchTheUnionOfZeroOneTwoOrThreeGroups() {
         val quickOnly = setOf(CookbookDurationGroup.QUICK)
         val mediumOnly = setOf(CookbookDurationGroup.MEDIUM)
-        val quickAndSlow = quickOnly + CookbookDurationGroup.SLOW
+        val quickAndLong = quickOnly + CookbookDurationGroup.LONG
         assertEquals(emptyList(), filtered(CookbookFilters(selectedDurations = emptySet())))
         assertEquals(listOf(quick), filtered(CookbookFilters(selectedDurations = quickOnly)))
         assertEquals(listOf(unlocked, missing), filtered(CookbookFilters(selectedDurations = mediumOnly)))
-        assertEquals(listOf(quick, untimed), filtered(CookbookFilters(selectedDurations = quickAndSlow)))
+        assertEquals(listOf(quick, untimed), filtered(CookbookFilters(selectedDurations = quickAndLong)))
         assertEquals(
             listOf(quick, untimed, unlocked, missing),
             filtered(CookbookFilters(selectedDurations = ALL_COOKBOOK_DURATIONS)),
@@ -124,7 +125,7 @@ class RecipeCookbookLogicTest {
         val subsets = listOf(
             emptySet(),
             setOf(CookbookDurationGroup.QUICK),
-            setOf(CookbookDurationGroup.MEDIUM, CookbookDurationGroup.SLOW),
+            setOf(CookbookDurationGroup.MEDIUM, CookbookDurationGroup.LONG),
             ALL_COOKBOOK_DURATIONS,
         )
         subsets.forEach { subset ->
@@ -180,60 +181,74 @@ class RecipeCookbookLogicTest {
     }
 
     @Test
-    fun allQuickFilterIsActiveForDefaultAndCustomDurations() {
-        val durations = listOf(
-            ALL_COOKBOOK_DURATIONS,
-            emptySet(),
-            setOf(CookbookDurationGroup.MEDIUM),
-            setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.MEDIUM),
-        )
-        durations.forEach {
-            assertEquals(CookbookQuickFilter.ALL, activeCookbookQuickFilter(false, it))
+    fun favoriteTogglePreservesDurationAndIngredientFiltersInBothDirections() {
+        val current = CookbookFilters(canCookOnly = true, selectedDurations = setOf(CookbookDurationGroup.MEDIUM))
+        val enabled = toggleCookbookFavoriteOnly(current)
+        assertEquals(current.copy(favoriteOnly = true), enabled)
+        assertEquals(current, toggleCookbookFavoriteOnly(enabled))
+    }
+
+    @Test
+    fun durationPresetsReplaceTheSelectionAndPreserveBothSwitches() {
+        val current = CookbookFilters(canCookOnly = true, favoriteOnly = true)
+        for (group in CookbookDurationGroup.entries) {
+            assertEquals(
+                current.copy(selectedDurations = setOf(group)),
+                selectCookbookDurationPreset(current, group),
+            )
         }
+        val quickOnly = current.copy(selectedDurations = setOf(CookbookDurationGroup.QUICK))
+        assertEquals(current, selectCookbookDurationPreset(quickOnly, null))
+        val switchesOff = CookbookFilters()
+        val mediumOnly = switchesOff.copy(selectedDurations = setOf(CookbookDurationGroup.MEDIUM))
+        assertEquals(mediumOnly, selectCookbookDurationPreset(switchesOff, CookbookDurationGroup.MEDIUM))
     }
 
     @Test
-    fun favoriteQuickFilterTakesPrecedenceOverQuickDuration() {
-        assertEquals(CookbookQuickFilter.FAVORITE, activeCookbookQuickFilter(true, ALL_COOKBOOK_DURATIONS))
-        assertEquals(
-            CookbookQuickFilter.FAVORITE,
-            activeCookbookQuickFilter(true, setOf(CookbookDurationGroup.QUICK)),
-        )
+    fun activeDurationPresetRequiresExactlyOneGroupRegardlessOfFavorites() {
+        val current = CookbookFilters(canCookOnly = true, favoriteOnly = true)
+        for (group in CookbookDurationGroup.entries) {
+            assertEquals(group, activeCookbookDurationPreset(current.copy(selectedDurations = setOf(group))))
+        }
+        assertNull(activeCookbookDurationPreset(current))
+        assertNull(activeCookbookDurationPreset(current.copy(selectedDurations = emptySet())))
+        val twoGroups = setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.MEDIUM)
+        assertNull(activeCookbookDurationPreset(current.copy(selectedDurations = twoGroups)))
     }
 
     @Test
-    fun easyQuickFilterIsActiveForQuickDurationOnly() {
-        assertEquals(
-            CookbookQuickFilter.EASY,
-            activeCookbookQuickFilter(false, setOf(CookbookDurationGroup.QUICK)),
-        )
+    fun durationPresetLabelsDescribeEachCookingTime() {
+        assertEquals("Tất cả thời gian", cookbookDurationPresetLabel(null))
+        assertEquals("Nấu nhanh · ≤15 phút", cookbookDurationPresetLabel(CookbookDurationGroup.QUICK))
+        assertEquals("Nấu vừa · 16–30 phút", cookbookDurationPresetLabel(CookbookDurationGroup.MEDIUM))
+        assertEquals("Nấu cầu kỳ · >30 phút", cookbookDurationPresetLabel(CookbookDurationGroup.LONG))
     }
 
     @Test
-    fun applyingAllClearsFavoritesAndRestoresAllDurations() {
-        val current = CookbookFilters(true, true, setOf(CookbookDurationGroup.SLOW))
-        assertEquals(
-            CookbookFilters(canCookOnly = true, favoriteOnly = false, selectedDurations = ALL_COOKBOOK_DURATIONS),
-            applyCookbookQuickFilter(current, CookbookQuickFilter.ALL),
-        )
+    fun durationBadgeLabelsFitShortCookingTimePills() {
+        assertEquals("≤15p", cookbookDurationBadgeLabel(CookbookDurationGroup.QUICK))
+        assertEquals("16–30p", cookbookDurationBadgeLabel(CookbookDurationGroup.MEDIUM))
+        assertEquals(">30p", cookbookDurationBadgeLabel(CookbookDurationGroup.LONG))
     }
 
     @Test
-    fun applyingFavoriteEnablesFavoritesAndRestoresAllDurations() {
-        val current = CookbookFilters(true, false, setOf(CookbookDurationGroup.QUICK))
-        assertEquals(
-            CookbookFilters(canCookOnly = true, favoriteOnly = true, selectedDurations = ALL_COOKBOOK_DURATIONS),
-            applyCookbookQuickFilter(current, CookbookQuickFilter.FAVORITE),
+    fun quickFavoritesRequireBothFiltersRegardlessOfSelectionOrder() {
+        val otherQuick = recipe("other-quick", "Rau luộc", 12)
+        val source = entries + CookbookEntry(otherQuick, unlocked = true, canCookNow = true, missingCount = 0)
+        val favorites = setOf(quick.id, unlocked.id)
+        val favoritesFirst = selectCookbookDurationPreset(
+            toggleCookbookFavoriteOnly(CookbookFilters()),
+            CookbookDurationGroup.QUICK,
         )
-    }
-
-    @Test
-    fun applyingEasyClearsFavoritesAndSelectsQuickDurationOnly() {
-        val current = CookbookFilters(true, true, ALL_COOKBOOK_DURATIONS)
-        assertEquals(
-            CookbookFilters(canCookOnly = true, favoriteOnly = false, selectedDurations = setOf(CookbookDurationGroup.QUICK)),
-            applyCookbookQuickFilter(current, CookbookQuickFilter.EASY),
+        val durationFirst = toggleCookbookFavoriteOnly(
+            selectCookbookDurationPreset(CookbookFilters(), CookbookDurationGroup.QUICK),
         )
+        assertEquals(favoritesFirst, durationFirst)
+        assertEquals(listOf(quick), filtered(favoritesFirst, source = source, favoriteIds = favorites))
+        val favoritesCleared = toggleCookbookFavoriteOnly(favoritesFirst)
+        val durationCleared = selectCookbookDurationPreset(favoritesFirst, null)
+        assertEquals(listOf(quick, otherQuick), filtered(favoritesCleared, source = source, favoriteIds = favorites))
+        assertEquals(listOf(quick, unlocked), filtered(durationCleared, source = source, favoriteIds = favorites))
     }
 
     @Test
@@ -257,7 +272,7 @@ class RecipeCookbookLogicTest {
             Regex("""\.\s*align\s*\(\s*Alignment\s*\.\s*BottomEnd\s*\)""").containsMatchIn(source),
             "Cookbook buttons must not float over the recipe grid",
         )
-        assertFalse(source.contains("FavoriteFilterFab"), "The favorites chip replaces the floating button")
+        assertFalse(source.contains("FavoriteFilterFab"), "The header heart replaces the floating button")
     }
 
     @Test
