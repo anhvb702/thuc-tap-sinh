@@ -9,24 +9,67 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import androidx.annotation.RequiresApi
 
-/**
- * Nhận dạng giọng nói CHỈ trên thiết bị (Android 13 trở lên), để âm thanh không rời khỏi máy.
- * Không dùng bộ nhận dạng mặc định của hệ thống vì nó có thể gửi âm thanh lên máy chủ.
- */
+internal enum class VoiceEngineChoice { ON_DEVICE, PLATFORM, NONE }
+
+internal enum class VoiceFailure { NOTHING_HEARD, LANGUAGE_PACK_MISSING, UNAVAILABLE }
+
+internal fun chooseVoiceEngine(
+    sdkInt: Int,
+    onDeviceAvailable: Boolean,
+    platformAvailable: Boolean,
+): VoiceEngineChoice = when {
+    sdkInt >= Build.VERSION_CODES.TIRAMISU && onDeviceAvailable -> VoiceEngineChoice.ON_DEVICE
+    platformAvailable -> VoiceEngineChoice.PLATFORM
+    else -> VoiceEngineChoice.NONE
+}
+
+internal fun isLanguagePackError(errorCode: Int): Boolean =
+    errorCode == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE ||
+        errorCode == SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED
+
+internal fun shouldFallbackToPlatform(
+    engine: VoiceEngineChoice,
+    errorCode: Int,
+    platformAvailable: Boolean,
+    alreadyFallenBack: Boolean,
+): Boolean {
+    if (engine != VoiceEngineChoice.ON_DEVICE || !platformAvailable || alreadyFallenBack) return false
+    return isLanguagePackError(errorCode) || when (errorCode) {
+        SpeechRecognizer.ERROR_SERVER_DISCONNECTED,
+        SpeechRecognizer.ERROR_CLIENT,
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> true
+        else -> false
+    }
+}
+
+internal fun classifyVoiceError(errorCode: Int): VoiceFailure = when {
+    errorCode == SpeechRecognizer.ERROR_NO_MATCH || errorCode == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
+        VoiceFailure.NOTHING_HEARD
+    isLanguagePackError(errorCode) -> VoiceFailure.LANGUAGE_PACK_MISSING
+    else -> VoiceFailure.UNAVAILABLE
+}
+
 internal fun isVoiceInputAvailable(context: Context): Boolean =
-    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && onDeviceAvailable(context)
+    availableVoiceEngine(context) != VoiceEngineChoice.NONE
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private fun availableVoiceEngine(context: Context): VoiceEngineChoice =
+    chooseVoiceEngine(Build.VERSION.SDK_INT, onDeviceAvailable(context), platformAvailable(context))
+
 private fun onDeviceAvailable(context: Context): Boolean =
     try {
-        SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            SpeechRecognizer.isOnDeviceRecognitionAvailable(context)
     } catch (_: Exception) {
         false
     }
 
-internal enum class VoiceFailure { NOTHING_HEARD, UNAVAILABLE }
+private fun platformAvailable(context: Context): Boolean =
+    try {
+        SpeechRecognizer.isRecognitionAvailable(context)
+    } catch (_: Exception) {
+        false
+    }
 
 internal interface VoiceSession {
     /** Dừng nói: gửi kết quả đã nghe được cho onResult. */
@@ -45,7 +88,6 @@ internal fun voiceWaveBarHeights(normalizedLevel: Float, animatorsEnabled: Boole
     return listOf(0.45f, 0.78f, 1f, 0.78f, 0.45f).map { it * amplitude }
 }
 
-/** Tạo phiên nghe on-device; trả null khi máy không hỗ trợ (khi đó nút giọng nói đã bị ẩn). */
 internal fun startVoiceSession(
     context: Context,
     onPartial: (String) -> Unit,
@@ -53,13 +95,14 @@ internal fun startVoiceSession(
     onFailure: (VoiceFailure) -> Unit,
     onRms: (Float) -> Unit = {},
 ): VoiceSession? {
-    if (!isVoiceInputAvailable(context)) return null
-    return OnDeviceVoiceSession(context, onPartial, onResult, onFailure, onRms)
+    val engine = availableVoiceEngine(context)
+    if (engine == VoiceEngineChoice.NONE) return null
+    return ManagedVoiceSession(context, engine, onPartial, onResult, onFailure, onRms)
 }
 
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
-private class OnDeviceVoiceSession(
-    context: Context,
+private class ManagedVoiceSession(
+    private val context: Context,
+    initialEngine: VoiceEngineChoice,
     private val onPartial: (String) -> Unit,
     private val onResult: (String) -> Unit,
     private val onFailure: (VoiceFailure) -> Unit,
@@ -67,59 +110,104 @@ private class OnDeviceVoiceSession(
 ) : VoiceSession {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
+    private var activeEngine = initialEngine
+    private var didFallback = false
     private var lastPartial = ""
     private var finished = false
     private var stopRequested = false
 
     init {
-        try {
-            recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-            recognizer?.setRecognitionListener(
-            object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {}
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {
-                    if (!finished && !stopRequested) onRms(normalizeVoiceRms(rmsdB))
-                }
-                override fun onBufferReceived(buffer: ByteArray?) {}
-                override fun onEndOfSpeech() {}
-                override fun onEvent(eventType: Int, params: Bundle?) {}
+        // Let the caller store the session before startup can report a failure.
+        mainHandler.post { if (!finished && !stopRequested) startListening(initialEngine) }
+    }
 
-                override fun onPartialResults(partialResults: Bundle?) {
-                    firstText(partialResults)?.let {
-                        lastPartial = it
-                        if (!finished) onPartial(it)
-                    }
-                }
-
-                override fun onResults(results: Bundle?) {
-                    finish(firstText(results) ?: lastPartial)
-                }
-
-                override fun onError(error: Int) {
-                    if (finished) return
-                    when (error) {
-                        SpeechRecognizer.ERROR_NO_MATCH,
-                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> finish(lastPartial)
-                        else -> {
-                            finishFailure(VoiceFailure.UNAVAILABLE)
-                        }
-                    }
-                }
-            },
-            )
-            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
-                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
-                putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-            }
-            recognizer?.startListening(intent)
-        } catch (_: Exception) {
-            recognizer = null
-            finishFailure(VoiceFailure.UNAVAILABLE)
+    private fun startListening(engine: VoiceEngineChoice) {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "vi-VN")
+            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, engine == VoiceEngineChoice.ON_DEVICE)
+            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }
+        try {
+            val nextRecognizer = when (engine) {
+                VoiceEngineChoice.ON_DEVICE -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
+                    } else {
+                        SpeechRecognizer.createSpeechRecognizer(context)
+                    }
+                }
+                VoiceEngineChoice.PLATFORM -> SpeechRecognizer.createSpeechRecognizer(context)
+                VoiceEngineChoice.NONE -> return
+            }
+            recognizer = nextRecognizer
+            nextRecognizer.setRecognitionListener(
+                object : RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {
+                        if (isActive(engine) && !stopRequested) onRms(normalizeVoiceRms(rmsdB))
+                    }
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+
+                    override fun onPartialResults(partialResults: Bundle?) {
+                        if (!isActive(engine)) return
+                        val text = firstText(partialResults) ?: return
+                        lastPartial = text
+                        onPartial(text)
+                    }
+
+                    override fun onResults(results: Bundle?) {
+                        if (isActive(engine)) finish(firstText(results) ?: lastPartial)
+                    }
+
+                    override fun onError(error: Int) {
+                        handleError(engine, error, intent)
+                    }
+                },
+            )
+            nextRecognizer.startListening(intent)
+        } catch (_: Exception) {
+            handleError(engine, SpeechRecognizer.ERROR_CLIENT, intent)
+        }
+    }
+
+    private fun isActive(engine: VoiceEngineChoice): Boolean =
+        !finished && engine == activeEngine
+
+    private fun handleError(engine: VoiceEngineChoice, error: Int, intent: Intent) {
+        if (!isActive(engine)) return
+        val failure = classifyVoiceError(error)
+        if (failure == VoiceFailure.NOTHING_HEARD) {
+            finish(lastPartial)
+            return
+        }
+        if (engine == VoiceEngineChoice.ON_DEVICE && isLanguagePackError(error) &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+        ) {
+            try {
+                recognizer?.triggerModelDownload(intent)
+            } catch (_: Exception) {
+                // The recognizer may not support downloads.
+            }
+        }
+        if (shouldFallbackToPlatform(activeEngine, error, platformAvailable(context), didFallback)) {
+            didFallback = true
+            activeEngine = VoiceEngineChoice.PLATFORM
+            // Defer teardown until the current recognizer callback has returned.
+            mainHandler.post {
+                destroyNow()
+                if (!finished) {
+                    if (stopRequested) finish(lastPartial) else startListening(VoiceEngineChoice.PLATFORM)
+                }
+            }
+            return
+        }
+        finishFailure(failure)
     }
 
     private fun finish(text: String) {
@@ -154,14 +242,17 @@ private class OnDeviceVoiceSession(
     }
 
     private fun destroyNow() {
-        recognizer?.let {
-            try {
-                it.cancel()
-                it.destroy()
-            } catch (_: Exception) {
-                // Đã dọn rồi: bỏ qua.
-            }
-        }
+        val currentRecognizer = recognizer ?: return
         recognizer = null
+        try {
+            currentRecognizer.cancel()
+        } catch (_: Exception) {
+            // Attempt destruction even if cancellation fails.
+        }
+        try {
+            currentRecognizer.destroy()
+        } catch (_: Exception) {
+            // The service may have already disconnected.
+        }
     }
 }

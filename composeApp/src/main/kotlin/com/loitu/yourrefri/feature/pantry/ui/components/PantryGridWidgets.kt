@@ -565,6 +565,7 @@ internal fun VoiceSheet(
                     text = when (phase) {
                         VoicePhase.LISTENING -> VOICE_LISTENING_TITLE
                         VoicePhase.NOT_HEARD -> VOICE_NOT_HEARD
+                        VoicePhase.LANGUAGE_PACK_MISSING -> VOICE_LANGUAGE_PACK_MISSING
                         else -> VOICE_UNAVAILABLE_NOW
                     },
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -1178,7 +1179,7 @@ internal fun AddFoodEstimateSection(
     }
 }
 
-internal enum class VoicePhase { IDLE, LISTENING, NOT_HEARD, ERROR }
+internal enum class VoicePhase { IDLE, LISTENING, NOT_HEARD, LANGUAGE_PACK_MISSING, ERROR }
 
 /** Chữ của ô tìm trên màn Tủ lạnh. */
 internal object PantrySearchCopy {
@@ -1198,11 +1199,12 @@ internal object PantryActionCopy {
 }
 
 internal const val VOICE_MIC_TITLE = "Bật micro nhé?"
-internal const val VOICE_MIC_EXPLAIN = "Mình cần micro để nghe tên món, âm thanh không rời khỏi máy."
+internal const val VOICE_MIC_EXPLAIN = "Mình cần micro để nghe tên món. Dịch vụ giọng nói của máy có thể gửi âm thanh qua mạng để nhận dạng."
 internal const val VOICE_MIC_DENIED = "Chưa bật micro, mình vẫn thêm thủ công được nhé"
 internal const val VOICE_LISTENING_TITLE = "Đang nghe..."
 internal const val VOICE_LISTENING_HINT = "Bạn nói tên món, ví dụ: cà chua, trứng gà và hành lá"
 internal const val VOICE_UNAVAILABLE_NOW = "Máy chưa nghe được lúc này, mình vẫn thêm thủ công được nhé"
+internal const val VOICE_LANGUAGE_PACK_MISSING = "Máy chưa có gói tiếng Việt — chạm gõ nhanh bên dưới nhé"
 internal const val VOICE_ALREADY_HAVE = "Những món này đã có trong tủ rồi nhé"
 
 internal fun voiceHeardLine(heard: String): String = "Mình nghe được: $heard"
