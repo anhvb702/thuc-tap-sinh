@@ -206,17 +206,37 @@ class ShippedRecipeBundleTest {
         "muc-xao-bong-cai",
     )
 
+    // 16 món Việt gia đình thêm ở U4-03 (mở sẵn, nối sau 36 món cũ).
+    private val vietnameseRecipeIds = setOf(
+        "ca-loc-kho-to",
+        "canh-mong-toi-nau-ngao",
+        "canh-rau-den-thit-bam",
+        "uc-ga-ap-chao-bo-toi",
+        "dui-ga-chien-nuoc-mam",
+        "canh-ga-rim-xi-dau",
+        "vit-kho-gung",
+        "ca-ro-phi-chien-gion",
+        "ca-nuc-kho-ca-chua",
+        "bach-tuoc-xao-sa-te",
+        "thit-kho-trung-cut",
+        "ca-tim-om-dau-phu",
+        "canh-bi-do-nau-tom",
+        "bap-cai-xao-trung",
+        "nam-kim-cham-cuon-ba-chi",
+        "mien-xao-muc",
+    )
+
     @Test
     fun shippedBundleKeepsThreeOriginalRecipesAndAddsTwelveSpecifiedRecipes() {
         val recipes = shippedRecipes()
         val standard = recipes.filter { !it.isMystery }
         val mystery = recipes.filter { it.isMystery }
 
-        // 30 món mở sẵn + 6 món bí mật mới theo yêu cầu tính năng Cook-to-Unlock.
-        assertEquals(36, recipes.size)
-        assertEquals(30, standard.size)
+        // 46 món mở sẵn (36 + 16 món Việt U4-03) + 6 món bí mật mới theo yêu cầu tính năng Cook-to-Unlock.
+        assertEquals(52, recipes.size)
+        assertEquals(46, standard.size)
         assertEquals(6, mystery.size)
-        assertEquals(originalRecipeIds + newRecipeContracts.keys, standard.map { it.id }.toSet())
+        assertEquals(originalRecipeIds + newRecipeContracts.keys + vietnameseRecipeIds, standard.map { it.id }.toSet())
         assertEquals(mysteryRecipeIds, mystery.map { it.id }.toSet())
     }
 
@@ -326,7 +346,7 @@ class ShippedRecipeBundleTest {
     @Test
     fun everyShippedRecipeHasCompleteMeasuresAndSeasonings() {
         val recipes = shippedRecipes()
-        assertEquals(36, recipes.size)
+        assertEquals(52, recipes.size)
         assertCompleteMeasuresAndSeasonings(recipes, recipes.map { it.id })
         recipes.forEach { recipe ->
             recipe.seasonings.forEach { seasoning ->

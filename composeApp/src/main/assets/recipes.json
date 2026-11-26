@@ -977,5 +977,410 @@
       { "name": "Hạt nêm", "amountText": "1/2 thìa cà phê" },
       { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
     ]
+  },
+  {
+    "id": "ca-loc-kho-to",
+    "title": "Cá lóc kho tộ",
+    "minutes": 30,
+    "servings": 2,
+    "stepMinutes": [5, 10, 5, 10],
+    "steps": [
+      "Cá lóc làm sạch, cắt khúc vừa ăn; thịt ba chỉ cắt miếng vuông. Hành lá cắt khúc.",
+      "Ướp cá với nước mắm, tiêu và một nửa đường trong 10 phút.",
+      "Đặt thịt ba chỉ xuống tộ đất, xếp cá lên trên rồi thêm nước vừa ngập.",
+      "Kho lửa nhỏ đến khi nước sánh lại, nêm lại cho vừa ăn rồi rắc hành lá."
+    ],
+    "required": [
+      { "anyOf": ["ca-loc"], "measures": { "ca-loc": { "amount": 400, "unit": "g" } } },
+      { "anyOf": ["ba-chi"], "measures": { "ba-chi": { "amount": 100, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "2 muỗng canh" },
+      { "name": "Đường", "amountText": "1 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "canh-mong-toi-nau-ngao",
+    "title": "Canh mồng tơi nấu ngao",
+    "minutes": 20,
+    "servings": 2,
+    "stepMinutes": [5, 3, 8, 4],
+    "steps": [
+      "Ngao ngâm nước muối loãng khoảng 10 phút cho nhả cát, rồi rửa sạch. Mồng tơi nhặt lá non, rửa sạch.",
+      "Gừng thái lát mỏng, tỏi băm nhỏ.",
+      "Đun sôi nước với gừng và tỏi, cho ngao vào nấu đến khi vỏ mở ra; vớt bỏ ngao không mở.",
+      "Cho mồng tơi vào nấu chín tới, nêm hạt nêm và tiêu rồi tắt bếp."
+    ],
+    "required": [
+      { "anyOf": ["rau-mong-toi"], "measures": { "rau-mong-toi": { "amount": 200, "unit": "g" } } },
+      { "anyOf": ["ngao"], "measures": { "ngao": { "amount": 300, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["gung"], "measures": { "gung": { "amount": 10, "unit": "g" } } },
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 2, "unit": "tép" } } }
+    ],
+    "seasonings": [
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "canh-rau-den-thit-bam",
+    "title": "Canh rau dền thịt băm",
+    "minutes": 15,
+    "servings": 2,
+    "stepMinutes": [3, 5, 5, 2],
+    "steps": [
+      "Rau dền nhặt bỏ gốc già, rửa sạch. Hành tím băm nhỏ.",
+      "Ướp thịt băm với hành tím, một chút nước mắm và tiêu trong 5 phút.",
+      "Đun sôi nước, vo viên thịt băm thả vào nấu đến khi chín, nêm hạt nêm vừa ăn.",
+      "Cho rau dền vào đảo đều đến khi rau vừa héo rồi tắt bếp, dọn ra tô."
+    ],
+    "required": [
+      { "anyOf": ["rau-den"], "measures": { "rau-den": { "amount": 200, "unit": "g" } } },
+      { "anyOf": ["thit-heo-xay"], "measures": { "thit-heo-xay": { "amount": 150, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tim"], "measures": { "hanh-tim": { "amount": 1, "unit": "củ" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "1 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "uc-ga-ap-chao-bo-toi",
+    "title": "Ức gà áp chảo bơ tỏi",
+    "minutes": 20,
+    "servings": 2,
+    "stepMinutes": [10, 2, 6, 2],
+    "steps": [
+      "Ức gà rửa sạch, lau khô, khứa nhẹ mặt thịt rồi ướp muối và tiêu khoảng 10 phút.",
+      "Tỏi băm nhỏ. Bơ lạt để ở nhiệt độ phòng cho mềm.",
+      "Đặt ức gà vào chảo nóng vừa, áp mặt da xuống và chiên khoảng 3 phút mỗi mặt đến khi vàng nhẹ.",
+      "Hạ lửa, cho bơ và tỏi vào chảo, múc bơ tỏi rưới lên gà rồi thái lát dọn ra."
+    ],
+    "required": [
+      { "anyOf": ["uc-ga"], "measures": { "uc-ga": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["bo-lat"], "measures": { "bo-lat": { "amount": 15, "unit": "g" } } },
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } }
+    ],
+    "optional": [],
+    "seasonings": [
+      { "name": "Muối", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "dui-ga-chien-nuoc-mam",
+    "title": "Đùi gà chiên nước mắm",
+    "minutes": 40,
+    "servings": 2,
+    "stepMinutes": [5, 15, 15, 5],
+    "steps": [
+      "Đùi gà rửa sạch, lau khô, dùng dao khứa vài đường trên thịt.",
+      "Ướp gà với nước mắm, đường, tiêu và tỏi băm trong 15 phút.",
+      "Chiên gà với lửa vừa, lật đều đến khi vàng đều hai mặt và chín bên trong.",
+      "Đặt đùi gà lên giấy thấm dầu để ráo bớt dầu rồi dọn ra đĩa."
+    ],
+    "required": [
+      { "anyOf": ["dui-ga"], "measures": { "dui-ga": { "amount": 500, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 4, "unit": "tép" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "2 muỗng canh" },
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "2 muỗng canh" }
+    ]
+  },
+  {
+    "id": "canh-ga-rim-xi-dau",
+    "title": "Cánh gà rim nước tương",
+    "minutes": 30,
+    "servings": 2,
+    "stepMinutes": [10, 8, 10, 2],
+    "steps": [
+      "Cánh gà rửa sạch, chặt đôi rồi khứa nhẹ, ướp với tỏi băm và tiêu trong 10 phút.",
+      "Chiên cánh gà với chút dầu ăn đến khi vàng đều hai mặt.",
+      "Cho nước tương, đường và một chút nước vào, rim lửa nhỏ đến khi nước sánh bóng.",
+      "Rắc hành lá cắt khúc, đảo đều rồi dọn ra đĩa."
+    ],
+    "required": [
+      { "anyOf": ["canh-ga"], "measures": { "canh-ga": { "amount": 500, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } },
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước tương", "amountText": "2 muỗng canh" },
+      { "name": "Đường", "amountText": "1 muỗng canh" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "vit-kho-gung",
+    "title": "Vịt kho gừng",
+    "minutes": 55,
+    "servings": 2,
+    "stepMinutes": [5, 15, 5, 30],
+    "steps": [
+      "Vịt chặt miếng vừa ăn, chần sơ qua nước sôi rồi rửa sạch. Gừng thái sợi, hành tím băm.",
+      "Ướp vịt với nước mắm, đường, tiêu và hành tím trong 15 phút.",
+      "Phi gừng với chút dầu ăn cho thơm, cho vịt vào đảo săn rồi thêm nước vừa ngập.",
+      "Kho lửa nhỏ khoảng 30 phút đến khi thịt mềm và nước sánh lại, nêm lại rồi dọn."
+    ],
+    "required": [
+      { "anyOf": ["thit-vit"], "measures": { "thit-vit": { "amount": 500, "unit": "g" } } },
+      { "anyOf": ["gung"], "measures": { "gung": { "amount": 20, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tim"], "measures": { "hanh-tim": { "amount": 2, "unit": "củ" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "2 muỗng canh" },
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" }
+    ]
+  },
+  {
+    "id": "ca-ro-phi-chien-gion",
+    "title": "Cá rô phi chiên giòn",
+    "minutes": 25,
+    "servings": 2,
+    "stepMinutes": [10, 2, 10, 3],
+    "steps": [
+      "Cá rô phi làm sạch, khứa hai bên thân, ướp muối, tiêu và vắt chút chanh trong 10 phút.",
+      "Lau khô cá để khi chiên không bắn dầu.",
+      "Đun dầu đến nóng, thả cá vào chiên lửa vừa đến khi vàng đều hai mặt và giòn da.",
+      "Vớt cá ra giấy thấm dầu, rắc tỏi phi nếu thích rồi dọn cùng chanh."
+    ],
+    "required": [
+      { "anyOf": ["ca-ro-phi"], "measures": { "ca-ro-phi": { "amount": 400, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 3, "unit": "tép" } } },
+      { "anyOf": ["chanh"], "measures": { "chanh": { "amount": 1, "unit": "quả" } } }
+    ],
+    "seasonings": [
+      { "name": "Muối", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "300 ml" }
+    ]
+  },
+  {
+    "id": "ca-nuc-kho-ca-chua",
+    "title": "Cá nục kho cà chua",
+    "minutes": 30,
+    "servings": 2,
+    "stepMinutes": [5, 10, 2, 13],
+    "steps": [
+      "Cá nục làm sạch, cắt khúc vừa ăn. Cà chua bổ múi cau, hành tím băm nhỏ.",
+      "Ướp cá với nước mắm, đường và tiêu trong 10 phút.",
+      "Xếp cà chua xuống đáy nồi, đặt cá lên trên và thêm chút nước.",
+      "Kho lửa nhỏ khoảng 15 phút đến khi cá săn và nước sánh lại; rắc hành tím rồi dọn."
+    ],
+    "required": [
+      { "anyOf": ["ca-nuc"], "measures": { "ca-nuc": { "amount": 400, "unit": "g" } } },
+      { "anyOf": ["ca-chua"], "measures": { "ca-chua": { "amount": 2, "unit": "quả" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tim"], "measures": { "hanh-tim": { "amount": 2, "unit": "củ" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "2 muỗng canh" },
+      { "name": "Đường", "amountText": "1 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "bach-tuoc-xao-sa-te",
+    "title": "Bạch tuộc xào sa tế",
+    "minutes": 15,
+    "servings": 2,
+    "stepMinutes": [5, 4, 4, 2],
+    "steps": [
+      "Bạch tuộc làm sạch, bỏ ruột, cắt miếng vừa ăn rồi chần sơ qua nước sôi. Ớt chuông bổ đôi, bỏ hạt rồi thái miếng.",
+      "Phi tỏi băm với chút dầu ăn, cho hành tây thái múi vào đảo đến khi hơi mềm.",
+      "Cho bạch tuộc và ớt chuông vào, tăng lửa đảo nhanh rồi nêm sa tế, nước tương và đường.",
+      "Đảo đều khoảng 2 phút đến khi bạch tuộc săn và thấm gia vị, dọn ra đĩa khi còn nóng."
+    ],
+    "required": [
+      { "anyOf": ["bach-tuoc"], "measures": { "bach-tuoc": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["ot-chuong"], "measures": { "ot-chuong": { "amount": 1, "unit": "quả" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tay"], "measures": { "hanh-tay": { "amount": 1, "unit": "củ" } } },
+      { "anyOf": ["toi"], "measures": { "toi": { "amount": 2, "unit": "tép" } } }
+    ],
+    "seasonings": [
+      { "name": "Sa tế", "amountText": "1 muỗng canh" },
+      { "name": "Nước tương", "amountText": "1 muỗng canh" },
+      { "name": "Đường", "amountText": "1/2 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" }
+    ]
+  },
+  {
+    "id": "thit-kho-trung-cut",
+    "title": "Thịt kho trứng cút",
+    "minutes": 60,
+    "servings": 2,
+    "stepMinutes": [8, 15, 10, 27],
+    "steps": [
+      "Trứng cút luộc khoảng 5 phút rồi bóc vỏ. Thịt nạc vai cắt miếng vuông vừa ăn. Hành tím băm nhỏ.",
+      "Ướp thịt với nước mắm, đường, tiêu và hành tím trong 15 phút.",
+      "Cho đường vào chảo đun đến khi vàng caramel, đổ thịt vào đảo đều rồi thêm nước vừa ngập.",
+      "Thả trứng cút vào, kho lửa nhỏ khoảng 30 phút đến khi nước sánh và trứng ngấm màu."
+    ],
+    "required": [
+      { "anyOf": ["thit-nac-vai"], "measures": { "thit-nac-vai": { "amount": 400, "unit": "g" } } },
+      { "anyOf": ["trung-cut"], "measures": { "trung-cut": { "amount": 10, "unit": "quả" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-tim"], "measures": { "hanh-tim": { "amount": 2, "unit": "củ" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "3 muỗng canh" },
+      { "name": "Đường", "amountText": "2 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "ca-tim-om-dau-phu",
+    "title": "Cà tím om đậu phụ thịt băm",
+    "minutes": 25,
+    "servings": 2,
+    "stepMinutes": [5, 5, 5, 10],
+    "steps": [
+      "Cà tím gọt vỏ, cắt khúc vừa ăn rồi ngâm nước muối loãng. Đậu phụ cắt miếng vuông.",
+      "Chiên sơ đậu phụ và cà tím đến khi vàng nhẹ, vớt ra để ráo dầu.",
+      "Phi thơm thịt băm, thêm nước mắm và tiêu, đảo đến khi thịt chín rồi cho vào một chút nước.",
+      "Cho đậu phụ và cà tím vào om lửa nhỏ khoảng 10 phút đến khi cà mềm, nêm hạt nêm vừa ăn."
+    ],
+    "required": [
+      { "anyOf": ["ca-tim"], "measures": { "ca-tim": { "amount": 2, "unit": "quả" } } },
+      { "anyOf": ["dau-phu"], "measures": { "dau-phu": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["thit-heo-xay"], "measures": { "thit-heo-xay": { "amount": 150, "unit": "g" } } }
+    ],
+    "optional": [],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "2 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "2 muỗng canh" }
+    ]
+  },
+  {
+    "id": "canh-bi-do-nau-tom",
+    "title": "Canh bí đỏ nấu tôm",
+    "minutes": 20,
+    "servings": 2,
+    "stepMinutes": [5, 10, 3, 2],
+    "steps": [
+      "Bí đỏ gọt vỏ, bỏ ruột, cắt miếng vừa ăn. Tôm bóc vỏ, bỏ chỉ đen rồi rửa sạch.",
+      "Đun sôi nước, cho bí đỏ vào nấu đến khi bí mềm, khoảng 10 phút.",
+      "Thả tôm vào nấu chín, nêm nước mắm, hạt nêm và tiêu cho vừa ăn.",
+      "Rắc hành lá cắt nhỏ rồi tắt bếp và dọn ra tô."
+    ],
+    "required": [
+      { "anyOf": ["bi-do"], "measures": { "bi-do": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["tom"], "measures": { "tom": { "amount": 150, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Hạt nêm", "amountText": "1 thìa cà phê" },
+      { "name": "Nước mắm", "amountText": "1 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "bap-cai-xao-trung",
+    "title": "Bắp cải xào trứng",
+    "minutes": 12,
+    "servings": 2,
+    "stepMinutes": [3, 2, 5, 2],
+    "steps": [
+      "Bắp cải bẻ miếng vừa ăn, rửa sạch để ráo. Hành lá cắt khúc.",
+      "Đánh trứng với chút nước mắm và tiêu.",
+      "Phi chút dầu ăn, đảo bắp cải đến khi hơi mềm, cho trứng vào đảo đều.",
+      "Nêm hạt nêm cho vừa ăn, rắc hành lá rồi tắt bếp và dọn ra đĩa."
+    ],
+    "required": [
+      { "anyOf": ["bap-cai"], "measures": { "bap-cai": { "amount": 300, "unit": "g" } } },
+      { "anyOf": ["trung-ga"], "measures": { "trung-ga": { "amount": 2, "unit": "quả" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước mắm", "amountText": "1 muỗng canh" },
+      { "name": "Hạt nêm", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" }
+    ]
+  },
+  {
+    "id": "nam-kim-cham-cuon-ba-chi",
+    "title": "Nấm kim châm cuộn ba chỉ",
+    "minutes": 25,
+    "servings": 2,
+    "stepMinutes": [5, 8, 8, 4],
+    "steps": [
+      "Nấm kim châm cắt bỏ gốc, tách nhỏ. Thịt ba chỉ thái lát mỏng, ướp với tiêu.",
+      "Lấy lát thịt cuốn quanh từng bó nấm nhỏ, dùng tăm cố định.",
+      "Xếp nấm cuộn lên chảo nóng, lăn đều đến khi thịt chín vàng.",
+      "Nêm nước tương và đường, đảo nhanh rồi rắc hành lá và dọn ra đĩa."
+    ],
+    "required": [
+      { "anyOf": ["nam-kim-cham"], "measures": { "nam-kim-cham": { "amount": 200, "unit": "g" } } },
+      { "anyOf": ["ba-chi"], "measures": { "ba-chi": { "amount": 200, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["hanh-la"], "measures": { "hanh-la": { "amount": 2, "unit": "nhánh" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước tương", "amountText": "1 muỗng canh" },
+      { "name": "Đường", "amountText": "1/2 thìa cà phê" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" }
+    ]
+  },
+  {
+    "id": "mien-xao-muc",
+    "title": "Miến xào mực rau củ",
+    "minutes": 25,
+    "servings": 2,
+    "stepMinutes": [15, 5, 3, 2],
+    "steps": [
+      "Miến dong ngâm nước ấm khoảng 15 phút đến mềm, vớt ra để ráo. Mực làm sạch, khía và cắt miếng vừa ăn.",
+      "Cà rốt thái sợi, cải thảo thái miếng. Phi thơm chút dầu rồi xào cà rốt đến khi hơi mềm.",
+      "Cho mực vào đảo nhanh đến khi mực cong nhẹ, thêm cải thảo và miến; nêm nước tương, dầu hào và tiêu.",
+      "Đảo đều đến khi miến thấm đậm gia vị rồi dọn ra đĩa khi còn nóng."
+    ],
+    "required": [
+      { "anyOf": ["mien-dong"], "measures": { "mien-dong": { "amount": 100, "unit": "g" } } },
+      { "anyOf": ["muc"], "measures": { "muc": { "amount": 200, "unit": "g" } } }
+    ],
+    "optional": [
+      { "anyOf": ["ca-rot"], "measures": { "ca-rot": { "amount": 1, "unit": "củ" } } },
+      { "anyOf": ["cai-thao"], "measures": { "cai-thao": { "amount": 150, "unit": "g" } } }
+    ],
+    "seasonings": [
+      { "name": "Nước tương", "amountText": "1 muỗng canh" },
+      { "name": "Dầu hào", "amountText": "1 muỗng canh" },
+      { "name": "Tiêu xay", "amountText": "1/4 thìa cà phê" },
+      { "name": "Dầu ăn", "amountText": "1 muỗng canh" }
+    ]
   }
 ]
