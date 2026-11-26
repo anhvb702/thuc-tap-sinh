@@ -117,7 +117,11 @@ fun PantryGridScreen(
             },
             onFailure = { failure ->
                 endVoiceSession()
-                voicePhase = if (failure == VoiceFailure.NOTHING_HEARD) VoicePhase.NOT_HEARD else VoicePhase.ERROR
+                voicePhase = when (failure) {
+                    VoiceFailure.NOTHING_HEARD -> VoicePhase.NOT_HEARD
+                    VoiceFailure.LANGUAGE_PACK_MISSING -> VoicePhase.LANGUAGE_PACK_MISSING
+                    VoiceFailure.UNAVAILABLE -> VoicePhase.ERROR
+                }
             },
             onRms = { voiceLevel = it },
         )
