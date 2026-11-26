@@ -22,6 +22,7 @@ import com.loitu.yourrefri.ui.theme.ThemeModeCopy
 internal const val SETTINGS_DATA_TITLE = "Dữ liệu & ứng dụng"
 internal const val SETTINGS_EXPORT_LABEL = "Xuất"
 internal const val SETTINGS_IMPORT_LABEL = "Nhập"
+internal const val SETTINGS_PREVIEW_REMINDER_LABEL = "Xem thử thông báo"
 internal enum class SettingsMainCard { REMINDER, TASTE_HABIT, DATA_APP }
 internal val SETTINGS_MAIN_CARDS = SettingsMainCard.entries
 internal enum class DataSheetSection(val title: String) {
@@ -32,6 +33,7 @@ internal val SETTINGS_DATA_SHEET_SECTIONS = DataSheetSection.entries
 internal enum class SettingsSheetType { TASTE, DATA }
 
 internal fun shouldShowSundayTimeRow(reminderEnabled: Boolean): Boolean = reminderEnabled
+internal fun shouldShowInlineReminderPreview(): Boolean = true
 internal fun settingsDataSummary(themeMode: ThemeMode, backupStatus: String? = null): String =
     listOfNotNull(themeMode.label, SettingsPresentation.backupGroupTitle, backupStatus?.takeUnless(String::isBlank)).joinToString(" · ")
 internal fun resolveActiveSheet(requested: SettingsSheetType?, restoreConfirmationPending: Boolean): SettingsSheetType? =

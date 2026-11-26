@@ -11,6 +11,19 @@ class SettingsDataSheetTest {
         assertTrue(shouldShowSundayTimeRow(true))
     }
 
+    @Test fun shouldShowInlineReminderPreview_alwaysReturnsTrue() =
+        assertTrue(shouldShowInlineReminderPreview())
+
+    @Test fun inlineReminderPreviewLabel_matchesExpectedCopy() =
+        assertEquals("Xem thử thông báo", SETTINGS_PREVIEW_REMINDER_LABEL)
+
+    @Test fun inlineReminderPreviewLabel_hasNoBannedCopy() {
+        val banned = listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "điểm số", "so sánh", "streak", "chuỗi ngày liên tiếp", "xếp hạng", "so với người khác", "đáng xấu hổ") // lint-copy: rule
+        for (word in banned) {
+            assertFalse(SETTINGS_PREVIEW_REMINDER_LABEL.contains(word, ignoreCase = true), word)
+        }
+    }
+
     @Test fun settingsDataSheetSections_listsAllFiveSectionsInOrder() =
         assertEquals(
             listOf(DataSheetSection.THEME, DataSheetSection.BACKUP, DataSheetSection.TRANSFER, DataSheetSection.TEST_REMINDER, DataSheetSection.ABOUT),

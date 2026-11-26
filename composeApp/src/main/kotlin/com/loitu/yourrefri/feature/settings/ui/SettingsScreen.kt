@@ -163,6 +163,9 @@ fun SettingsScreen(
                             }
                         }
                         Text(ReminderCopy.subtitle, fontSize = 12.sp, color = colors.muted)
+                        if (shouldShowInlineReminderPreview()) {
+                            SecondaryButton(SETTINGS_PREVIEW_REMINDER_LABEL, SETTINGS_PREVIEW_REMINDER_LABEL, onTestReminder, AppIcons.Bell)
+                        }
                     }
                     SettingsMainCard.TASTE_HABIT -> SettingsNavRow(
                         SettingsPresentation.tasteGroupTitle,
