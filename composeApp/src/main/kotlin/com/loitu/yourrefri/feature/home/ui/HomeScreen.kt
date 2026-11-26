@@ -68,6 +68,7 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = remember { HomeViewModel() },
     userName: String = DEFAULT_USER_NAME,
     dietRestriction: DietRestriction = DietRestriction.NONE,
+    onClearOverdue: (List<String>) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val homeState by homeViewModel.state.collectAsState()
@@ -173,6 +174,10 @@ fun HomeScreen(
                 activeBucket = null
                 val recipeId = findRecipeIdForIngredient(item.ingredientId, dashboard.recommendations, suggestions)
                 if (recipeId != null) onNavigateToRecipe(recipeId) else onNavigateToRecipes()
+            },
+            onClearOverdue = { ids ->
+                activeBucket = null
+                onClearOverdue(ids)
             },
             onDismiss = { activeBucket = null },
         )

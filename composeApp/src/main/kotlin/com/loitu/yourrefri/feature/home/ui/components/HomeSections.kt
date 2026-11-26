@@ -42,12 +42,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -236,11 +238,14 @@ internal fun PantryBucketPopupDialog(
     bucket: PantryOverviewBucket,
     items: List<PantryCell>,
     onSelectItem: (PantryCell) -> Unit = {},
+    onClearOverdue: (List<String>) -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     val colors = AppTheme.colors
     val supportsFilter = supportsBucketFreshnessFilter(bucket)
     var showUsable by rememberSaveable(bucket) { mutableStateOf(true) }
+    val overdueIds = overdueBucketIngredientIds(items)
+    var showClearOverdueConfirm by remember { mutableStateOf(false) }
     val pastCount = items.count { (it.daysLeft ?: 0) < 0 }
     val visibleItems = if (supportsFilter) filterBucketBySwitch(items, showUsable) else items
     val title = when (bucket) {
@@ -296,6 +301,17 @@ internal fun PantryBucketPopupDialog(
                 }
                 IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
                     Icon(AppIcons.Close, contentDescription = "Đóng", tint = colors.text)
+                }
+            }
+            if (shouldShowClearOverdueButton(supportsFilter, showUsable, overdueIds.size)) {
+                OutlinedButton(
+                    onClick = { showClearOverdueConfirm = true },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, colors.warnText),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.warnText),
+                ) {
+                    Text(clearOverdueButtonLabel(overdueIds.size))
                 }
             }
             if (items.isEmpty()) {
@@ -364,6 +380,38 @@ internal fun PantryBucketPopupDialog(
             ) {
                 Text("Đóng", color = colors.text, fontWeight = FontWeight.SemiBold)
             }
+        }
+        if (showClearOverdueConfirm) {
+            AlertDialog(
+                onDismissRequest = { showClearOverdueConfirm = false },
+                containerColor = colors.surface,
+                title = { Text(clearOverdueDialogTitle(overdueIds.size), color = colors.text) },
+                text = {
+                    Text(
+                        "Chỉ gỡ các món đã qua mốc ước tính khỏi ngăn này. Đồ còn dùng được vẫn giữ nguyên và bạn có thể Hoàn tác ngay.",
+                        color = colors.muted,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showClearOverdueConfirm = false
+                            onClearOverdue(overdueIds)
+                        },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text("Dọn hết", color = colors.warnText)
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showClearOverdueConfirm = false },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                    ) {
+                        Text("Để sau", color = colors.accentText)
+                    }
+                },
+            )
         }
     }
 }

@@ -18,6 +18,8 @@ class SundayNoticeTest {
     private val sunday = LocalDate(2026, 11, 15)
     private val friday = LocalDate(2026, 11, 13)
     private val shoppingBody = "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!"
+    private fun overdueBody(count: Int) =
+        "Tủ còn $count món đã qua mốc ước tính, kiểm tra lại xem còn dùng được không trước khi đi chợ nhé!"
 
     @Test
     fun reminderTimeFor_sundayUsesSundayTime_otherDaysUse1600() {
@@ -100,8 +102,9 @@ class SundayNoticeTest {
 
     @Test
     fun sundayNotice_replacesExpiringNoticeOnSunday() {
+        // markedAt = Nov 14, shelf 1 day → daysLeft = 0 (SOON, not overdue) — still plain shopping body
         val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
-        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 14)))
         val notice = planDailyNotice(pantry, ingredients, sunday, lastSent = null)
         assertEquals(shoppingBody, notice?.body)
     }
@@ -203,5 +206,113 @@ class SundayNoticeTest {
         assertNotNull(notice)
         assertEquals(listOf("rau"), notice.ingredientIds)
         assertEquals("Rau muống nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice.body)
+    }
+
+    // --- countOverduePantryItems unit tests ---
+
+    @Test
+    fun countOverduePantryItems_daysLeftMinus1Counts() {
+        // Nov 13 + 1 = Nov 14, today Nov 15 → daysLeft = -1
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 13)))
+        assertEquals(1, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    @Test
+    fun countOverduePantryItems_daysLeft0DoesNotCount() {
+        // Nov 14 + 1 = Nov 15 = today → daysLeft = 0, boundary: not overdue
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 14)))
+        assertEquals(0, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    @Test
+    fun countOverduePantryItems_haveIsFalseExcluded() {
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", false, LocalDate(2026, 11, 10)))
+        assertEquals(0, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    @Test
+    fun countOverduePantryItems_seasoningKindExcluded() {
+        val ingredients = listOf(Ingredient("muoi", "Muối ăn", "gia-vi", 1, kind = "seasoning"))
+        val pantry = listOf(PantryItem("muoi", true, LocalDate(2026, 11, 10)))
+        assertEquals(0, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    @Test
+    fun countOverduePantryItems_userShelfDaysOverrideRespected() {
+        // Default shelf 1 day would be overdue, but user override 10 → Nov 10 + 10 = Nov 20, daysLeft = 5
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1, userShelfDays = 10))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        assertEquals(0, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    @Test
+    fun countOverduePantryItems_multipleOverdueItemsCounted() {
+        val ingredients = listOf(
+            Ingredient("rau", "Rau muống", "rau-la", 1),
+            Ingredient("ca", "Cá", "ca-hai-san", 2),
+        )
+        val pantry = listOf(
+            PantryItem("rau", true, LocalDate(2026, 11, 10)),
+            PantryItem("ca", true, LocalDate(2026, 11, 10)),
+        )
+        assertEquals(2, countOverduePantryItems(pantry, ingredients, sunday))
+    }
+
+    // --- planDailyNotice: overdue on weekend day ---
+
+    @Test
+    fun sundayNotice_overdueItemPresent_bodyHasOverdueCount() {
+        // 1 overdue item (daysLeft = -4) → overdue body
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        val notice = planDailyNotice(pantry, ingredients, sunday, lastSent = null)
+        assertEquals(overdueBody(1), notice?.body)
+        assertEquals("Cuối tuần rồi nè", notice?.title)
+        assertEquals(emptyList(), notice?.ingredientIds)
+    }
+
+    @Test
+    fun sundayNotice_twoOverdueItems_bodyShowsCount2() {
+        val ingredients = listOf(
+            Ingredient("rau", "Rau muống", "rau-la", 1),
+            Ingredient("ca", "Cá", "ca-hai-san", 2),
+        )
+        val pantry = listOf(
+            PantryItem("rau", true, LocalDate(2026, 11, 10)),
+            PantryItem("ca", true, LocalDate(2026, 11, 10)),
+        )
+        val notice = planDailyNotice(pantry, ingredients, sunday, lastSent = null)
+        assertEquals(overdueBody(2), notice?.body)
+    }
+
+    @Test
+    fun sundayNotice_seasoningOnlyOverdue_stillShowsShoppingBody() {
+        val ingredients = listOf(Ingredient("muoi", "Muối ăn", "gia-vi", 1, kind = "seasoning"))
+        val pantry = listOf(PantryItem("muoi", true, LocalDate(2026, 11, 10)))
+        val notice = planDailyNotice(pantry, ingredients, sunday, lastSent = null)
+        assertEquals(shoppingBody, notice?.body)
+    }
+
+    @Test
+    fun sundayNotice_overdueWithWeekdayDisabled_stillShowsOverdueBody() {
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        val notice = planDailyNotice(pantry, ingredients, sunday, lastSent = null, weekdayEnabled = false)
+        assertEquals(overdueBody(1), notice?.body)
+    }
+
+    @Test
+    fun weekendDaySaturday_overdueItem_showsOverdueBody() {
+        val saturday = LocalDate(2026, 11, 14)
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        val notice = planDailyNotice(
+            pantry, ingredients, saturday, lastSent = null,
+            weekendDay = WeekendReminderDay.SATURDAY,
+        )
+        assertEquals(overdueBody(1), notice?.body)
     }
 }

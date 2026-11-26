@@ -2,6 +2,7 @@ package com.loitu.yourrefri.feature.notice.logic
 
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
+import com.loitu.yourrefri.feature.pantry.logic.daysLeft
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
 import kotlinx.datetime.LocalDate
 
@@ -11,6 +12,16 @@ data class DailyNotice(
     val title: String,
     val body: String,
 )
+
+fun countOverduePantryItems(pantry: List<PantryItem>, ingredients: List<Ingredient>, today: LocalDate): Int {
+    val byId = ingredients.associateBy { it.id }
+    return pantry.count { item ->
+        if (!item.have) return@count false
+        val ingredient = byId[item.ingredientId] ?: return@count false
+        if (ingredient.kind == "seasoning") return@count false
+        daysLeft(item, ingredient, today) < 0
+    }
+}
 
 fun planDailyNotice(
     pantry: List<PantryItem>,
@@ -25,11 +36,16 @@ fun planDailyNotice(
     if (lastSent != null && lastSent >= today) return null
     // Ngày cuối tuần thay thông báo thường bằng lời nhắc đi chợ (vẫn đúng một thông báo trong ngày).
     if (sundayShopping && today.dayOfWeek == weekendDay.dayOfWeek) {
+        val overdueCount = countOverduePantryItems(pantry, ingredients, today)
+        val body = if (overdueCount > 0)
+            "Tủ còn $overdueCount món đã qua mốc ước tính, kiểm tra lại xem còn dùng được không trước khi đi chợ nhé!"
+        else
+            "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!"
         return DailyNotice(
             day = today,
             ingredientIds = emptyList(),
             title = "Cuối tuần rồi nè",
-            body = "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!",
+            body = body,
         )
     }
     if (!weekdayEnabled) return null

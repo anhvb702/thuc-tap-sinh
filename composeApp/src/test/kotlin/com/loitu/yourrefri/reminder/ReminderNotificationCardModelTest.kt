@@ -11,6 +11,17 @@ import kotlin.test.assertTrue
 
 class ReminderNotificationCardModelTest {
     @Test
+    fun weekendReminderKeepsOverdueCountInSubtitle() {
+        val model = buildReminderCardModel(
+            title = "Cuối tuần rồi nè",
+            body = "Tủ còn 3 món đã qua mốc ước tính, kiểm tra lại xem còn dùng được không trước khi đi chợ nhé!",
+        )
+
+        assertEquals("Cuối tuần rồi nè", model.hero)
+        assertEquals("3 món qua mốc ước tính · kiểm tra nhé", model.subtitle)
+    }
+
+    @Test
     fun urgentGenericReminderExtractsPunchyHeroAndSingleLineSubtitle() {
         val model = buildReminderCardModel(
             title = "Gợi ý từ tủ nhà mình",

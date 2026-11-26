@@ -12,6 +12,7 @@ import com.loitu.yourrefri.feature.notice.logic.DailyNotice
 import com.loitu.yourrefri.feature.notice.logic.planDailyNotice
 import com.loitu.yourrefri.feature.pantry.data.PantryRepositoryImpl
 import com.loitu.yourrefri.feature.pantry.data.ShelfTable
+import com.loitu.yourrefri.feature.pantry.logic.customIngredientsOf
 import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
 import kotlinx.coroutines.Dispatchers
@@ -41,9 +42,12 @@ class ReminderReceiver : BroadcastReceiver() {
                 val repository = PantryRepositoryImpl(db, Clock.System, tz, Dispatchers.IO)
                 val base = ShelfTable.parse(context.assets.open("shelf_table.json").bufferedReader().use { it.readText() })
                 val overrides = runBlocking { repository.observeShelfOverrides().first() }
+                val pantry = runBlocking { repository.observe().first() }
+                val customIngredients = customIngredientsOf(pantry, base.mapTo(mutableSetOf()) { it.id })
+                val ingredients = (base + customIngredients).map { it.copy(userShelfDays = overrides[it.id]) }
                 val entry = ReminderPicture.entryFor(today.dayOfYear)
                 val planned = planDailyNotice(
-                    runBlocking { repository.observe().first() }, base.map { it.copy(userShelfDays = overrides[it.id]) },
+                    pantry, ingredients,
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
                     weekendDay = ReminderScheduler.weekendDay(context),
                     weekdayEnabled = ReminderScheduler.weekdayEnabled(context),

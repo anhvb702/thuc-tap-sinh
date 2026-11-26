@@ -30,6 +30,7 @@ private const val DEFAULT_HERO = "Tối nay nhà mình ăn gì?"
 private const val DEFAULT_SUBTITLE = "Mở xem gợi ý từ tủ lạnh nhà mình"
 private const val URGENT_SUBTITLE = "Nên dùng trước · mở xem gợi ý"
 private val whitespace = Regex("\\s+")
+private val weekendOverdueItems = Regex("""(\d+)\s+món đã qua mốc ước tính""", RegexOption.IGNORE_CASE)
 private val otherItems = Regex(" và (\\d+) món khác\\b", RegexOption.IGNORE_CASE)
 private val extraItems = Regex("(?:\\b(\\d+)\\s+món\\s+khác\\b|\\+(\\d+)\\s+món\\b)", RegexOption.IGNORE_CASE)
 private val bannedWords = Regex("hết hạn|lãng phí|bỏ lỡ|bạn quên|streak|tồn kho", RegexOption.IGNORE_CASE) // lint-copy: rule
@@ -65,6 +66,13 @@ internal fun resolveBigPictureStyle(renderBanner: () -> Bitmap?): Bitmap? =
 internal fun buildReminderCardModel(title: String, body: String): ReminderCardModel {
     val cleanTitle = title.replace(whitespace, " ").trim()
     val cleanBody = body.replace(whitespace, " ").trim()
+    if (cleanTitle.equals("Cuối tuần rồi nè", ignoreCase = true)) {
+        val count = weekendOverdueItems.find(cleanBody)?.groupValues?.get(1)
+        if (count != null) {
+            return reminderCard("🧺 Kiểm tra tủ cuối tuần", cleanTitle, 28, "$count món qua mốc ước tính · kiểm tra nhé")
+        }
+    }
+
     val urgentStart = cleanBody.indexOf(URGENT_PHRASE, ignoreCase = true)
     val badge = if (urgentStart >= 0) "🍲 Nên dùng sớm" else "🍲 Gợi ý hôm nay"
     val dish = dishTitle.matchEntire(cleanTitle)?.groupValues?.get(1)
