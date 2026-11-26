@@ -6,6 +6,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
+import com.loitu.yourrefri.feature.recipe.ui.SlideSegmentState.COMPLETED
+import com.loitu.yourrefri.feature.recipe.ui.SlideSegmentState.CURRENT
+import com.loitu.yourrefri.feature.recipe.ui.SlideSegmentState.UPCOMING
+import java.io.File
 
 class HandsFreeStepsTest {
     private fun recipe(steps: List<String>, stepMinutes: List<Int?> = emptyList()) = Recipe(
@@ -108,7 +112,7 @@ class HandsFreeStepsTest {
             HandsFreeCopy.EMPTY_TITLE, HandsFreeCopy.BACK, HandsFreeCopy.NEXT, HandsFreeCopy.DONE,
             HandsFreeCopy.CLOSE_DESCRIPTION, HandsFreeCopy.EMPTY_BACK,
         ).joinToString(" ").lowercase()
-        listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { assertFalse(it in all) }
+        listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn").forEach { assertFalse(it in all) } // lint-copy: rule
         assertEquals("Thoát chế độ nấu rảnh tay", HandsFreeCopy.CLOSE_DESCRIPTION)
     }
 
@@ -125,5 +129,48 @@ class HandsFreeStepsTest {
     fun celebrationPopScale_startsSmallAndPopsToFullSizeWithReduceMotionSafe() {
         assertEquals(0.6f, celebrationPopStartScale(animatorsEnabled = true))
         assertEquals(1f, celebrationPopStartScale(animatorsEnabled = false))
+    }
+
+    @Test
+    fun slideSegmentsMarkCurrentAndKeepEarlierStepsCompleted() {
+        assertEquals(listOf(CURRENT, UPCOMING, UPCOMING), slideSegmentStates(0, 3))
+        assertEquals(listOf(COMPLETED, CURRENT, UPCOMING), slideSegmentStates(1, 3))
+        assertEquals(listOf(COMPLETED, COMPLETED, CURRENT), slideSegmentStates(2, 3))
+        assertEquals(listOf(CURRENT), slideSegmentStates(0, 1))
+    }
+
+    @Test
+    fun slideSegmentsAreEmptyForNonpositiveStepCounts() {
+        assertEquals(emptyList(), slideSegmentStates(2, 0))
+        assertEquals(emptyList(), slideSegmentStates(2, -1))
+    }
+
+    @Test
+    fun slideSegmentsClampCurrentIndexAtBothEnds() {
+        assertEquals(listOf(CURRENT, UPCOMING, UPCOMING), slideSegmentStates(-1, 3))
+        assertEquals(listOf(COMPLETED, COMPLETED, CURRENT), slideSegmentStates(3, 3))
+    }
+
+    @Test
+    fun slideStepPillUsesOneBasedClampedPageNumbers() {
+        assertEquals("Bước 1 / 4", slideStepPillLabel(-1, 4))
+        assertEquals("Bước 2 / 4", slideStepPillLabel(1, 4))
+        assertEquals("Bước 4 / 4", slideStepPillLabel(4, 4))
+        assertEquals("Bước 0 / 0", slideStepPillLabel(0, 0))
+    }
+
+    @Test
+    fun slideTimerDialShrinksAtLargeFontScale() {
+        assertEquals(132, slideTimerDialDp(1.0f))
+        assertEquals(132, slideTimerDialDp(1.34f))
+        assertEquals(112, slideTimerDialDp(1.35f))
+    }
+
+    @Test
+    fun handsFreeScreenUsesHorizontalPagerAndRoundedSlideCard() {
+        val path = "src/main/kotlin/com/loitu/yourrefri/feature/recipe/ui/HandsFreeCookScreen.kt"
+        val source = listOf(File(path), File("composeApp", path)).first { it.isFile }.readText()
+        assertTrue("HorizontalPager(" in source)
+        assertTrue("RoundedCornerShape(28.dp)" in source)
     }
 }
