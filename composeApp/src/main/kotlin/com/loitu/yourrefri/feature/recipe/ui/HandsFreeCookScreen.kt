@@ -1,27 +1,24 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -29,19 +26,20 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -49,6 +47,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -57,6 +56,7 @@ import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.components.pressScale
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+import kotlinx.coroutines.launch
 
 private val NavButtonHeight = 72.dp
 private val NavButtonGap = 16.dp
@@ -76,7 +76,7 @@ fun HandsFreeCookScreen(
     val colors = AppTheme.colors
     val total = recipe.steps.size
     var savedIndex by rememberSaveable { mutableIntStateOf(0) }
-    val state = HandsFreeState.of(savedIndex, total)
+    val initialState = HandsFreeState.of(savedIndex, total)
 
     // Giữ màn hình sáng khi đang nấu, trả lại như cũ khi rời. Không cần quyền nào.
     val view = LocalView.current
@@ -102,113 +102,120 @@ fun HandsFreeCookScreen(
             ) {
                 Icon(AppIcons.Close, contentDescription = null, tint = colors.text, modifier = Modifier.size(24.dp))
             }
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                Text(
-                    text = recipe.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = colors.text,
-                )
-                if (!state.isEmpty) {
-                    Text(text = state.label, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                }
-            }
+            Text(
+                text = recipe.title,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = colors.text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
 
-        if (state.isEmpty) {
+        if (initialState.isEmpty) {
             EmptySteps(onBack = onClose, modifier = Modifier.weight(1f))
             return@Column
         }
 
-        LinearProgressIndicator(
-            progress = { state.progress },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).heightIn(min = 4.dp, max = 4.dp),
-            color = colors.primary,
-            trackColor = colors.line,
-        )
+        val pagerState = rememberPagerState(initialPage = initialState.stepIndex, pageCount = { total })
+        val state = HandsFreeState.of(pagerState.currentPage, total)
+        LaunchedEffect(pagerState.currentPage) { savedIndex = pagerState.currentPage }
 
-        val stepText = recipe.steps[state.stepIndex]
         val animatorsEnabled = areSystemAnimatorsEnabled()
-        val timerSeconds = stepTimerSeconds(recipe, state.stepIndex)
-        val config = LocalConfiguration.current
         val fontScale = LocalDensity.current.fontScale
-        val compactTimerScroll = config.screenHeightDp < 600 || fontScale >= 1.35f
-        // Cuộn được khi chữ rất dài hoặc cỡ chữ hệ thống lớn; màn quá thấp/chữ rất to đặt đồng hồ vào vùng cuộn để không ép chữ.
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 20.dp),
+        val coroutineScope = rememberCoroutineScope()
+        fun goToPage(page: Int) {
+            coroutineScope.launch {
+                if (animatorsEnabled) pagerState.animateScrollToPage(page) else pagerState.scrollToPage(page)
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (state.isFirst && freezerNames.isNotEmpty()) {
-                    DefrostNoticeBanner(
-                        freezerNames = freezerNames,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+            slideSegmentStates(state.stepIndex, total).forEach { segment ->
+                val color = when (segment) {
+                    SlideSegmentState.CURRENT -> colors.cta
+                    SlideSegmentState.COMPLETED -> colors.primary
+                    SlideSegmentState.UPCOMING -> colors.line
                 }
-                if (state.isLast) {
+                Box(Modifier.weight(1f).height(5.dp).background(color, RoundedCornerShape(999.dp)))
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            pageSpacing = 12.dp,
+        ) { page ->
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(28.dp),
+                color = colors.surface,
+                border = BorderStroke(1.dp, colors.line),
+                shadowElevation = 2.dp,
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Surface(shape = RoundedCornerShape(999.dp), color = colors.primarySoft) {
+                        Text(
+                            text = slideStepPillLabel(page, total),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.accentText,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    if (page == 0 && freezerNames.isNotEmpty()) {
+                        DefrostNoticeBanner(freezerNames = freezerNames, modifier = Modifier.fillMaxWidth())
+                    }
+                    if (page == total - 1) {
+                        Text(
+                            text = "Dọn ra mâm",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = colors.accentText,
+                        )
+                        RecipeThumb(
+                            recipeId = recipe.id,
+                            modifier = Modifier.fillMaxWidth(),
+                            size = 160.dp,
+                            shape = RoundedCornerShape(20.dp),
+                        )
+                    }
+                    val stepText = recipe.steps[page]
                     Text(
-                        text = "Dọn ra mâm",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = colors.accentText,
-                    )
-                    RecipeThumb(
-                        recipeId = recipe.id,
-                        modifier = Modifier.fillMaxWidth(),
-                        size = 180.dp,
-                        shape = RoundedCornerShape(20.dp),
-                    )
-                }
-                AnimatedContent(
-                    targetState = state.stepIndex to stepText,
-                    transitionSpec = {
-                        val dir = slideDirection(initialState.first, targetState.first)
-                        if (!animatorsEnabled || dir == 0) {
-                            fadeIn(snap()) togetherWith fadeOut(snap())
-                        } else {
-                            (slideInHorizontally(tween(260)) { it / 4 * dir } + fadeIn(tween(220))) togetherWith
-                                (slideOutHorizontally(tween(200)) { -it / 4 * dir } + fadeOut(tween(160)))
-                        }
-                    },
-                    label = "handsFreeStep",
-                ) { (_, text) ->
-                    Text(
-                        text = text,
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontSize = 30.sp,
-                            lineHeight = 42.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        ),
+                        text = stepText,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontSize = 26.sp,
+                        lineHeight = 36.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = colors.text,
                         modifier = Modifier.semantics {
-                            liveRegion = LiveRegionMode.Polite
-                            contentDescription = state.announcement(text)
+                            if (page == pagerState.currentPage) {
+                                liveRegion = LiveRegionMode.Polite
+                                contentDescription = state.announcement(stepText)
+                            }
                         },
                     )
-                }
-                if (timerSeconds != null && compactTimerScroll) {
-                    CookTimerCard(
-                        modifier = Modifier.padding(top = 4.dp),
-                        totalSeconds = timerSeconds,
-                        stepKey = state.stepIndex,
-                        dialSize = 120.dp,
-                    )
+                    val timerSeconds = stepTimerSeconds(recipe, page)
+                    if (timerSeconds != null) {
+                        CookTimerCard(
+                            totalSeconds = timerSeconds,
+                            stepKey = page,
+                            dialSize = slideTimerDialDp(fontScale).dp,
+                        )
+                    }
                 }
             }
         }
 
-        if (timerSeconds != null && !compactTimerScroll) {
-            CookTimerCard(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                totalSeconds = timerSeconds,
-                stepKey = state.stepIndex,
-                dialSize = 136.dp,
-            )
-        }
-
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 20.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(NavButtonGap),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -218,7 +225,7 @@ fun HandsFreeCookScreen(
             } else {
                 val backInteractionSource = remember { MutableInteractionSource() }
                 Button(
-                    onClick = { savedIndex = state.previous().stepIndex },
+                    onClick = { goToPage(state.previous().stepIndex) },
                     interactionSource = backInteractionSource,
                     modifier = Modifier.weight(1f).heightIn(min = NavButtonHeight).pressScale(backInteractionSource),
                     shape = RoundedCornerShape(16.dp),
@@ -229,7 +236,7 @@ fun HandsFreeCookScreen(
             }
             val nextInteractionSource = remember { MutableInteractionSource() }
             Button(
-                onClick = { if (state.isLast) onFinished() else savedIndex = state.next().stepIndex },
+                onClick = { if (state.isLast) onFinished() else goToPage(state.next().stepIndex) },
                 interactionSource = nextInteractionSource,
                 modifier = Modifier
                     .weight(if (state.isLast) 1.6f else 1f)

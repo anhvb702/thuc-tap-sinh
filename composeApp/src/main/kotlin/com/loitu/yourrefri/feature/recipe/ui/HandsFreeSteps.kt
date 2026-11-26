@@ -54,3 +54,25 @@ data class HandsFreeState(val stepIndex: Int, val totalSteps: Int) {
         }
     }
 }
+
+internal enum class SlideSegmentState { COMPLETED, CURRENT, UPCOMING }
+
+internal fun slideSegmentStates(currentIndex: Int, totalSteps: Int): List<SlideSegmentState> {
+    if (totalSteps <= 0) return emptyList()
+    val current = currentIndex.coerceIn(0, totalSteps - 1)
+    return List(totalSteps) { index ->
+        when {
+            index < current -> SlideSegmentState.COMPLETED
+            index == current -> SlideSegmentState.CURRENT
+            else -> SlideSegmentState.UPCOMING
+        }
+    }
+}
+
+internal fun slideStepPillLabel(pageIndex: Int, totalSteps: Int): String {
+    val state = HandsFreeState.of(pageIndex, totalSteps)
+    val stepNumber = if (state.isEmpty) 0 else state.stepIndex + 1
+    return "Bước $stepNumber / ${state.totalSteps}"
+}
+
+internal fun slideTimerDialDp(fontScale: Float): Int = if (fontScale >= 1.35f) 112 else 132
