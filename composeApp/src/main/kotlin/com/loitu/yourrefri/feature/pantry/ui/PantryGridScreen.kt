@@ -292,11 +292,11 @@ fun PantryGridScreen(
             }
         },
         onDismissAdd = ::dismissAdd,
-        onCombo = { combo ->
-            val actions = comboActionsFor(combo, state)
+        onCombo = { combo, selectedIds ->
+            val actions = comboActionsForSelected(combo, selectedIds, state)
             actions.forEach(onAction)
+            if (actions.isNotEmpty()) note("Đã thêm ${actions.size} món vào tủ")
             showCombo = false
-            note("Đã thêm gói ${combo.titleVi} (${actions.size} món) vào tủ")
         },
         showCombo = showCombo,
         onDismissCombo = { showCombo = false },
