@@ -33,7 +33,8 @@ fun planDailyNotice(
         )
     }
     if (!weekdayEnabled) return null
-    val items = expiringList(pantry, ingredients, today)
+    // Gia vị không đẩy thông báo "nên dùng trước" hằng ngày.
+    val items = expiringList(pantry, ingredients, today).filterNot { it.ingredient.kind == "seasoning" }
     if (items.isEmpty()) return null
     val names = items.take(2).joinToString(", ") { it.ingredient.nameVi }
     val summary = if (items.size > 2) "$names và ${items.size - 2} món khác" else names
