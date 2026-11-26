@@ -180,4 +180,28 @@ class SundayNoticeTest {
         val notice = planDailyNotice(emptyList(), emptyList(), sunday, lastSent = null, weekdayEnabled = false)
         assertEquals(shoppingBody, notice?.body)
     }
+
+    @Test
+    fun seasoningOnlyExpiring_weekday_returnsNull_evenWhenWeekdayEnabled() {
+        // Muối quá hạn từ tháng 9 nhưng là gia vị nên không đẩy thông báo "nên dùng trước".
+        val ingredients = listOf(Ingredient("muoi", "Muối ăn", "gia-vi", 30, kind = "seasoning"))
+        val pantry = listOf(PantryItem("muoi", true, LocalDate(2026, 9, 1)))
+        assertNull(planDailyNotice(pantry, ingredients, friday, lastSent = null, weekdayEnabled = true))
+    }
+
+    @Test
+    fun seasoningExpiring_alongsideFreshExpiring_noticeExcludesSeasoning() {
+        val ingredients = listOf(
+            Ingredient("muoi", "Muối ăn", "gia-vi", 30, kind = "seasoning"),
+            Ingredient("rau", "Rau muống", "rau-la", 1),
+        )
+        val pantry = listOf(
+            PantryItem("muoi", true, LocalDate(2026, 9, 1)),
+            PantryItem("rau", true, LocalDate(2026, 11, 10)),
+        )
+        val notice = planDailyNotice(pantry, ingredients, friday, lastSent = null, weekdayEnabled = true)
+        assertNotNull(notice)
+        assertEquals(listOf("rau"), notice.ingredientIds)
+        assertEquals("Rau muống nên dùng trước (hạn ước tính). Mở xem gợi ý món nhé.", notice.body)
+    }
 }

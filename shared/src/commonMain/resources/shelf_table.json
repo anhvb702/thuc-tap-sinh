@@ -40,5 +40,17 @@
   { "id": "gia-do", "nameVi": "Giá đỗ", "group": "rau-la", "defaultShelfDays": 2, "kind": "fresh" },
   { "id": "gung", "nameVi": "Gừng tươi", "group": "rau-cu", "defaultShelfDays": 14, "kind": "fresh" },
   { "id": "chanh", "nameVi": "Chanh tươi", "group": "trai-cay", "defaultShelfDays": 10, "kind": "fresh" },
-  { "id": "nuoc-tuong", "nameVi": "Nước tương", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" }
+  { "id": "nuoc-tuong", "nameVi": "Nước tương", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "muoi", "nameVi": "Muối ăn", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "duong", "nameVi": "Đường trắng", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "hat-nem", "nameVi": "Hạt nêm", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "tieu", "nameVi": "Tiêu xay", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "dau-hao", "nameVi": "Dầu hào", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "tuong-ot", "nameVi": "Tương ớt", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "tuong-ca", "nameVi": "Tương cà", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "giam", "nameVi": "Giấm gạo", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "bot-ngot", "nameVi": "Bột ngọt", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "sa-te", "nameVi": "Sa tế", "group": "gia-vi", "defaultShelfDays": 30, "kind": "seasoning" },
+  { "id": "ot-tuoi", "nameVi": "Ớt tươi", "group": "gia-vi", "defaultShelfDays": 7, "kind": "seasoning" },
+  { "id": "hanh-tim", "nameVi": "Hành tím", "group": "gia-vi", "defaultShelfDays": 21, "kind": "seasoning" }
 ]

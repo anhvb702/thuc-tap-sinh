@@ -3,6 +3,7 @@ package com.loitu.yourrefri.feature.pantry.data
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 // Nội dung shelf_table.json thật; actual cho Android host test đọc file trong shared/src/commonMain/resources.
@@ -211,8 +212,23 @@ class ShelfTableTest {
 
     @Test
     fun bundle_hasBetween25And40Items() {
-        // Nới trần từ 40 lên 60 có chủ đích theo yêu cầu mở rộng kho nguyên liệu của người dùng (hiện 42 mục).
+        // U4-01: bundle hiện 54 mục (sau khi thêm 12 gia vị), vẫn nằm trong trần 60.
         assertTrue(bundle.size in 25..60, "Bảng hạn có ${bundle.size} món, cần 25..60")
+    }
+
+    @Test
+    fun bundle_vietnameseSpicesArePresentAsSeasonings() {
+        val spiceIds = listOf(
+            "muoi", "duong", "hat-nem", "tieu", "dau-hao", "tuong-ot",
+            "tuong-ca", "giam", "bot-ngot", "sa-te", "ot-tuoi", "hanh-tim",
+        )
+        val byId = bundle.associateBy { it.id }
+        spiceIds.forEach { id ->
+            val spice = byId[id]
+            assertNotNull(spice, "Thiếu gia vị $id trong bundle")
+            assertEquals("gia-vi", spice.group, "group của $id")
+            assertEquals("seasoning", spice.kind, "kind của $id")
+        }
     }
 
     @Test
