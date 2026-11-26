@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.ui
 
 import com.loitu.yourrefri.feature.cooklog.ui.CookHistoryState
+import com.loitu.yourrefri.feature.notice.logic.WeekendReminderDay
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
@@ -23,6 +24,8 @@ data class MainScaffoldSettingsBinding(
     val onSundayTimeChange: (LocalTime) -> Unit = {},
     val onWeekdayTimeChange: (LocalTime) -> Unit = {},
     val onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
+    val onWeekendDayChange: (WeekendReminderDay) -> Unit = {},
+    val onWeekdayEnabledChange: (Boolean) -> Unit = {},
 )
 
 data class MainScaffoldCollectionBinding(
