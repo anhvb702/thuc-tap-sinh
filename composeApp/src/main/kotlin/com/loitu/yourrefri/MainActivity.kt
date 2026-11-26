@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.loitu.yourrefri.feature.pantry.ui.prefetchVietnameseVoicePack
 import com.loitu.yourrefri.feature.settings.presentation.SettingsEffect
 import com.loitu.yourrefri.feature.settings.presentation.SettingsIntent
 import com.loitu.yourrefri.feature.settings.presentation.SettingsUiState
@@ -69,6 +70,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         installAppCheck(applicationContext)
+        runCatching { prefetchVietnameseVoicePack(applicationContext) }
         // Chỉ đọc intent khi tạo mới: xoay màn hình không mở lại món đã mở.
         if (savedInstanceState == null) ReminderOpenRequest.request(intent?.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
         // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
