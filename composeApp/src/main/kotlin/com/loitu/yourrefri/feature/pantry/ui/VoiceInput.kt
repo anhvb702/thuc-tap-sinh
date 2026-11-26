@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.speech.ModelDownloadListener
 import android.speech.RecognitionListener
 import android.speech.RecognitionSupport
 import android.speech.RecognitionSupportCallback
@@ -69,7 +68,7 @@ private fun vietnameseRecognitionIntent(): Intent =
     }
 
 /**
- * Kiểm tra gói tiếng Việt on-device một lần khi khởi động. Dịch vụ nhận dạng có thể yêu cầu xác nhận tải.
+ * Kiểm tra gói tiếng Việt on-device một lần khi khởi động. Chỉ kiểm tra gói đã cài để tránh hộp thoại tải khi mở ứng dụng.
  */
 internal fun prefetchVietnameseVoicePack(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
@@ -103,34 +102,8 @@ internal fun prefetchVietnameseVoicePack(context: Context) {
                     if (destroyed.get()) return
                     if (containsVietnameseLocale(support.installedOnDeviceLanguages)) {
                         onDeviceVietnamesePackReady = true
-                        safeDestroy()
-                        return
                     }
-                    if (!containsVietnameseLocale(support.supportedOnDeviceLanguages)) {
-                        safeDestroy()
-                        return
-                    }
-                    try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            recognizer.triggerModelDownload(viIntent, mainExecutor, object : ModelDownloadListener {
-                                override fun onSuccess() {
-                                    onDeviceVietnamesePackReady = true
-                                    safeDestroy()
-                                }
-
-                                override fun onScheduled() = safeDestroy()
-                                override fun onError(error: Int) = safeDestroy()
-                                override fun onProgress(completedPercent: Int) = Unit
-                            })
-                        } else {
-                            recognizer.triggerModelDownload(viIntent)
-                            // Give the recognizer time to dispatch the API 33 download request.
-                            mainHandler.removeCallbacksAndMessages(cleanupToken)
-                            mainHandler.postDelayed(::safeDestroy, cleanupToken, 2_000L)
-                        }
-                    } catch (_: Exception) {
-                        safeDestroy()
-                    }
+                    safeDestroy()
                 }
 
                 override fun onError(error: Int) = safeDestroy()
