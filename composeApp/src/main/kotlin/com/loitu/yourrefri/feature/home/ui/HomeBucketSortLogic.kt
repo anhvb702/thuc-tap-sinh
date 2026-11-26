@@ -57,3 +57,15 @@ internal fun filterBucketBySwitch(items: List<PantryCell>, showUsable: Boolean):
 
 internal fun bucketSwitchStatusLabel(showUsable: Boolean, pastCount: Int): String =
     if (showUsable) BUCKET_SWITCH_USABLE_LABEL else if (pastCount > 0) "$BUCKET_SWITCH_PAST_LABEL · $pastCount" else BUCKET_SWITCH_PAST_LABEL
+
+internal fun overdueBucketIngredientIds(items: List<PantryCell>): List<String> =
+    items.filter { (it.daysLeft ?: 0) < 0 }.map { it.ingredientId }.distinct()
+
+internal fun shouldShowClearOverdueButton(supportsFilter: Boolean, showUsable: Boolean, overdueCount: Int): Boolean =
+    supportsFilter && !showUsable && overdueCount > 0
+
+internal fun clearOverdueButtonLabel(count: Int): String = "Dọn hết $count món đã qua mốc"
+
+internal fun clearOverdueDialogTitle(count: Int): String = "Dọn $count món đã qua mốc ước tính?"
+
+internal fun clearOverdueUndoMessage(count: Int): String = "Đã dọn $count món qua mốc ước tính"

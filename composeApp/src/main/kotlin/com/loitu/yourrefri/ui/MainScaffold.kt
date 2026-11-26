@@ -28,6 +28,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.home.ui.HomeScreen
+import com.loitu.yourrefri.feature.home.ui.clearOverdueUndoMessage
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.ui.PantryGridScreen
@@ -65,6 +67,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import com.loitu.yourrefri.reminder.ReminderOpenRequest
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanAction
 import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanState
@@ -169,6 +172,7 @@ fun MainScaffold(
     BackHandler(enabled = handsFreeRecipeId != null) { handsFreeRecipeId = null }
     BackHandler(enabled = handsFreeRecipeId == null && openedRecipeId != null) { openedRecipeId = null }
     val scope = rememberCoroutineScope()
+    val latestPantry by rememberUpdatedState(state.pantry)
     val tabStateHolder = rememberSaveableStateHolder()
     val resolvedHomeViewModel = homeViewModel ?: remember { com.loitu.yourrefri.feature.home.presentation.HomeViewModel() }
 
@@ -224,6 +228,29 @@ fun MainScaffold(
             } else repeat(needed.coerceAtLeast(0)) { onAction(PantryGridAction.IncreaseQuantity(id)) }
         }
     }
+    fun clearOverdue(ids: List<String>) {
+        val clearedIds = ids.filter { latestPantry[it]?.have == true }
+        if (clearedIds.isEmpty()) return
+
+        clearedIds.forEach { onAction(PantryGridAction.Tap(it)) }
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            val undoJob = launch {
+                val result = snackbarHostState.showSnackbar(
+                    message = clearOverdueUndoMessage(clearedIds.size),
+                    actionLabel = "Hoàn tác",
+                    duration = SnackbarDuration.Indefinite,
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    clearedIds.filter { latestPantry[it]?.have != true }
+                        .forEach { onAction(PantryGridAction.Tap(it)) }
+                }
+            }
+            delay(5_000)
+            undoJob.cancel()
+        }
+    }
+
     LaunchedEffect(dietTooStrict, dietRestriction) {
         if (dietTooStrict) snackbarHostState.showSnackbar(SettingsPresentation.dietTooStrictNotice)
     }
@@ -370,6 +397,7 @@ fun MainScaffold(
                                 recipes = availableRecipes,
                                 dietRestriction = if (dietTooStrict) DietRestriction.NONE else dietRestriction,
                                 onNavigateToPantry = { currentTab = NavTab.PANTRY },
+                                onClearOverdue = ::clearOverdue,
                                 onOpenShopping = {
                                     requestedRecipeMode = RecipeScreenMode.SHOPPING
                                     currentTab = NavTab.RECIPES
