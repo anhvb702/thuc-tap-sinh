@@ -1,7 +1,5 @@
 package com.loitu.yourrefri.feature.recipe.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -12,10 +10,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -37,12 +31,12 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
@@ -66,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.inset
@@ -77,9 +72,12 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -89,10 +87,10 @@ import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_SCREEN_TITLE
 import com.loitu.yourrefri.feature.recipe.ui.CookbookDurationGroup
 import com.loitu.yourrefri.feature.recipe.ui.CookbookEntry
 import com.loitu.yourrefri.feature.recipe.ui.CookbookFilters
-import com.loitu.yourrefri.feature.recipe.ui.CookbookQuickFilter
 import com.loitu.yourrefri.feature.recipe.ui.REWARD_BANNER_TAGLINE
-import com.loitu.yourrefri.feature.recipe.ui.activeCookbookQuickFilter
-import com.loitu.yourrefri.feature.recipe.ui.applyCookbookQuickFilter
+import com.loitu.yourrefri.feature.recipe.ui.activeCookbookDurationPreset
+import com.loitu.yourrefri.feature.recipe.ui.cookbookDurationBadgeLabel
+import com.loitu.yourrefri.feature.recipe.ui.cookbookDurationPresetLabel
 import com.loitu.yourrefri.feature.recipe.ui.cookbookPresenceSwitchLabel
 import com.loitu.yourrefri.feature.recipe.ui.filterCookbookEntries
 import com.loitu.yourrefri.feature.recipe.ui.isRewardFabReady
@@ -100,12 +98,13 @@ import com.loitu.yourrefri.feature.recipe.ui.rewardFabContentDescription
 import com.loitu.yourrefri.feature.recipe.ui.rewardFabProgressFraction
 import com.loitu.yourrefri.feature.recipe.ui.rewardFabProgressLabel
 import com.loitu.yourrefri.feature.recipe.ui.rewardProgressHintMessage
+import com.loitu.yourrefri.feature.recipe.ui.selectCookbookDurationPreset
 import com.loitu.yourrefri.feature.recipe.ui.shouldShowRewardFab
 import com.loitu.yourrefri.feature.recipe.ui.shouldShowRewardRedDot
 import com.loitu.yourrefri.feature.recipe.ui.shouldSpinRewardWheel
 import com.loitu.yourrefri.feature.recipe.ui.toCookbookDurations
 import com.loitu.yourrefri.feature.recipe.ui.toDurationMask
-import com.loitu.yourrefri.feature.recipe.ui.toggleCookbookDuration
+import com.loitu.yourrefri.feature.recipe.ui.toggleCookbookFavoriteOnly
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.theme.AppIcons
@@ -131,6 +130,12 @@ internal fun RecipeCookbook(
     var showRewardHint by rememberSaveable { mutableStateOf(false) }
     val selectedDurations = remember(durationMask) { durationMask.toCookbookDurations() }
     val filters = CookbookFilters(canCookOnly, favoriteOnly, selectedDurations)
+    val activeDuration = activeCookbookDurationPreset(filters)
+    val allDurationsSelected = selectedDurations == ALL_COOKBOOK_DURATIONS
+    val toggleFavoriteFilter = { favoriteOnly = toggleCookbookFavoriteOnly(filters).favoriteOnly }
+    val selectDuration: (CookbookDurationGroup?) -> Unit = { group ->
+        durationMask = selectCookbookDurationPreset(filters, group).selectedDurations.toDurationMask()
+    }
     val visible = remember(entries, favoriteIds, filters, query) {
         filterCookbookEntries(entries, favoriteIds, filters, query)
     }
@@ -144,8 +149,11 @@ internal fun RecipeCookbook(
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 CookbookHeader(
-                    unlockedTotal = entries.count { it.unlocked },
-                    total = entries.size,
+                    favoriteOnly = favoriteOnly,
+                    activeDuration = activeDuration,
+                    allDurationsSelected = allDurationsSelected,
+                    onToggleFavoriteFilter = toggleFavoriteFilter,
+                    onSelectDuration = selectDuration,
                     reward = reward,
                     animatorsEnabled = animatorsEnabled,
                     onRewardClick = { status ->
@@ -157,6 +165,28 @@ internal fun RecipeCookbook(
                         if (!searchVisible) query = ""
                     },
                 )
+            }
+            if (favoriteOnly || !allDurationsSelected) item(span = { GridItemSpan(maxLineSpan) }) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (favoriteOnly) {
+                        CookbookFilterPill(
+                            label = "Yêu thích",
+                            removeDescription = "Bỏ lọc món yêu thích",
+                            background = colors.ctaSoft,
+                            foreground = colors.ctaText,
+                            onRemove = toggleFavoriteFilter,
+                        )
+                    }
+                    if (!allDurationsSelected) {
+                        CookbookFilterPill(
+                            label = activeDuration?.let(::cookbookDurationBadgeLabel) ?: "Thời gian nấu",
+                            removeDescription = "Bỏ lọc thời gian nấu",
+                            background = colors.primarySoft,
+                            foreground = colors.accentText,
+                            onRemove = { selectDuration(null) },
+                        )
+                    }
+                }
             }
             if (searchVisible) item(span = { GridItemSpan(maxLineSpan) }) {
                 val focusRequester = remember { FocusRequester() }
@@ -174,31 +204,21 @@ internal fun RecipeCookbook(
                 MysteryRewardBanner(reward, entries.size, onSpin)
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
-                CookbookQuickFilterChips(activeCookbookQuickFilter(favoriteOnly, selectedDurations)) { quick ->
-                    val updated = applyCookbookQuickFilter(filters, quick)
-                    favoriteOnly = updated.favoriteOnly
-                    durationMask = updated.selectedDurations.toDurationMask()
-                }
-            }
-            item(span = { GridItemSpan(maxLineSpan) }) {
                 CookbookPresenceSwitch(canCookOnly) { canCookOnly = it }
-            }
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                CookbookDurationChips(selectedDurations, animatorsEnabled) { group ->
-                    durationMask = toggleCookbookDuration(durationMask.toCookbookDurations(), group).toDurationMask()
-                }
             }
             if (visible.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
                 when {
                     selectedDurations.isEmpty() -> CookbookEmptyState(
-                        "Hãy chọn ít nhất 1 nhóm thời gian nấu.",
-                        "Chọn lại cả 3 nhóm",
+                        "Chưa có thời gian nấu được chọn.",
+                        "Tất cả thời gian",
                     ) {
-                        durationMask = filters.resetDurations().selectedDurations.toDurationMask()
+                        selectDuration(null)
                     }
-                    favoriteOnly -> CookbookEmptyState("Chưa có món yêu thích nào phù hợp.", "Xem tất cả món") {
-                        favoriteOnly = false
-                    }
+                    favoriteOnly -> CookbookEmptyState(
+                        "Chưa có món yêu thích nào phù hợp.",
+                        "Bỏ lọc yêu thích",
+                        toggleFavoriteFilter,
+                    )
                     filters != CookbookFilters() || query.isNotBlank() -> CookbookEmptyState(
                         "Chưa tìm thấy món phù hợp.",
                         "Xem tất cả món",
@@ -239,38 +259,6 @@ internal fun RecipeCookbook(
 }
 
 @Composable
-private fun CookbookQuickFilterChips(
-    active: CookbookQuickFilter,
-    onSelect: (CookbookQuickFilter) -> Unit,
-) {
-    val colors = AppTheme.colors
-    val shape = RoundedCornerShape(16.dp)
-    Row(
-        modifier = Modifier.fillMaxWidth().selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        CookbookQuickFilter.entries.forEach { quick ->
-            val selected = quick == active
-            Box(
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
-                    .background(if (selected) colors.primary else colors.surface)
-                    .border(1.dp, if (selected) colors.primary else colors.line, shape)
-                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(quick) })
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = quick.labelVi,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (selected) colors.onPrimary else colors.text,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun CookbookPresenceSwitch(canCookOnly: Boolean, onChange: (Boolean) -> Unit) {
     val colors = AppTheme.colors
     Surface(
@@ -299,67 +287,6 @@ private fun CookbookPresenceSwitch(canCookOnly: Boolean, onChange: (Boolean) -> 
                     uncheckedBorderColor = colors.line,
                 ),
             )
-        }
-    }
-}
-
-@Composable
-private fun CookbookDurationChips(
-    selectedDurations: Set<CookbookDurationGroup>,
-    animatorsEnabled: Boolean,
-    onToggle: (CookbookDurationGroup) -> Unit,
-) {
-    val colors = AppTheme.colors
-    val shape = RoundedCornerShape(16.dp)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        CookbookDurationGroup.entries.forEach { group ->
-            val selected = group in selectedDurations
-            val containerColor by animateColorAsState(
-                targetValue = if (selected) colors.primary else colors.surface,
-                animationSpec = if (animatorsEnabled) tween(180) else snap(),
-                label = "cookbook chip background",
-            )
-            val borderColor by animateColorAsState(
-                targetValue = if (selected) colors.primary else colors.line,
-                animationSpec = if (animatorsEnabled) tween(180) else snap(),
-                label = "cookbook chip border",
-            )
-            val textColor by animateColorAsState(
-                targetValue = if (selected) colors.onPrimary else colors.text,
-                animationSpec = if (animatorsEnabled) tween(180) else snap(),
-                label = "cookbook chip text",
-            )
-            Row(
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
-                    .background(containerColor)
-                    .border(1.dp, borderColor, shape)
-                    .toggleable(value = selected, role = Role.Checkbox, onValueChange = { onToggle(group) })
-                    .padding(horizontal = 4.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                AnimatedVisibility(
-                    visible = selected,
-                    enter = fadeIn(if (animatorsEnabled) tween(150) else snap()) +
-                        expandHorizontally(if (animatorsEnabled) tween(150) else snap()),
-                    exit = fadeOut(if (animatorsEnabled) tween(120) else snap()) +
-                        shrinkHorizontally(if (animatorsEnabled) tween(120) else snap()),
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Check,
-                        contentDescription = null,
-                        tint = textColor,
-                        modifier = Modifier.padding(end = 3.dp).size(14.dp),
-                    )
-                }
-                Text(
-                    text = group.labelVi,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = textColor,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                )
-            }
         }
     }
 }
@@ -471,8 +398,11 @@ private fun CookbookEmptyState(message: String, actionLabel: String? = null, onA
 
 @Composable
 private fun CookbookHeader(
-    unlockedTotal: Int,
-    total: Int,
+    favoriteOnly: Boolean,
+    activeDuration: CookbookDurationGroup?,
+    allDurationsSelected: Boolean,
+    onToggleFavoriteFilter: () -> Unit,
+    onSelectDuration: (CookbookDurationGroup?) -> Unit,
     reward: MysteryUnlockStatus?,
     animatorsEnabled: Boolean,
     onRewardClick: (MysteryUnlockStatus) -> Unit,
@@ -483,19 +413,30 @@ private fun CookbookHeader(
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("SỔ TAY MÓN ĂN", color = colors.accentText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-            Text(
-                COOKBOOK_SCREEN_TITLE,
-                Modifier.semantics { heading() },
-                color = colors.text,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
+        Text(
+            COOKBOOK_SCREEN_TITLE,
+            Modifier.weight(1f).semantics { heading() },
+            color = colors.text,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        IconToggleButton(
+            checked = favoriteOnly,
+            onCheckedChange = { onToggleFavoriteFilter() },
+            modifier = Modifier.size(48.dp)
+                .background(if (favoriteOnly) colors.ctaSoft else colors.surface, CircleShape),
+        ) {
+            Icon(
+                if (favoriteOnly) AppIcons.HeartFilled else AppIcons.Heart,
+                contentDescription = "Chỉ xem món yêu thích",
+                tint = if (favoriteOnly) colors.ctaText else colors.muted,
             )
-            Text("Đã mở $unlockedTotal / $total món", color = colors.muted, style = MaterialTheme.typography.bodyMedium)
         }
+        CookbookDurationMenu(activeDuration, allDurationsSelected, onSelectDuration)
         if (reward != null && shouldShowRewardFab(reward)) {
             RewardProgressFab(reward, animatorsEnabled) { onRewardClick(reward) }
         }
@@ -505,6 +446,84 @@ private fun CookbookHeader(
                 contentDescription = if (searchVisible) "Đóng tìm kiếm" else "Tìm món",
                 tint = colors.accentText,
             )
+        }
+    }
+}
+
+@Composable
+private fun CookbookDurationMenu(
+    activeDuration: CookbookDurationGroup?,
+    allDurationsSelected: Boolean,
+    onSelect: (CookbookDurationGroup?) -> Unit,
+) {
+    val colors = AppTheme.colors
+    var expanded by remember { mutableStateOf(false) }
+    val durationDescription = when {
+        allDurationsSelected || activeDuration != null -> cookbookDurationPresetLabel(activeDuration)
+        else -> "Thời gian đã chọn"
+    }
+    Box {
+        IconButton(
+            onClick = { expanded = true },
+            modifier = Modifier.size(48.dp)
+                .background(if (allDurationsSelected) colors.surface else colors.primarySoft, CircleShape)
+                .semantics { stateDescription = durationDescription },
+        ) {
+            Icon(
+                AppIcons.Clock,
+                contentDescription = "Lọc theo thời gian nấu",
+                tint = if (allDurationsSelected) colors.muted else colors.accentText,
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            (listOf(null) + CookbookDurationGroup.entries).forEach { group ->
+                val isSelected = if (group == null) allDurationsSelected else group == activeDuration
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            cookbookDurationPresetLabel(group),
+                            color = if (isSelected) colors.accentText else colors.text,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        )
+                    },
+                    onClick = {
+                        onSelect(group)
+                        expanded = false
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp).semantics { selected = isSelected },
+                    trailingIcon = if (isSelected) {
+                        { Icon(AppIcons.Check, contentDescription = null, tint = colors.accentText) }
+                    } else {
+                        null
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CookbookFilterPill(
+    label: String,
+    removeDescription: String,
+    background: Color,
+    foreground: Color,
+    onRemove: () -> Unit,
+) {
+    Surface(
+        onClick = onRemove,
+        modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = removeDescription },
+        shape = CircleShape,
+        color = background,
+        contentColor = foreground,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+            Icon(AppIcons.Close, contentDescription = null, modifier = Modifier.size(16.dp))
         }
     }
 }

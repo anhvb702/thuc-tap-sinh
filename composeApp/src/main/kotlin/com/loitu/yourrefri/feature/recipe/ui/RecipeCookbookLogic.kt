@@ -17,19 +17,13 @@ internal fun randomWheelPool(
     onlyReadyIngredients: Boolean,
 ): List<Recipe> = if (onlyReadyIngredients) cookableRecipes else allRecipes
 
-internal enum class CookbookDurationGroup(val labelVi: String) {
-    QUICK("Nhanh ≤ 15p"),
-    MEDIUM("Vừa 16–30p"),
-    SLOW("Nấu kỹ > 30p"),
+internal enum class CookbookDurationGroup {
+    QUICK,
+    MEDIUM,
+    LONG,
 }
 
 internal val ALL_COOKBOOK_DURATIONS: Set<CookbookDurationGroup> = CookbookDurationGroup.entries.toSet()
-
-internal enum class CookbookQuickFilter(val labelVi: String) {
-    ALL("Tất cả"),
-    FAVORITE("Yêu thích"),
-    EASY("Dễ nấu"),
-}
 
 internal data class CookbookFilters(
     val canCookOnly: Boolean = false,
@@ -40,26 +34,35 @@ internal data class CookbookFilters(
     fun resetAll() = CookbookFilters()
 }
 
-internal fun activeCookbookQuickFilter(
-    favoriteOnly: Boolean,
-    selectedDurations: Set<CookbookDurationGroup>,
-): CookbookQuickFilter = when {
-    favoriteOnly -> CookbookQuickFilter.FAVORITE
-    selectedDurations == setOf(CookbookDurationGroup.QUICK) -> CookbookQuickFilter.EASY
-    else -> CookbookQuickFilter.ALL
+internal fun toggleCookbookFavoriteOnly(filters: CookbookFilters): CookbookFilters =
+    filters.copy(favoriteOnly = !filters.favoriteOnly)
+
+internal fun selectCookbookDurationPreset(
+    filters: CookbookFilters,
+    group: CookbookDurationGroup?,
+): CookbookFilters =
+    if (group == null) filters.resetDurations() else filters.copy(selectedDurations = setOf(group))
+
+internal fun activeCookbookDurationPreset(filters: CookbookFilters): CookbookDurationGroup? =
+    filters.selectedDurations.singleOrNull()
+
+internal fun cookbookDurationPresetLabel(group: CookbookDurationGroup?): String = when (group) {
+    null -> "Tất cả thời gian"
+    CookbookDurationGroup.QUICK -> "Nấu nhanh · ≤15 phút"
+    CookbookDurationGroup.MEDIUM -> "Nấu vừa · 16–30 phút"
+    CookbookDurationGroup.LONG -> "Nấu cầu kỳ · >30 phút"
 }
 
-internal fun applyCookbookQuickFilter(current: CookbookFilters, quick: CookbookQuickFilter): CookbookFilters =
-    when (quick) {
-        CookbookQuickFilter.ALL -> current.copy(favoriteOnly = false, selectedDurations = ALL_COOKBOOK_DURATIONS)
-        CookbookQuickFilter.FAVORITE -> current.copy(favoriteOnly = true, selectedDurations = ALL_COOKBOOK_DURATIONS)
-        CookbookQuickFilter.EASY -> current.copy(favoriteOnly = false, selectedDurations = setOf(CookbookDurationGroup.QUICK))
-    }
+internal fun cookbookDurationBadgeLabel(group: CookbookDurationGroup): String = when (group) {
+    CookbookDurationGroup.QUICK -> "≤15p"
+    CookbookDurationGroup.MEDIUM -> "16–30p"
+    CookbookDurationGroup.LONG -> ">30p"
+}
 
 internal fun cookbookDurationOf(minutes: Int?): CookbookDurationGroup = when {
     minutes != null && minutes <= 15 -> CookbookDurationGroup.QUICK
     minutes != null && minutes <= 30 -> CookbookDurationGroup.MEDIUM
-    else -> CookbookDurationGroup.SLOW
+    else -> CookbookDurationGroup.LONG
 }
 
 internal fun toggleCookbookDuration(
