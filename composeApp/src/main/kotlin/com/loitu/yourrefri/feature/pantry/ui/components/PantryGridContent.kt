@@ -225,7 +225,7 @@ internal fun PantryGridContent(
         } else {
             groupCellsByCategory(cells, state.ingredients).forEach { group ->
                 item(key = "header-${group.key}", span = fullRow) {
-                    CategoryHeader(group, modifier = Modifier.animateItem())
+                    CategoryHeader(group)
                 }
                 foodCards(group.cells, selectedIds, onAction, onUndo, onEditQuantity)
             }

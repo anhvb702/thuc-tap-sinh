@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class RecipeCookbookLogicTest {
     private val today = LocalDate(2026, 11, 23)
@@ -247,6 +248,37 @@ class RecipeCookbookLogicTest {
         )
         val arguments = cookbookCall.groupValues[2]
         assertFalse(Regex("""\bRecipeScreenMode\s*\.\s*WEEKLY\b""").containsMatchIn(arguments))
+    }
+
+    @Test
+    fun cookbookHasNoBottomEndButtonOverlay() {
+        val source = readRecipeUiSource("components/RecipeCookbook.kt")
+        assertFalse(
+            Regex("""\.\s*align\s*\(\s*Alignment\s*\.\s*BottomEnd\s*\)""").containsMatchIn(source),
+            "Cookbook buttons must not float over the recipe grid",
+        )
+        assertFalse(source.contains("FavoriteFilterFab"), "The favorites chip replaces the floating button")
+    }
+
+    @Test
+    fun handsFreeBackButtonHasSurfaceColorsAndBorder() {
+        val source = readRecipeUiSource("HandsFreeCookScreen.kt")
+        val backButton = assertNotNull(
+            Regex(
+                """^([ \t]*)Button\s*\((.*?)^\1\)\s*\{\s*Text\s*\(\s*HandsFreeCopy\.BACK\b""",
+                setOf(RegexOption.MULTILINE, RegexOption.DOT_MATCHES_ALL),
+            ).find(source),
+            "Hands-free cooking should render a Back button",
+        )
+        val arguments = backButton.groupValues[2]
+        assertTrue(Regex("""\bcontainerColor\s*=\s*colors\.surface\b""").containsMatchIn(arguments))
+        assertTrue(Regex("""\bcontentColor\s*=\s*colors\.text\b""").containsMatchIn(arguments))
+        assertTrue(Regex("""\bborder\s*=\s*BorderStroke\(\s*1\.5\.dp,\s*colors\.line\s*,?\s*\)""").containsMatchIn(arguments))
+    }
+
+    private fun readRecipeUiSource(fileName: String): String {
+        val path = "src/main/kotlin/com/loitu/yourrefri/feature/recipe/ui/$fileName"
+        return listOf(File(path), File("composeApp", path)).first { it.isFile }.readText()
     }
 
     private fun filtered(

@@ -138,7 +138,7 @@ internal fun RecipeCookbook(
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 18.dp, end = 16.dp, bottom = 164.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 18.dp, end = 16.dp, bottom = 112.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -146,6 +146,11 @@ internal fun RecipeCookbook(
                 CookbookHeader(
                     unlockedTotal = entries.count { it.unlocked },
                     total = entries.size,
+                    reward = reward,
+                    animatorsEnabled = animatorsEnabled,
+                    onRewardClick = { status ->
+                        if (isRewardFabReady(status)) onSpin() else showRewardHint = true
+                    },
                     searchVisible = searchVisible,
                     onToggleSearch = {
                         searchVisible = !searchVisible
@@ -216,18 +221,6 @@ internal fun RecipeCookbook(
                     modifier = if (animatorsEnabled) Modifier.animateItem() else Modifier,
                 )
             }
-        }
-        Column(
-            Modifier.align(Alignment.BottomEnd).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            if (reward != null && shouldShowRewardFab(reward)) {
-                RewardProgressFab(reward, animatorsEnabled) {
-                    if (isRewardFabReady(reward)) onSpin() else showRewardHint = true
-                }
-            }
-            FavoriteFilterFab(favoriteOnly, { favoriteOnly = it }, animatorsEnabled)
         }
     }
     if (showRewardHint && reward != null && !isRewardFabReady(reward) && !reward.allUnlocked) {
@@ -393,7 +386,7 @@ private fun RewardProgressFab(status: MysteryUnlockStatus, animatorsEnabled: Boo
     val description = rewardFabContentDescription(status)
     val fontScale = LocalDensity.current.fontScale.coerceAtLeast(1f)
     val badgeLabelSp = minOf(11f, 13.5f / fontScale).sp
-    Box(Modifier.size(56.dp).scale(scale)) {
+    Box(Modifier.size(48.dp).scale(scale)) {
         Surface(
             onClick = onClick,
             interactionSource = interactionSource,
@@ -464,80 +457,6 @@ private fun RewardProgressFab(status: MysteryUnlockStatus, animatorsEnabled: Boo
 }
 
 @Composable
-private fun FavoriteFilterFab(
-    favoriteOnly: Boolean,
-    onChange: (Boolean) -> Unit,
-    animatorsEnabled: Boolean,
-) {
-    val colors = AppTheme.colors
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val containerColor by animateColorAsState(
-        targetValue = if (favoriteOnly) colors.cta else colors.surface,
-        animationSpec = if (animatorsEnabled) tween(180) else snap(),
-        label = "favorite filter background",
-    )
-    val borderColor by animateColorAsState(
-        targetValue = if (favoriteOnly) colors.cta else colors.line,
-        animationSpec = if (animatorsEnabled) tween(180) else snap(),
-        label = "favorite filter border",
-    )
-    val iconColor by animateColorAsState(
-        targetValue = if (favoriteOnly) colors.onCta else colors.ctaText,
-        animationSpec = if (animatorsEnabled) tween(180) else snap(),
-        label = "favorite filter icon",
-    )
-    val scale by animateFloatAsState(
-        targetValue = when {
-            !animatorsEnabled -> 1f
-            pressed -> 0.90f
-            favoriteOnly -> 1.06f
-            else -> 1f
-        },
-        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioMediumBouncy) else snap(),
-        label = "favorite filter scale",
-    )
-    val heartScale by animateFloatAsState(
-        targetValue = if (animatorsEnabled && favoriteOnly) 1.14f else 1f,
-        animationSpec = if (animatorsEnabled) spring(Spring.DampingRatioHighBouncy) else snap(),
-        label = "favorite heart pop",
-    )
-    Surface(
-        modifier = Modifier.size(56.dp).scale(scale),
-        shape = CircleShape,
-        shadowElevation = if (favoriteOnly) 8.dp else 4.dp,
-        color = containerColor,
-        border = BorderStroke(1.dp, borderColor),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize()
-                .toggleable(
-                    value = favoriteOnly,
-                    interactionSource = interactionSource,
-                    indication = androidx.compose.foundation.LocalIndication.current,
-                    role = Role.Switch,
-                    onValueChange = onChange,
-                )
-                .semantics {
-                    contentDescription = if (favoriteOnly) {
-                        "Đang chỉ xem món yêu thích, chạm để tắt"
-                    } else {
-                        "Chỉ xem món yêu thích"
-                    }
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (favoriteOnly) AppIcons.HeartFilled else AppIcons.Heart,
-                contentDescription = null,
-                tint = iconColor,
-                modifier = Modifier.size(26.dp).scale(heartScale),
-            )
-        }
-    }
-}
-
-@Composable
 private fun CookbookEmptyState(message: String, actionLabel: String? = null, onAction: () -> Unit = {}) {
     val colors = AppTheme.colors
     Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -554,6 +473,9 @@ private fun CookbookEmptyState(message: String, actionLabel: String? = null, onA
 private fun CookbookHeader(
     unlockedTotal: Int,
     total: Int,
+    reward: MysteryUnlockStatus?,
+    animatorsEnabled: Boolean,
+    onRewardClick: (MysteryUnlockStatus) -> Unit,
     searchVisible: Boolean,
     onToggleSearch: () -> Unit,
 ) {
@@ -573,6 +495,9 @@ private fun CookbookHeader(
                 fontWeight = FontWeight.Bold,
             )
             Text("Đã mở $unlockedTotal / $total món", color = colors.muted, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (reward != null && shouldShowRewardFab(reward)) {
+            RewardProgressFab(reward, animatorsEnabled) { onRewardClick(reward) }
         }
         IconButton(onClick = onToggleSearch, modifier = Modifier.size(48.dp).background(colors.primarySoft, CircleShape)) {
             Icon(
