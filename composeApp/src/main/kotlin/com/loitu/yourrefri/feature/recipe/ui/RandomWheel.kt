@@ -58,6 +58,19 @@ import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 
+internal const val RANDOM_WHEEL_GACHA_LOOPS = 5
+internal const val RANDOM_WHEEL_GACHA_DURATION_MS = 5400
+internal const val MYSTERY_WHEEL_GACHA_LANDING_INDEX = 24
+internal const val MYSTERY_WHEEL_GACHA_DURATION_MS = 4800
+
+internal fun gachaSpinProgress(fraction: Float): Float {
+    val t = fraction.coerceIn(0f, 1f)
+    val inv = 1f - t
+    return 1f - inv * inv * inv * inv * inv
+}
+
+internal val GachaSpinEasing = Easing(::gachaSpinProgress)
+
 /** Creates a circular reel whose landing card always has a visible tail. */
 internal fun wheelReel(pool: List<Recipe>, winner: Recipe, loops: Int = 3, tail: Int = 3): Pair<List<Recipe>, Int> {
     if (pool.isEmpty()) return emptyList<Recipe>() to 0
@@ -88,13 +101,12 @@ internal fun RandomWheelDialog(
     var landed by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
     var showResult by remember(pool, pick.recipe.id, spinTrigger) { mutableStateOf(false) }
     val (reel, winnerIndex) = remember(pool, pick.recipe.id, spinTrigger) {
-        wheelReel(pool, pick.recipe, loops = 3, tail = 3)
+        wheelReel(pool, pick.recipe, loops = RANDOM_WHEEL_GACHA_LOOPS, tail = 3)
     }
     val listState = rememberLazyListState()
     val cardWidth = 132.dp
     val cardSpacing = 10.dp
     val itemStridePx = with(LocalDensity.current) { (cardWidth + cardSpacing).toPx() }
-    val spinEasing = remember { Easing { t -> val inv = 1f - t; 1f - inv * inv * inv } }
 
     LaunchedEffect(reel, winnerIndex, spinTrigger) {
         if (reel.isNotEmpty()) {
@@ -103,7 +115,7 @@ internal fun RandomWheelDialog(
             if (Build.VERSION.SDK_INT < 26 || ValueAnimator.areAnimatorsEnabled()) {
                 listState.animateScrollBy(
                     value = winnerIndex * itemStridePx,
-                    animationSpec = tween(durationMillis = 5200, easing = spinEasing),
+                    animationSpec = tween(durationMillis = RANDOM_WHEEL_GACHA_DURATION_MS, easing = GachaSpinEasing),
                 )
             }
             listState.scrollToItem(winnerIndex)
