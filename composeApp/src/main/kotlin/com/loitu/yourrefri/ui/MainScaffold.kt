@@ -5,8 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -87,7 +85,6 @@ import com.loitu.yourrefri.feature.settings.ui.SettingsScreen
 import com.loitu.yourrefri.ui.components.CircleTabBar
 import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
 import com.loitu.yourrefri.ui.components.tabContentDurationMs
-import com.loitu.yourrefri.ui.components.tabSlideDirection
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.reminder.ReminderPopupBoxDialog
@@ -296,7 +293,7 @@ fun MainScaffold(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
+            SnackbarHost(snackbarHostState, modifier = Modifier.padding(bottom = 8.dp)) { data ->
                 val colors = AppTheme.colors
                 Snackbar(
                     containerColor = colors.snackbar,
@@ -376,16 +373,7 @@ fun MainScaffold(
                     targetState = currentTab,
                     modifier = Modifier.clipToBounds(),
                     transitionSpec = {
-                        val dir = tabSlideDirection(initialState.ordinal, targetState.ordinal)
-                        val transition = if (duration > 0) {
-                            (slideInHorizontally(tween(duration)) { dir * (it / 12) } + fadeIn(tween(duration)))
-                                .togetherWith(
-                                    slideOutHorizontally(tween(duration)) { -dir * (it / 12) } + fadeOut(tween(duration)),
-                                )
-                        } else {
-                            fadeIn(tween(0)) togetherWith fadeOut(tween(0))
-                        }
-                        transition.using(null)
+                        (fadeIn(tween(duration)) togetherWith fadeOut(tween(duration))).using(null)
                     },
                     label = "mainTabTransition",
                 ) { tab ->

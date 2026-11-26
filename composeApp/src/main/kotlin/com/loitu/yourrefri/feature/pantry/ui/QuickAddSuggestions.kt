@@ -7,6 +7,9 @@ import kotlinx.datetime.LocalDate
 import java.text.Normalizer
 import java.util.Locale
 
+private val combiningMarksRegex = Regex("\\p{Mn}+")
+private val whitespaceRegex = Regex("\\s+")
+
 internal data class QuickAddEstimateOption(
     val label: String,
     val selected: Boolean,
@@ -182,9 +185,9 @@ internal fun quickAddQueryAfterChipTap(
 
 internal fun normalizeFoodQuery(value: String): String = Normalizer
     .normalize(value.lowercase(Locale.ROOT).replace('đ', 'd'), Normalizer.Form.NFD)
-    .replace(Regex("\\p{Mn}+"), "")
+    .replace(combiningMarksRegex, "")
     .trim()
-    .split(Regex("\\s+"))
+    .split(whitespaceRegex)
     .filter(String::isNotEmpty)
     .joinToString(" ")
 

@@ -133,7 +133,16 @@ fun RecipeScreen(
     }
 
     if (mode == RecipeScreenMode.DAILY) {
-        val entries = remember(recipes, state, unlockedIds) { buildCookbookEntries(recipes, state, unlockedIds) }
+        val haveIds = remember(state.pantry) {
+            buildSet {
+                for (item in state.pantry.values) {
+                    if (item.have) add(item.ingredientId)
+                }
+            }
+        }
+        val entries = remember(recipes, haveIds, unlockedIds) {
+            buildCookbookEntries(recipes, state, unlockedIds)
+        }
         val reward = remember(totalCookCount, recipes, unlockedIds, mysteryRewardsReady) {
             if (mysteryRewardsReady && recipes.any { it.isMystery }) {
                 computeMysteryUnlockStatus(totalCookCount, recipes, unlockedIds)

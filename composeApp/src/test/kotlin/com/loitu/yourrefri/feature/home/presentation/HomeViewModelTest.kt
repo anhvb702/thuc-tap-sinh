@@ -9,6 +9,7 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.MealSlot
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
+import com.loitu.yourrefri.feature.recipe.logic.FamilyTasteProfile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -47,6 +48,38 @@ class HomeViewModelTest {
         assertEquals(listOf("rice"), viewModel.state.value.dashboard.haveItems.map { it.ingredientId })
         assertEquals(listOf("rice-recipe"), viewModel.state.value.dashboard.cookableRecipes.map { it.id })
         assertEquals(MealSlot.DINNER, viewModel.state.value.meal)
+    }
+
+    @Test
+    fun syncInputs_rebuildsOnlyWhenInputsChange() {
+        val viewModel = HomeViewModel()
+        val pantry = state(withRice = true)
+        var ingredientReads = 0
+        val ingredients = object : AbstractList<Ingredient>() {
+            override val size: Int = pantry.ingredients.size
+
+            override fun get(index: Int): Ingredient {
+                ingredientReads++
+                return pantry.ingredients[index]
+            }
+        }
+        val inputs = HomeIntent.SyncInputs(
+            pantry.copy(ingredients = ingredients),
+            listOf(recipe("rice-recipe")),
+            MealSlot.DINNER,
+            FamilyTasteProfile(),
+        )
+
+        viewModel.onIntent(inputs)
+        val initialReads = ingredientReads
+        assertTrue(initialReads > 0)
+        assertEquals(listOf("rice"), viewModel.state.value.dashboard.haveItems.map { it.ingredientId })
+        viewModel.onIntent(inputs.copy())
+        assertEquals(initialReads, ingredientReads)
+
+        viewModel.onIntent(inputs.copy(meal = MealSlot.LUNCH))
+        assertTrue(ingredientReads > initialReads)
+        assertEquals(MealSlot.LUNCH, viewModel.state.value.meal)
     }
 
     @Test

@@ -156,10 +156,21 @@ fun PantryGridScreen(
     BackHandler(enabled = addMenuOpen) { addMenuOpen = false }
     LaunchedEffect(voicePhase) { if (voicePhase == VoicePhase.LISTENING) { delay(10_000); if (voicePhase == VoicePhase.LISTENING) { endVoiceSession(); voicePhase = VoicePhase.NOT_HEARD } } }
 
-    val allCells = cellsOf(state)
-    val presentation = pantryGridPresentation(allCells, filters.storageTab, filters.presentOnly)
-    val categoryCells = filterByCategories(presentation.visibleCells, filters.selectedCategories)
-    val cells = if (searchOpen) filterCellsBySearch(categoryCells, searchQuery) else categoryCells
+    val allCells = remember(state.ingredients, state.pantry, state.today, state.quantities, state.unitOverrides) {
+        cellsOf(state)
+    }
+    val storageTab = filters.storageTab
+    val presentOnly = filters.presentOnly
+    val selectedCategories = filters.selectedCategories
+    val visibleCells = remember(allCells, storageTab, presentOnly) {
+        pantryGridPresentation(allCells, storageTab, presentOnly).visibleCells
+    }
+    val categoryCells = remember(visibleCells, selectedCategories) {
+        filterByCategories(visibleCells, selectedCategories)
+    }
+    val cells = if (searchOpen) {
+        remember(categoryCells, searchQuery) { filterCellsBySearch(categoryCells, searchQuery) }
+    } else categoryCells
     val emptyMessage = when (pantryGridEmptyState(state.ingredients.size, cells.size, filters)) {
         PantryGridEmptyState.CATALOG_EMPTY -> "Danh mục thực phẩm chưa có món nào."
         PantryGridEmptyState.NO_PRESENT_ITEMS -> "Chưa có món nào được ghi nhận trong tủ."
@@ -267,22 +278,13 @@ fun PantryGridScreen(
         showMicExplain = showMicExplain,
         onDismissMicExplain = { showMicExplain = false },
         onRequestMic = { micPermission.launch(Manifest.permission.RECORD_AUDIO) },
-        voicePhase = voicePhase,
-        voicePartial = voicePartial,
-        onVoiceStop = {
-            voiceLevel = 0f
-            sessionHolder[0]?.stop()
-        },
-        onVoiceCancel = {
-            endVoiceSession()
-            voicePhase = VoicePhase.IDLE
-        },
-        onVoiceRetry = ::startListening,
-        onVoiceManual = {
-            endVoiceSession()
-            voicePhase = VoicePhase.IDLE
-            openAdd()
-        },
+        // The voice sheet below reads RMS in its own recomposition scope.
+        voicePhase = VoicePhase.IDLE,
+        voicePartial = "",
+        onVoiceStop = {},
+        onVoiceCancel = {},
+        onVoiceRetry = {},
+        onVoiceManual = {},
         showAdd = showAdd,
         addChoice = addChoice,
         newFoodName = newFoodName,
@@ -328,6 +330,40 @@ fun PantryGridScreen(
         },
         showCombo = showCombo,
         onDismissCombo = { showCombo = false },
-        voiceLevel = voiceLevel,
     )
+    if (voicePhase != VoicePhase.IDLE) {
+        PantryVoiceSheet(
+            phase = voicePhase,
+            partial = voicePartial,
+            voiceLevel = { voiceLevel },
+            onStop = {
+                voiceLevel = 0f
+                sessionHolder[0]?.stop()
+            },
+            onCancel = {
+                endVoiceSession()
+                voicePhase = VoicePhase.IDLE
+            },
+            onRetry = ::startListening,
+            onManual = {
+                endVoiceSession()
+                voicePhase = VoicePhase.IDLE
+                openAdd()
+            },
+        )
+    }
+}
+
+@Composable
+private fun PantryVoiceSheet(
+    phase: VoicePhase,
+    partial: String,
+    voiceLevel: () -> Float,
+    onStop: () -> Unit,
+    onCancel: () -> Unit,
+    onRetry: () -> Unit,
+    onManual: () -> Unit,
+) {
+    val level = if (phase == VoicePhase.LISTENING || phase == VoicePhase.CLOUD_LISTENING) voiceLevel() else 0f
+    VoiceSheet(phase, partial, onStop, onCancel, onRetry, onManual, voiceLevel = level)
 }
