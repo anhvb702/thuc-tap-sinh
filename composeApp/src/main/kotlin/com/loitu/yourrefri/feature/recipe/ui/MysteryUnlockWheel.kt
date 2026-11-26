@@ -87,7 +87,7 @@ internal fun MysteryUnlockWheel(
     val cardWidth = 138.dp
     val cardSpacing = 10.dp
     val stride = with(LocalDensity.current) { cardWidth.roundToPx() + cardSpacing.roundToPx() }
-    val landingIndex = 14
+    val landingIndex = MYSTERY_WHEEL_GACHA_LANDING_INDEX
     val winner = selected
     val saved = landed && winner != null && winner.id in unlockedIds
     val saveFailed = landed && winner != null && !saved && winner.id == saveFailedId
@@ -96,7 +96,10 @@ internal fun MysteryUnlockWheel(
     LaunchedEffect(winner) {
         if (winner != null) {
             if (animatorsEnabled) {
-                listState.animateScrollBy(landingIndex * stride.toFloat(), tween(2900, easing = FastOutSlowInEasing))
+                listState.animateScrollBy(
+                    value = landingIndex * stride.toFloat(),
+                    animationSpec = tween(durationMillis = MYSTERY_WHEEL_GACHA_DURATION_MS, easing = GachaSpinEasing),
+                )
             }
             listState.scrollToItem(landingIndex)
             landed = true
