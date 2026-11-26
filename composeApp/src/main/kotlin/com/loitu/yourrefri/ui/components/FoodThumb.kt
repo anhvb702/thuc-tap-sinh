@@ -11,6 +11,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.pantry.ui.FoodGlyph
@@ -28,6 +32,10 @@ import com.loitu.yourrefri.feature.pantry.ui.foodGlyphFor
 import com.loitu.yourrefri.feature.pantry.ui.foodIconFor
 import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
+import java.io.IOException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 
 /**
  * Khung ảnh món ăn dùng chung. Có ảnh thật trong assets (food/<id>.webp|jpg|png, recipes/<id>...) thì hiện ảnh,
@@ -44,24 +52,63 @@ private fun assetCandidates(folder: String, id: String): List<String> {
     return listOf("webp", "jpg", "png").map { "$folder/$id.$it" }
 }
 
-private val assetBitmapCache = LruCache<String, ImageBitmap>(64)
+internal fun computeInSampleSize(srcWidth: Int, srcHeight: Int, reqSizePx: Int): Int {
+    if (srcWidth <= 0 || srcHeight <= 0 || reqSizePx <= 0) return 1
+    val maxSample = minOf(srcWidth, srcHeight) / reqSizePx
+    var sample = 1
+    while (sample <= maxSample / 2) sample *= 2
+    return sample
+}
 
-private fun loadAsset(context: Context, candidates: List<String>): ImageBitmap? {
+private fun sizeBucketFor(reqSizePx: Int): Long =
+    ((reqSizePx.coerceAtLeast(32).toLong() + 31) / 32) * 32
+
+internal fun cacheKeyFor(candidates: List<String>, reqSizePx: Int): String =
+    "${candidates.firstOrNull().orEmpty()}:${sizeBucketFor(reqSizePx)}"
+
+private val assetBitmapCache by lazy {
+    object : LruCache<String, ImageBitmap>(16 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int =
+            ((value.width * value.height * 4) / 1024).coerceAtLeast(1)
+    }
+}
+private val missingAssetPaths = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+private val assetLoadLocks = Array(16) { Any() }
+
+private fun peekCachedAsset(candidates: List<String>, reqSizePx: Int): ImageBitmap? =
+    candidates.firstNotNullOfOrNull { path -> assetBitmapCache.get(cacheKeyFor(listOf(path), reqSizePx)) }
+
+private suspend fun loadAssetAsync(
+    context: Context,
+    candidates: List<String>,
+    reqSizePx: Int,
+): ImageBitmap? = withContext(Dispatchers.IO) {
+    // Cached entries must also satisfy the largest request in their bucket.
+    val targetSizePx = sizeBucketFor(reqSizePx).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     for (path in candidates) {
-        assetBitmapCache.get(path)?.let { return it }
-        try {
-            val opts = BitmapFactory.Options().apply { inSampleSize = 2 }
-            context.assets.open(path).use { stream ->
-                BitmapFactory.decodeStream(stream, null, opts)?.asImageBitmap()?.let { bmp ->
-                    assetBitmapCache.put(path, bmp)
-                    return bmp
-                }
+        ensureActive()
+        val cacheKey = cacheKeyFor(listOf(path), reqSizePx)
+        // Concurrent requests for the same path must share the first miss.
+        synchronized(assetLoadLocks[path.hashCode() and assetLoadLocks.lastIndex]) {
+            ensureActive()
+            if (path in missingAssetPaths) return@synchronized
+            assetBitmapCache.get(cacheKey)?.let { return@withContext it }
+            try {
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }
+                options.inSampleSize = computeInSampleSize(options.outWidth, options.outHeight, targetSizePx)
+                options.inJustDecodeBounds = false
+                context.assets.open(path).use { BitmapFactory.decodeStream(it, null, options) }
+                    ?.asImageBitmap()?.let { bitmap ->
+                        assetBitmapCache.put(cacheKey, bitmap)
+                        return@withContext bitmap
+                    }
+            } catch (_: IOException) {
+                missingAssetPaths.add(path)
             }
-        } catch (_: Exception) {
-            // Không có ảnh này: thử định dạng kế tiếp.
         }
     }
-    return null
+    null
 }
 
 /** Màu nền và màu icon theo nhóm thực phẩm; sáng và tối đều đạt tương phản đồ họa >= 3:1. */
@@ -91,16 +138,18 @@ fun FoodThumb(
     group: String? = null,
 ) {
     val context = LocalContext.current
-    val photo = remember(ingredientId) { loadAsset(context, foodAssetCandidates(ingredientId)) }
+    val reqSizePx = with(LocalDensity.current) { size.roundToPx().coerceAtLeast(48) }
+    val candidates = remember(ingredientId) { foodAssetCandidates(ingredientId) + iconAssetCandidates(ingredientId) }
+    val cached = remember(candidates, reqSizePx) { peekCachedAsset(candidates, reqSizePx) }
+    val photo = key(candidates, reqSizePx) {
+        val photo by produceState(initialValue = cached, key1 = candidates, key2 = reqSizePx) {
+            if (value == null) value = loadAssetAsync(context, candidates, reqSizePx)
+        }
+        photo
+    }
     val frame = modifier.size(size).clip(shape)
     if (photo != null) {
         Image(bitmap = photo, contentDescription = null, contentScale = ContentScale.Crop, modifier = frame)
-        return
-    }
-    // Chưa có ảnh thì dùng icon riêng của món (icons/<id>), rồi mới đến icon nhóm.
-    val icon = remember(ingredientId) { loadAsset(context, iconAssetCandidates(ingredientId)) }
-    if (icon != null) {
-        Image(bitmap = icon, contentDescription = null, contentScale = ContentScale.Crop, modifier = frame)
         return
     }
     val colors = AppTheme.colors
@@ -128,7 +177,15 @@ fun RecipeThumb(
     shape: Shape = RoundedCornerShape(14.dp),
 ) {
     val context = LocalContext.current
-    val photo = remember(recipeId) { loadAsset(context, recipeAssetCandidates(recipeId)) }
+    val reqSizePx = with(LocalDensity.current) { size.roundToPx().coerceAtLeast(48) }
+    val candidates = remember(recipeId) { recipeAssetCandidates(recipeId) }
+    val cached = remember(candidates, reqSizePx) { peekCachedAsset(candidates, reqSizePx) }
+    val photo = key(candidates, reqSizePx) {
+        val photo by produceState(initialValue = cached, key1 = candidates, key2 = reqSizePx) {
+            if (value == null) value = loadAssetAsync(context, candidates, reqSizePx)
+        }
+        photo
+    }
     val frame = modifier.size(size).clip(shape)
     if (photo != null) {
         Image(bitmap = photo, contentDescription = null, contentScale = ContentScale.Crop, modifier = frame)
