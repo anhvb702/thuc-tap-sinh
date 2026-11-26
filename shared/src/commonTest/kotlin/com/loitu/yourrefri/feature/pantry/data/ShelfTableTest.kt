@@ -212,8 +212,31 @@ class ShelfTableTest {
 
     @Test
     fun bundle_hasBetween25And40Items() {
-        // U4-01: bundle hiện 54 mục (sau khi thêm 12 gia vị), vẫn nằm trong trần 60.
-        assertTrue(bundle.size in 25..60, "Bảng hạn có ${bundle.size} món, cần 25..60")
+        // U4-01: 54 mục (thêm 12 gia vị). U4-02: mở rộng lên 86 mục (thêm 32 món), trần nới lên 100.
+        assertTrue(bundle.size in 25..100, "Bảng hạn có ${bundle.size} món, cần 25..100")
+    }
+
+    @Test
+    fun bundle_u402NewItems_arePresentWithValidGroupAndShelfDays() {
+        val newIds = listOf(
+            "uc-ga", "dui-ga", "canh-ga", "thit-nac-vai", "thit-vit", "xuc-xich",
+            "ca-loc", "ca-ro-phi", "ca-chep", "ca-nuc", "ngao", "bach-tuoc",
+            "trung-vit", "trung-cut", "pho-mai", "bo-lat",
+            "rau-mong-toi", "rau-den", "bap-cai", "cai-thao", "rau-thom",
+            "su-hao", "bi-do", "khoai-lang", "ca-tim", "ot-chuong", "cu-cai-trang", "bap-ngo",
+            "dua-hau", "xoai",
+            "nam-kim-cham", "mien-dong",
+        )
+        val byId = bundle.associateBy { it.id }
+        newIds.forEach { id ->
+            val item = byId[id]
+            assertNotNull(item, "Thiếu món U4-02 $id trong bundle")
+            assertTrue(item.group in ShelfTable.GROUPS, "group của $id: ${item.group}")
+            assertTrue(
+                item.defaultShelfDays in 1..maxDaysByGroup.getValue(item.group),
+                "defaultShelfDays của $id: ${item.defaultShelfDays} vượt trần nhóm ${item.group}",
+            )
+        }
     }
 
     @Test
