@@ -67,7 +67,7 @@ internal fun cacheKeyFor(candidates: List<String>, reqSizePx: Int): String =
     "${candidates.firstOrNull().orEmpty()}:${sizeBucketFor(reqSizePx)}"
 
 private val assetBitmapCache by lazy {
-    object : LruCache<String, ImageBitmap>(16 * 1024) {
+    object : LruCache<String, ImageBitmap>(28 * 1024) {
         override fun sizeOf(key: String, value: ImageBitmap): Int =
             ((value.width * value.height * 4) / 1024).coerceAtLeast(1)
     }

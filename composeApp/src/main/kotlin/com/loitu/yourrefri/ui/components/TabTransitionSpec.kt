@@ -1,10 +1,8 @@
 package com.loitu.yourrefri.ui.components
 
-internal const val TAB_TRANSITION_MS = 220
+internal const val TAB_TRANSITION_MS = 110
 internal const val PRESS_SCALE_DOWN = 0.95f
 internal const val NAV_SELECTED_SCALE = 1.04f
-
-internal fun tabSlideDirection(fromIndex: Int, toIndex: Int): Int = toIndex.compareTo(fromIndex)
 
 internal fun pressScaleTarget(pressed: Boolean, animatorsEnabled: Boolean): Float =
     if (pressed && animatorsEnabled) PRESS_SCALE_DOWN else 1f

@@ -192,6 +192,9 @@ internal fun PantryGridContent(
 ) {
     val colors = AppTheme.colors
     val fullRow: LazyGridItemSpanScope.() -> GridItemSpan = { GridItemSpan(maxLineSpan) }
+    val groupedCells = if (filters.storageTab != StorageTab.SOON && cells.isNotEmpty()) {
+        remember(cells, state.ingredients) { groupCellsByCategory(cells, state.ingredients) }
+    } else emptyList()
     LazyVerticalGrid(
         columns = GridCells.Fixed(pantryGridColumns(LocalDensity.current.fontScale)),
         modifier = modifier.fillMaxSize(),
@@ -223,7 +226,7 @@ internal fun PantryGridContent(
                 ) { Text(PantryScreenCopy.cookFromSoonAction, fontWeight = FontWeight.Bold) }
             }
         } else {
-            groupCellsByCategory(cells, state.ingredients).forEach { group ->
+            groupedCells.forEach { group ->
                 item(key = "header-${group.key}", span = fullRow) {
                     CategoryHeader(group)
                 }

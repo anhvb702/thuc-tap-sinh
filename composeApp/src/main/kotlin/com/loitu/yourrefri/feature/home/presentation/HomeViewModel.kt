@@ -5,7 +5,6 @@ import com.loitu.yourrefri.feature.home.data.HomeWeatherRepository
 import com.loitu.yourrefri.feature.home.domain.usecase.BuildHomeDashboardUseCase
 import com.loitu.yourrefri.feature.home.domain.usecase.PickHomeRandomRecipeUseCase
 import com.loitu.yourrefri.feature.home.domain.model.WeatherCity
-import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.ui.randomWheelPool
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
@@ -15,22 +14,20 @@ class HomeViewModel(
     private val pickRandomRecipe: PickHomeRandomRecipeUseCase = PickHomeRandomRecipeUseCase(),
     private val weatherRepository: HomeWeatherRepository? = null,
 ) : MviViewModel<HomeUiState, HomeIntent, HomeEffect>(HomeUiState()) {
+    private var lastSyncedInputs: HomeIntent.SyncInputs? = null
+
     override fun onIntent(intent: HomeIntent) {
         when (intent) {
             is HomeIntent.SyncInputs -> {
-                latestPantryState = intent.pantryState
-                latestRecipes = intent.recipes
-                updateState {
-                copy(
-                    dashboard = buildHomeDashboard(
-                        state = intent.pantryState,
-                        recipes = intent.recipes,
-                        meal = intent.meal,
-                        tasteProfile = intent.tasteProfile,
-                    ),
+                if (intent == lastSyncedInputs) return
+                val dashboard = buildHomeDashboard(
+                    state = intent.pantryState,
+                    recipes = intent.recipes,
                     meal = intent.meal,
+                    tasteProfile = intent.tasteProfile,
                 )
-                }
+                lastSyncedInputs = intent
+                updateState { copy(dashboard = dashboard, meal = intent.meal) }
             }
             HomeIntent.OpenRandomWheel, HomeIntent.SpinRandomAgain -> openRandomWheel()
             is HomeIntent.SetRandomOnlyReady -> {
@@ -67,9 +64,10 @@ class HomeViewModel(
     }
 
     private fun openRandomWheel() {
+        val inputs = lastSyncedInputs
         val pool = randomWheelPool(
             cookableRecipes = currentState.dashboard.cookableRecipes,
-            allRecipes = latestRecipes,
+            allRecipes = inputs?.recipes.orEmpty(),
             onlyReadyIngredients = currentState.randomOnlyReady,
         )
         if (pool.isEmpty()) {
@@ -78,13 +76,10 @@ class HomeViewModel(
         }
         val pick = pickRandomRecipe(
             cookable = pool,
-            state = latestPantryState ?: return,
+            state = inputs?.pantryState ?: return,
             excludeId = currentState.randomPick?.recipe?.id,
             onlyCookable = currentState.randomOnlyReady,
         ) ?: return
         updateState { copy(randomPick = pick, showRandomWheel = true, showNoCookableDialog = false) }
     }
-
-    private var latestPantryState: com.loitu.yourrefri.feature.pantry.logic.PantryGridState? = null
-    private var latestRecipes: List<Recipe> = emptyList()
 }
