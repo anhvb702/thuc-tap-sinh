@@ -1,8 +1,10 @@
 package com.loitu.yourrefri.telemetry
 
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class TelemetryPortTest {
@@ -114,6 +116,32 @@ class TelemetryPortTest {
         backend.ready = true
         backend.port.track(TelemetryEvent.ScreenViewed("Home"))
         assertEquals(emptyList(), backend.analytics)
+    }
+
+    @Test
+    fun toAnalyticsBundlePairs_sortsKeysDeterministically() {
+        val payload = TelemetryPayload("feature_used", linkedMapOf("z" to "first", "a" to "last", "m" to "middle"))
+
+        assertEquals(listOf("a" to "last", "m" to "middle", "z" to "first"), toAnalyticsBundlePairs(payload))
+    }
+
+    @Test
+    fun buildScript_appliesFirebasePluginsConditionallyOnlyWhenConfigPresent() {
+        val script = generateSequence(File(System.getProperty("user.dir"))) { it.parentFile }
+            .map { File(it, "composeApp/build.gradle.kts") }
+            .first { it.isFile }
+            .readText()
+        val conditional = Regex(
+            """^\s*if \(file\("google-services\.json"\)\.exists\(\)\) \{\s*""" +
+                """apply\(plugin = "com\.google\.gms\.google-services"\)\s*""" +
+                """apply\(plugin = "com\.google\.firebase\.crashlytics"\)\s*\}""",
+            RegexOption.MULTILINE,
+        )
+
+        assertNotNull(conditional.find(script), "Apply both Firebase plugins inside the config file guard")
+        for (pluginId in listOf("com.google.gms.google-services", "com.google.firebase.crashlytics")) {
+            assertEquals(1, Regex(Regex.escape(pluginId)).findAll(script).count(), pluginId)
+        }
     }
 
     private class RecordingBackend(var ready: Boolean = true) {

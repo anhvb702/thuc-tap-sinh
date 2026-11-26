@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.composeCompiler)
 }
 
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -14,6 +19,9 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.datetime)
     implementation(libs.androidx.lifecycle.viewmodelCompose)

@@ -36,6 +36,7 @@ import com.loitu.yourrefri.shared.db.DriverFactory
 import com.loitu.yourrefri.shared.db.createDatabase
 import com.loitu.yourrefri.telemetry.NoOpTelemetryPort
 import com.loitu.yourrefri.telemetry.TelemetryPort
+import com.loitu.yourrefri.telemetry.createTelemetryPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.datetime.TimeZone
 import kotlin.time.Clock
@@ -72,7 +73,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     private val timeZone = TimeZone.currentSystemDefault()
     private val weatherRepository: HomeWeatherRepository = OpenMeteoWeatherRepository()
 
-    override val telemetry: TelemetryPort = NoOpTelemetryPort
+    override val telemetry: TelemetryPort = createTelemetryPort(appContext)
     override val pantryRepository: PantryRepository = PantryRepositoryImpl(db, clock, timeZone, Dispatchers.IO)
     override val weeklyMealPlanRepository: WeeklyMealPlanRepository = WeeklyMealPlanRepositoryImpl(db, Dispatchers.IO)
     override val tasteProfileRepository: TasteProfileRepository = SqlTasteProfileRepository(db, Dispatchers.IO)
