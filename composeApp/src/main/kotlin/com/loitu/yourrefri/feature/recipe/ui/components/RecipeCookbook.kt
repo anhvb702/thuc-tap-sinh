@@ -37,6 +37,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,12 +85,14 @@ import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.logic.MysteryUnlockStatus
 import com.loitu.yourrefri.feature.recipe.ui.ALL_COOKBOOK_DURATIONS
-import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_WEEKLY_SHORTCUT_DESC
-import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_WEEKLY_SHORTCUT_LABEL
+import com.loitu.yourrefri.feature.recipe.ui.COOKBOOK_SCREEN_TITLE
 import com.loitu.yourrefri.feature.recipe.ui.CookbookDurationGroup
 import com.loitu.yourrefri.feature.recipe.ui.CookbookEntry
 import com.loitu.yourrefri.feature.recipe.ui.CookbookFilters
+import com.loitu.yourrefri.feature.recipe.ui.CookbookQuickFilter
 import com.loitu.yourrefri.feature.recipe.ui.REWARD_BANNER_TAGLINE
+import com.loitu.yourrefri.feature.recipe.ui.activeCookbookQuickFilter
+import com.loitu.yourrefri.feature.recipe.ui.applyCookbookQuickFilter
 import com.loitu.yourrefri.feature.recipe.ui.cookbookPresenceSwitchLabel
 import com.loitu.yourrefri.feature.recipe.ui.filterCookbookEntries
 import com.loitu.yourrefri.feature.recipe.ui.isRewardFabReady
@@ -116,7 +120,6 @@ internal fun RecipeCookbook(
     onOpenRecipe: (Recipe) -> Unit,
     onToggleFavorite: (String) -> Unit,
     modifier: Modifier = Modifier,
-    onOpenWeeklyPlan: (() -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     val animatorsEnabled = areSystemAnimatorsEnabled()
@@ -148,7 +151,6 @@ internal fun RecipeCookbook(
                         searchVisible = !searchVisible
                         if (!searchVisible) query = ""
                     },
-                    onOpenWeeklyPlan = onOpenWeeklyPlan,
                 )
             }
             if (searchVisible) item(span = { GridItemSpan(maxLineSpan) }) {
@@ -165,6 +167,13 @@ internal fun RecipeCookbook(
             }
             if (reward != null) item(span = { GridItemSpan(maxLineSpan) }) {
                 MysteryRewardBanner(reward, entries.size, onSpin)
+            }
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                CookbookQuickFilterChips(activeCookbookQuickFilter(favoriteOnly, selectedDurations)) { quick ->
+                    val updated = applyCookbookQuickFilter(filters, quick)
+                    favoriteOnly = updated.favoriteOnly
+                    durationMask = updated.selectedDurations.toDurationMask()
+                }
             }
             item(span = { GridItemSpan(maxLineSpan) }) {
                 CookbookPresenceSwitch(canCookOnly) { canCookOnly = it }
@@ -233,6 +242,38 @@ internal fun RecipeCookbook(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun CookbookQuickFilterChips(
+    active: CookbookQuickFilter,
+    onSelect: (CookbookQuickFilter) -> Unit,
+) {
+    val colors = AppTheme.colors
+    val shape = RoundedCornerShape(16.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth().selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CookbookQuickFilter.entries.forEach { quick ->
+            val selected = quick == active
+            Box(
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).clip(shape)
+                    .background(if (selected) colors.primary else colors.surface)
+                    .border(1.dp, if (selected) colors.primary else colors.line, shape)
+                    .selectable(selected = selected, role = Role.RadioButton, onClick = { onSelect(quick) })
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = quick.labelVi,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) colors.onPrimary else colors.text,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }
 
@@ -515,7 +556,6 @@ private fun CookbookHeader(
     total: Int,
     searchVisible: Boolean,
     onToggleSearch: () -> Unit,
-    onOpenWeeklyPlan: (() -> Unit)? = null,
 ) {
     val colors = AppTheme.colors
     Row(
@@ -526,38 +566,13 @@ private fun CookbookHeader(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text("SỔ TAY MÓN ĂN", color = colors.accentText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             Text(
-                "Kho món nhà mình",
+                COOKBOOK_SCREEN_TITLE,
                 Modifier.semantics { heading() },
                 color = colors.text,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
             )
             Text("Đã mở $unlockedTotal / $total món", color = colors.muted, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (onOpenWeeklyPlan != null) {
-            Surface(
-                onClick = onOpenWeeklyPlan,
-                modifier = Modifier.heightIn(min = 48.dp).semantics {
-                    contentDescription = COOKBOOK_WEEKLY_SHORTCUT_DESC
-                },
-                shape = RoundedCornerShape(999.dp),
-                color = colors.primarySoft,
-                border = BorderStroke(1.dp, colors.line),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Icon(AppIcons.Calendar, contentDescription = null, tint = colors.accentText, modifier = Modifier.size(18.dp))
-                    Text(
-                        COOKBOOK_WEEKLY_SHORTCUT_LABEL,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.accentText,
-                    )
-                }
-            }
         }
         IconButton(onClick = onToggleSearch, modifier = Modifier.size(48.dp).background(colors.primarySoft, CircleShape)) {
             Icon(

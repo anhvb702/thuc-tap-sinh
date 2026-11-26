@@ -4,9 +4,12 @@ import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 import com.loitu.yourrefri.feature.recipe.data.Slot
+import java.io.File
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 
 class RecipeCookbookLogicTest {
     private val today = LocalDate(2026, 11, 23)
@@ -168,6 +171,82 @@ class RecipeCookbookLogicTest {
         assertEquals(cookable, randomWheelPool(cookable, all, onlyReadyIngredients = true))
         assertEquals(all, randomWheelPool(cookable, all, onlyReadyIngredients = false))
         assertEquals(emptyList(), randomWheelPool(emptyList(), all, onlyReadyIngredients = true))
+    }
+
+    @Test
+    fun cookbookTitleIsMonAn() {
+        assertEquals("Món ăn", COOKBOOK_SCREEN_TITLE)
+    }
+
+    @Test
+    fun allQuickFilterIsActiveForDefaultAndCustomDurations() {
+        val durations = listOf(
+            ALL_COOKBOOK_DURATIONS,
+            emptySet(),
+            setOf(CookbookDurationGroup.MEDIUM),
+            setOf(CookbookDurationGroup.QUICK, CookbookDurationGroup.MEDIUM),
+        )
+        durations.forEach {
+            assertEquals(CookbookQuickFilter.ALL, activeCookbookQuickFilter(false, it))
+        }
+    }
+
+    @Test
+    fun favoriteQuickFilterTakesPrecedenceOverQuickDuration() {
+        assertEquals(CookbookQuickFilter.FAVORITE, activeCookbookQuickFilter(true, ALL_COOKBOOK_DURATIONS))
+        assertEquals(
+            CookbookQuickFilter.FAVORITE,
+            activeCookbookQuickFilter(true, setOf(CookbookDurationGroup.QUICK)),
+        )
+    }
+
+    @Test
+    fun easyQuickFilterIsActiveForQuickDurationOnly() {
+        assertEquals(
+            CookbookQuickFilter.EASY,
+            activeCookbookQuickFilter(false, setOf(CookbookDurationGroup.QUICK)),
+        )
+    }
+
+    @Test
+    fun applyingAllClearsFavoritesAndRestoresAllDurations() {
+        val current = CookbookFilters(true, true, setOf(CookbookDurationGroup.SLOW))
+        assertEquals(
+            CookbookFilters(canCookOnly = true, favoriteOnly = false, selectedDurations = ALL_COOKBOOK_DURATIONS),
+            applyCookbookQuickFilter(current, CookbookQuickFilter.ALL),
+        )
+    }
+
+    @Test
+    fun applyingFavoriteEnablesFavoritesAndRestoresAllDurations() {
+        val current = CookbookFilters(true, false, setOf(CookbookDurationGroup.QUICK))
+        assertEquals(
+            CookbookFilters(canCookOnly = true, favoriteOnly = true, selectedDurations = ALL_COOKBOOK_DURATIONS),
+            applyCookbookQuickFilter(current, CookbookQuickFilter.FAVORITE),
+        )
+    }
+
+    @Test
+    fun applyingEasyClearsFavoritesAndSelectsQuickDurationOnly() {
+        val current = CookbookFilters(true, true, ALL_COOKBOOK_DURATIONS)
+        assertEquals(
+            CookbookFilters(canCookOnly = true, favoriteOnly = false, selectedDurations = setOf(CookbookDurationGroup.QUICK)),
+            applyCookbookQuickFilter(current, CookbookQuickFilter.EASY),
+        )
+    }
+
+    @Test
+    fun recipeScreenOmitsDuplicateWeeklyNavigation() {
+        val path = "src/main/kotlin/com/loitu/yourrefri/feature/recipe/ui/RecipeScreen.kt"
+        val source = listOf(File(path), File("composeApp", path)).first { it.isFile }.readText()
+        assertFalse(Regex("""\bRecipeTabChips\s*\(""").containsMatchIn(source))
+
+        val cookbookCall = assertNotNull(
+            Regex("""^([ \t]*)RecipeCookbook\s*\(([\s\S]*?)^\1\)""", RegexOption.MULTILINE).find(source),
+            "RecipeScreen should render the cookbook",
+        )
+        val arguments = cookbookCall.groupValues[2]
+        assertFalse(Regex("""\bRecipeScreenMode\s*\.\s*WEEKLY\b""").containsMatchIn(arguments))
     }
 
     private fun filtered(

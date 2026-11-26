@@ -2,11 +2,18 @@ package com.loitu.yourrefri.feature.recipe.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,7 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.recipe.data.Recipe
@@ -30,6 +41,7 @@ import com.loitu.yourrefri.feature.recipe.logic.computeMysteryUnlockStatus
 import com.loitu.yourrefri.feature.recipe.logic.filterRecipesByDiet
 import com.loitu.yourrefri.feature.recipe.presentation.RecipeViewModel
 import com.loitu.yourrefri.feature.recipe.ui.components.RecipeCookbook
+import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import kotlinx.coroutines.launch
 import kotlin.time.ExperimentalTime
@@ -48,7 +60,7 @@ fun RecipeScreen(
     onWeeklyAction: ((WeeklyMealPlanAction) -> Unit)? = null, onModeChange: ((RecipeScreenMode) -> Unit)? = null,
     onOpenRecipe: ((String) -> Unit)? = null, modifier: Modifier = Modifier, favoriteIds: Set<String> = emptySet(),
     onToggleFavorite: (String) -> Unit = {}, onOpenHandsFree: ((String) -> Unit)? = null, todayIndexOverride: Int? = null,
-    randomPool: List<Recipe>? = null, dietRestriction: DietRestriction = DietRestriction.NONE, onBackHome: () -> Unit = {},
+    randomPool: List<Recipe>? = null, dietRestriction: DietRestriction = DietRestriction.NONE, onBackHome: (() -> Unit)? = null,
     tasteProfile: FamilyTasteProfile = FamilyTasteProfile(), recipeViewModel: RecipeViewModel = remember { RecipeViewModel() },
     unlockedIds: Set<String> = emptySet(),
     totalCookCount: Int = 0,
@@ -136,7 +148,6 @@ fun RecipeScreen(
             onOpenRecipe = ::openRecipe,
             onToggleFavorite = onToggleFavorite,
             modifier = modifier,
-            onOpenWeeklyPlan = { updateMode(RecipeScreenMode.WEEKLY) },
         )
         if (showMysteryWheel) {
             MysteryUnlockWheel(
@@ -175,8 +186,25 @@ fun RecipeScreen(
     val pageScroll = rememberScrollState()
     val scrollScope = rememberCoroutineScope()
     Column(modifier.fillMaxSize().background(colors.background).verticalScroll(pageScroll).padding(16.dp)) {
-        RecipeScreenTitle()
-        RecipeTabChips(mode, ::updateMode, Modifier.padding(top = 12.dp, bottom = 16.dp))
+        Row(
+            modifier = Modifier.padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(
+                onClick = onBackHome ?: { updateMode(RecipeScreenMode.DAILY) },
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(AppIcons.Back, contentDescription = "Quay lại", tint = colors.text)
+            }
+            Text(
+                text = recipeHeadline(mode),
+                modifier = Modifier.semantics { heading() },
+                style = MaterialTheme.typography.headlineSmall,
+                color = colors.text,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         when (mode) {
             RecipeScreenMode.WEEKLY -> WeeklyMealPlanSection(
                 plan = weeklyPlan,

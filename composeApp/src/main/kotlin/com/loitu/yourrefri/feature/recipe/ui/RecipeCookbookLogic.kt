@@ -6,6 +6,7 @@ import com.loitu.yourrefri.feature.pantry.ui.normalizeFoodQuery
 import com.loitu.yourrefri.feature.recipe.data.Recipe
 
 internal const val MYSTERY_RECIPE_LABEL = "Món bí mật"
+internal const val COOKBOOK_SCREEN_TITLE = "Món ăn"
 internal const val COOKBOOK_WEEKLY_SHORTCUT_LABEL = "Thực đơn"
 internal const val COOKBOOK_WEEKLY_SHORTCUT_DESC = "Mở thực đơn tuần"
 internal const val RANDOM_WHEEL_READY_ONLY_LABEL = "Chỉ quay từ đồ đang có"
@@ -24,6 +25,12 @@ internal enum class CookbookDurationGroup(val labelVi: String) {
 
 internal val ALL_COOKBOOK_DURATIONS: Set<CookbookDurationGroup> = CookbookDurationGroup.entries.toSet()
 
+internal enum class CookbookQuickFilter(val labelVi: String) {
+    ALL("Tất cả"),
+    FAVORITE("Yêu thích"),
+    EASY("Dễ nấu"),
+}
+
 internal data class CookbookFilters(
     val canCookOnly: Boolean = false,
     val favoriteOnly: Boolean = false,
@@ -32,6 +39,22 @@ internal data class CookbookFilters(
     fun resetDurations() = copy(selectedDurations = ALL_COOKBOOK_DURATIONS)
     fun resetAll() = CookbookFilters()
 }
+
+internal fun activeCookbookQuickFilter(
+    favoriteOnly: Boolean,
+    selectedDurations: Set<CookbookDurationGroup>,
+): CookbookQuickFilter = when {
+    favoriteOnly -> CookbookQuickFilter.FAVORITE
+    selectedDurations == setOf(CookbookDurationGroup.QUICK) -> CookbookQuickFilter.EASY
+    else -> CookbookQuickFilter.ALL
+}
+
+internal fun applyCookbookQuickFilter(current: CookbookFilters, quick: CookbookQuickFilter): CookbookFilters =
+    when (quick) {
+        CookbookQuickFilter.ALL -> current.copy(favoriteOnly = false, selectedDurations = ALL_COOKBOOK_DURATIONS)
+        CookbookQuickFilter.FAVORITE -> current.copy(favoriteOnly = true, selectedDurations = ALL_COOKBOOK_DURATIONS)
+        CookbookQuickFilter.EASY -> current.copy(favoriteOnly = false, selectedDurations = setOf(CookbookDurationGroup.QUICK))
+    }
 
 internal fun cookbookDurationOf(minutes: Int?): CookbookDurationGroup = when {
     minutes != null && minutes <= 15 -> CookbookDurationGroup.QUICK
