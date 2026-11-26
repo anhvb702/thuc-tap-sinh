@@ -43,3 +43,17 @@ internal fun filterBucketItems(
 
 internal fun defaultBucketFreshnessFilter(items: List<PantryCell>): BucketFreshnessFilter =
     if (items.any { (it.daysLeft ?: 0) < 0 }) BucketFreshnessFilter.PAST_ESTIMATE else BucketFreshnessFilter.USABLE
+
+internal const val BUCKET_SWITCH_USABLE_LABEL = "Đồ dùng được"
+internal const val BUCKET_SWITCH_PAST_LABEL = "Đã qua mốc"
+internal const val BUCKET_SWITCH_EMPTY_PAST_MESSAGE = "Không có món nào cần kiểm tra lại."
+internal const val BUCKET_SWITCH_EMPTY_USABLE_MESSAGE = "Chưa có món dùng được trong ngăn này."
+
+internal fun bucketSwitchFilterOf(showUsable: Boolean): BucketFreshnessFilter =
+    if (showUsable) BucketFreshnessFilter.USABLE else BucketFreshnessFilter.PAST_ESTIMATE
+
+internal fun filterBucketBySwitch(items: List<PantryCell>, showUsable: Boolean): List<PantryCell> =
+    filterBucketItems(items, enabled = true, filter = bucketSwitchFilterOf(showUsable))
+
+internal fun bucketSwitchStatusLabel(showUsable: Boolean, pastCount: Int): String =
+    if (showUsable) BUCKET_SWITCH_USABLE_LABEL else if (pastCount > 0) "$BUCKET_SWITCH_PAST_LABEL · $pastCount" else BUCKET_SWITCH_PAST_LABEL

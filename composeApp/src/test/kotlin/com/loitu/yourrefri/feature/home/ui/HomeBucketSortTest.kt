@@ -122,4 +122,45 @@ class HomeBucketSortTest {
             }
         }
     }
+
+    @Test
+    fun bucketSwitchFilterOf_trueIsUsableAndFalseIsPastEstimate() {
+        assertEquals(BucketFreshnessFilter.USABLE, bucketSwitchFilterOf(true))
+        assertEquals(BucketFreshnessFilter.PAST_ESTIMATE, bucketSwitchFilterOf(false))
+    }
+
+    @Test
+    fun filterBucketBySwitch_defaultTrueReturnsUsableOnly() {
+        val usable = listOf(cell("later", 3), cell("unknown", null), cell("today", 0))
+        assertEquals(usable, filterBucketBySwitch(listOf(cell("past", -1)) + usable, showUsable = true))
+    }
+
+    @Test
+    fun filterBucketBySwitch_falseReturnsPastEstimateOnly() {
+        val past = listOf(cell("past", -1), cell("earlier", -4))
+        val input = past + listOf(cell("today", 0), cell("unknown", null), cell("later", 3))
+        assertEquals(past, filterBucketBySwitch(input, showUsable = false))
+    }
+
+    @Test
+    fun bucketSwitchStatusLabel_formatsUsableAndPastWithCount() {
+        assertEquals("Đồ dùng được", bucketSwitchStatusLabel(showUsable = true, pastCount = 2))
+        assertEquals("Đã qua mốc · 2", bucketSwitchStatusLabel(showUsable = false, pastCount = 2))
+    }
+
+    @Test
+    fun bucketSwitchStatusLabel_omitsNonPositivePastCount() {
+        assertEquals("Đã qua mốc", bucketSwitchStatusLabel(showUsable = false, pastCount = 0))
+        assertEquals("Đã qua mốc", bucketSwitchStatusLabel(showUsable = false, pastCount = -1))
+    }
+
+    @Test
+    fun bucketSwitchLabels_containNoBannedCopy() {
+        val labels = listOf(BUCKET_SWITCH_USABLE_LABEL, BUCKET_SWITCH_PAST_LABEL,
+            BUCKET_SWITCH_EMPTY_USABLE_MESSAGE, BUCKET_SWITCH_EMPTY_PAST_MESSAGE)
+        val bannedCopy = listOf("hết hạn", "bạn quên", "lãng phí", "bỏ lỡ") // lint-copy: rule
+        labels.forEach { label ->
+            bannedCopy.forEach { banned -> assertFalse(label.contains(banned, ignoreCase = true), label) }
+        }
+    }
 }
