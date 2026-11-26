@@ -16,6 +16,16 @@ class VoiceItemParserTest {
         Ingredient("sua-tuoi", "Sữa tươi", "sua-trung", 7),
         Ingredient("sua", "Sữa", "sua-trung", 7),
         Ingredient("rau-muong", "Rau muống", "rau-la", 3),
+        Ingredient("dau-phu", "Đậu phụ", "khac", 2),
+        Ingredient("dua-leo", "Dưa leo", "rau-cu", 5),
+        Ingredient("ba-chi", "Thịt ba chỉ", "thit", 2),
+        Ingredient("thit-heo-xay", "Thịt heo xay", "thit", 1),
+        Ingredient("cha-lua", "Chả lụa", "thit", 3),
+        Ingredient("bong-cai", "Bông cải xanh", "rau-cu", 5),
+        Ingredient("dau-que", "Đậu que", "rau-cu", 5),
+        Ingredient("nuoc-tuong", "Nước tương", "gia-vi", 30),
+        Ingredient("bot-ngot", "Bột ngọt", "gia-vi", 30),
+        Ingredient("hanh-tim", "Hành tím", "gia-vi", 21),
     )
 
     private fun parse(text: String) = parseVoiceItems(text, ingredients)
@@ -147,5 +157,48 @@ class VoiceItemParserTest {
     @Test
     fun longestNameWinsWhenScanningWithoutSeparators() {
         assertEquals(listOf("sua-tuoi", "trung-ga"), parse("mua sữa tươi trứng gà"))
+    }
+
+    @Test
+    fun northSouthSynonymsMatchInSentence() {
+        assertEquals(listOf("dau-phu", "thit-heo"), parse("đậu hũ và thịt lợn"))
+    }
+
+    @Test
+    fun northSouthSynonymsMatchInCommaList() {
+        assertEquals(
+            listOf("dua-leo", "ba-chi", "bot-ngot", "nuoc-tuong"),
+            parse("dưa chuột, ba rọi, mì chính, xì dầu"),
+        )
+    }
+
+    @Test
+    fun northSouthSynonymsKeepQuantityStripping() {
+        assertEquals(listOf("ba-chi"), parse("mua ba rọi"))
+        assertEquals(listOf("cha-lua"), parse("hai cái giò lụa"))
+    }
+
+    @Test
+    fun minceAndSouthernMeatNamesMapToGroundPork() {
+        assertEquals(listOf("thit-heo-xay"), parse("thịt bằm"))
+        assertEquals(listOf("thit-heo-xay"), parse("lợn xay"))
+        assertEquals(listOf("thit-heo-xay"), parse("thịt heo xay"))
+    }
+
+    @Test
+    fun southernVegetableNamesMap() {
+        assertEquals(listOf("bong-cai", "dau-que"), parse("súp lơ xanh và đậu cô ve"))
+        assertEquals(listOf("hanh-tim"), parse("củ hành tím"))
+    }
+
+    @Test
+    fun regionalSynonymsReplaceWholeWordsOnly() {
+        assertEquals("bot ngot dau phu", applyRegionalSynonyms("mi chinh tau hu"))
+        assertEquals("thit heo xay", applyRegionalSynonyms("thit heo xay"))
+        assertEquals("ca loc", applyRegionalSynonyms("ca qua"))
+        assertEquals("ca loc", applyRegionalSynonyms("ca chuoi"))
+        assertEquals("dau que", applyRegionalSynonyms("dau co ve"))
+        assertEquals("bong cai xanh", applyRegionalSynonyms("sup lo xanh"))
+        assertEquals("ca quay", applyRegionalSynonyms("ca quay"))
     }
 }

@@ -15,6 +15,39 @@ private val LEADING_NOISE = setOf(
     "kg", "ky", "can", "lang", "gram", "g", "lit", "ml",
 )
 
+// Từ miền Bắc/Nam khác nhau cho cùng một món (đã bỏ dấu, chữ thường). Thứ tự không quan trọng: khớp cụm dài nhất trước.
+private val REGIONAL_SYNONYMS: Map<String, String> = mapOf(
+    "dau hu" to "dau phu",
+    "tau hu" to "dau phu",
+    "thit lon" to "thit heo",
+    "thit bam" to "thit heo xay",
+    "lon xay" to "thit heo xay",
+    "heo xay" to "thit heo xay",
+    // Giữ nguyên cụm đã đúng: nếu không có dòng này, "heo xay" bên trong sẽ bị thêm "thit" lần nữa.
+    "thit heo xay" to "thit heo xay",
+    "ba roi" to "thit ba chi",
+    "gio lua" to "cha lua",
+    "dua chuot" to "dua leo",
+    "sup lo xanh" to "bong cai xanh",
+    "sup lo" to "bong cai xanh",
+    "dau co ve" to "dau que",
+    "mi chinh" to "bot ngot",
+    "xi dau" to "nuoc tuong",
+    "ca qua" to "ca loc",
+    "ca chuoi" to "ca loc",
+    "cu hanh tim" to "hanh tim",
+)
+
+// Một lần quét, không thay chồng: cụm đã thay không bị thay tiếp. (?<!\S) và (?!\S) = khớp đúng từ.
+private val REGIONAL_SYNONYM_PATTERN: Regex = Regex(
+    "(?<!\\S)(" + REGIONAL_SYNONYMS.keys.sortedByDescending { it.length }
+        .joinToString("|") { Regex.escape(it) } + ")(?!\\S)",
+)
+
+/** Đổi từ miền sang tên chuẩn. Đầu vào đã chuẩn hóa (không dấu, chữ thường, một khoảng trắng). */
+internal fun applyRegionalSynonyms(normalizedPhrase: String): String =
+    REGIONAL_SYNONYM_PATTERN.replace(normalizedPhrase) { REGIONAL_SYNONYMS.getValue(it.value) }
+
 /** Chữ nghe được, gọn khoảng trắng, để hiển thị "Mình nghe được: ...". */
 internal fun voiceHeardText(transcript: String): String =
     transcript.trim().split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ")
@@ -45,16 +78,21 @@ internal fun parseVoiceItems(transcript: String, ingredients: List<Ingredient>):
 }
 
 private fun idsOfSegment(segment: List<String>, ingredients: List<Ingredient>): List<String> {
+    // Đổi từ miền trước khi khớp (cụm "ba rọi" phải thành "thịt ba chỉ" trước khi bỏ số đếm "ba").
+    // Không đổi gì thì giữ nguyên token gốc, để hành vi khớp có dấu như trước.
+    val normalizedJoined = segment.joinToString(" ") { normalizeFoodQuery(it) }
+    val replaced = applyRegionalSynonyms(normalizedJoined)
+    val words = if (replaced == normalizedJoined) segment else replaced.split(' ')
     // Thử nguyên cụm trước (tránh nhầm "nấm" với số "năm"), rồi cụm đã bỏ số lượng/đơn vị.
-    quickAddMatch(ingredients, segment.joinToString(" "))?.let { return listOf(it.id) }
-    val stripped = segment.dropWhile { token ->
+    quickAddMatch(ingredients, words.joinToString(" "))?.let { return listOf(it.id) }
+    val stripped = words.dropWhile { token ->
         val n = normalizeFoodQuery(token)
         n in LEADING_NOISE || n.all(Char::isDigit)
     }
-    if (stripped.isNotEmpty() && stripped.size != segment.size) {
+    if (stripped.isNotEmpty() && stripped.size != words.size) {
         quickAddMatch(ingredients, stripped.joinToString(" "))?.let { return listOf(it.id) }
     }
-    return scanForNames(stripped.ifEmpty { segment }, ingredients)
+    return scanForNames(stripped.ifEmpty { words }, ingredients)
 }
 
 // Không có từ nối: dò từ trái sang phải, ưu tiên tên dài nhất khớp trọn vẹn.
