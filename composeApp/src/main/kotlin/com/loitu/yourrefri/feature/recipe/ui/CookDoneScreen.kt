@@ -1,9 +1,13 @@
 package com.loitu.yourrefri.feature.recipe.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +41,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,6 +50,9 @@ import com.loitu.yourrefri.ui.theme.AppIcons
 import com.loitu.yourrefri.ui.theme.AppTheme
 import com.loitu.yourrefri.ui.components.RecipeThumb
 import com.loitu.yourrefri.ui.components.areSystemAnimatorsEnabled
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 internal object CookDoneCopy {
     const val title = "Xong rồi, dọn cơm thôi!"
@@ -70,16 +79,43 @@ internal fun cookDoneNames(ids: List<String>, namesById: Map<String, String>): L
 internal fun cookDoneSummary(updatedNames: List<String>): String? =
     if (updatedNames.isEmpty()) null else cookResultMessage(updatedNames)
 
-/**
- * Màn chúc mừng sau khi nấu xong. Không tự điều hướng: người gọi nối [onHome].
- * Cố ý không có "Hoàn tác": nấu xong rồi thì không quay lại được.
- */
+internal fun fireworkParticleOffset(
+    angleRad: Float,
+    speed: Float,
+    progress: Float,
+    gravity: Float = 260f,
+): Pair<Float, Float> {
+    val p = progress.coerceIn(0f, 1f)
+    val dx = cos(angleRad) * speed * p
+    val dy = sin(angleRad) * speed * p + 0.5f * gravity * p * p
+    return dx to dy
+}
+
+internal fun fireworkParticleAlpha(progress: Float): Float =
+    (1f - progress.coerceIn(0f, 1f)).coerceIn(0f, 1f)
+
+/** Màn chúc mừng sau khi nấu xong. Người gọi nối [onHome]. */
 @Composable
 internal fun CookDoneScreen(
     done: CookDone,
     onHome: () -> Unit,
     onUndo: (List<com.loitu.yourrefri.feature.pantry.logic.PantryGridAction>) -> Unit = {},
     modifier: Modifier = Modifier,
+) {
+    val animatorsEnabled = areSystemAnimatorsEnabled()
+    Box(modifier.fillMaxSize()) {
+        CookDoneContent(done, onHome, onUndo, animatorsEnabled)
+        // The log ID arrives asynchronously for the same cooking completion.
+        CookFireworksOverlay(done.copy(logId = null), animatorsEnabled, Modifier.matchParentSize())
+    }
+}
+
+@Composable
+private fun CookDoneContent(
+    done: CookDone,
+    onHome: () -> Unit,
+    onUndo: (List<com.loitu.yourrefri.feature.pantry.logic.PantryGridAction>) -> Unit,
+    animatorsEnabled: Boolean,
 ) {
     val colors = AppTheme.colors
     // Đếm ngược 5 giây; hết giờ thì thanh hoàn tác tự ẩn, không còn hoàn tác được nữa.
@@ -91,7 +127,7 @@ internal fun CookDoneScreen(
         }
     }
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
             .padding(24.dp),
@@ -107,7 +143,6 @@ internal fun CookDoneScreen(
             )
             Spacer(Modifier.height(20.dp))
         }
-        val animatorsEnabled = areSystemAnimatorsEnabled()
         var popped by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { popped = true }
         val popScale by animateFloatAsState(
@@ -179,6 +214,40 @@ internal fun CookDoneScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
         ) {
             Text(CookDoneCopy.home, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun CookFireworksOverlay(done: CookDone, animatorsEnabled: Boolean, modifier: Modifier) {
+    if (!animatorsEnabled) return
+
+    val colors = AppTheme.colors
+    val palette = listOf(colors.cta, colors.primary, colors.accentText, colors.primarySoft)
+    val progress = remember(done) { Animatable(0f) }
+    LaunchedEffect(done) {
+        progress.animateTo(1f, tween(durationMillis = 1400, easing = LinearEasing))
+    }
+    Canvas(modifier) {
+        val p = progress.value
+        if (p <= 0f || p >= 1f) return@Canvas
+        val alpha = fireworkParticleAlpha(p)
+        val dpScale = 1.dp.toPx()
+        val left = Offset(size.width * 0.28f, size.height * 0.33f)
+        val right = Offset(size.width * 0.72f, size.height * 0.27f)
+        repeat(28) { index ->
+            val origin = if (index < 14) left else right
+            val angle = (index * 2 * PI / 14 + if (index < 14) 0.0 else PI / 14).toFloat()
+            val speed = 78f + (index % 5) * 15f
+            val (dx, dy) = fireworkParticleOffset(angle, speed, p)
+            val center = origin + Offset(dx * dpScale, dy * dpScale)
+            val color = palette[index % palette.size]
+            if (index % 3 == 0) {
+                val tail = Offset(cos(angle), sin(angle)) * (5.dp.toPx() * alpha)
+                drawLine(color, center - tail, center, 2.dp.toPx(), StrokeCap.Round, alpha = alpha)
+            } else {
+                drawCircle(color, radius = (2 + index % 3).dp.toPx(), center = center, alpha = alpha)
+            }
         }
     }
 }
