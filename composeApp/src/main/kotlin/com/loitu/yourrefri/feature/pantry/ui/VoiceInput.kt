@@ -10,12 +10,16 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.speech.ModelDownloadListener
 import android.speech.RecognitionListener
+import android.speech.RecognitionSupport
+import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import com.google.firebase.FirebaseApp
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.sqrt
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
@@ -30,16 +34,111 @@ internal enum class VoiceEngineChoice { ON_DEVICE, PLATFORM, CLOUD_FALLBACK, NON
 
 internal enum class VoiceFailure { NOTHING_HEARD, LANGUAGE_PACK_MISSING, TOO_SHORT, COOLDOWN, QUOTA_REACHED, UNAVAILABLE }
 
+internal fun containsVietnameseLocale(locales: Collection<String>?): Boolean =
+    locales?.any {
+        when (it.trim().lowercase()) {
+            "vi", "vi-vn", "vi_vn" -> true
+            else -> false
+        }
+    } == true
+
 internal fun chooseVoiceEngine(
     sdkInt: Int,
     onDeviceAvailable: Boolean,
     platformAvailable: Boolean,
     cloudFallbackEnabled: Boolean = false,
+    onDeviceVietnameseReady: Boolean = true,
 ): VoiceEngineChoice = when {
-    sdkInt >= Build.VERSION_CODES.TIRAMISU && onDeviceAvailable -> VoiceEngineChoice.ON_DEVICE
+    sdkInt >= Build.VERSION_CODES.TIRAMISU && onDeviceAvailable && onDeviceVietnameseReady -> VoiceEngineChoice.ON_DEVICE
+    sdkInt >= Build.VERSION_CODES.TIRAMISU && cloudFallbackEnabled && !onDeviceVietnameseReady -> VoiceEngineChoice.CLOUD_FALLBACK
     platformAvailable -> VoiceEngineChoice.PLATFORM
     cloudFallbackEnabled -> VoiceEngineChoice.CLOUD_FALLBACK
     else -> VoiceEngineChoice.NONE
+}
+
+/** Trạng thái gói tiếng Việt on-device, giữ suốt tiến trình; false cho tới khi prefetch xác nhận đã cài. */
+@Volatile
+private var onDeviceVietnamesePackReady: Boolean = false
+private val prefetchStarted = AtomicBoolean(false)
+
+private fun vietnameseRecognitionIntent(): Intent =
+    Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "vi-VN")
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+    }
+
+/**
+ * Kiểm tra gói tiếng Việt on-device một lần khi khởi động. Dịch vụ nhận dạng có thể yêu cầu xác nhận tải.
+ */
+internal fun prefetchVietnameseVoicePack(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    if (!prefetchStarted.compareAndSet(false, true)) return
+    val appContext = context.applicationContext
+    val mainHandler = Handler(Looper.getMainLooper())
+    mainHandler.post {
+        if (!onDeviceAvailable(appContext)) return@post
+        val recognizer = try {
+            SpeechRecognizer.createOnDeviceSpeechRecognizer(appContext)
+        } catch (_: Exception) {
+            return@post
+        }
+        val viIntent = vietnameseRecognitionIntent()
+        val mainExecutor = appContext.mainExecutor
+        val destroyed = AtomicBoolean(false)
+        val cleanupToken = Any()
+        fun safeDestroy() {
+            if (!destroyed.compareAndSet(false, true)) return
+            mainHandler.removeCallbacksAndMessages(cleanupToken)
+            try {
+                recognizer.destroy()
+            } catch (_: Exception) {
+                // Dịch vụ có thể đã ngắt kết nối.
+            }
+        }
+        mainHandler.postDelayed(::safeDestroy, cleanupToken, 15_000L)
+        try {
+            recognizer.checkRecognitionSupport(viIntent, mainExecutor, object : RecognitionSupportCallback {
+                override fun onSupportResult(support: RecognitionSupport) {
+                    if (destroyed.get()) return
+                    if (containsVietnameseLocale(support.installedOnDeviceLanguages)) {
+                        onDeviceVietnamesePackReady = true
+                        safeDestroy()
+                        return
+                    }
+                    if (!containsVietnameseLocale(support.supportedOnDeviceLanguages)) {
+                        safeDestroy()
+                        return
+                    }
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            recognizer.triggerModelDownload(viIntent, mainExecutor, object : ModelDownloadListener {
+                                override fun onSuccess() {
+                                    onDeviceVietnamesePackReady = true
+                                    safeDestroy()
+                                }
+
+                                override fun onScheduled() = safeDestroy()
+                                override fun onError(error: Int) = safeDestroy()
+                                override fun onProgress(completedPercent: Int) = Unit
+                            })
+                        } else {
+                            recognizer.triggerModelDownload(viIntent)
+                            // Give the recognizer time to dispatch the API 33 download request.
+                            mainHandler.removeCallbacksAndMessages(cleanupToken)
+                            mainHandler.postDelayed(::safeDestroy, cleanupToken, 2_000L)
+                        }
+                    } catch (_: Exception) {
+                        safeDestroy()
+                    }
+                }
+
+                override fun onError(error: Int) = safeDestroy()
+            })
+        } catch (_: Exception) {
+            safeDestroy()
+        }
+    }
 }
 
 internal fun isLanguagePackError(errorCode: Int): Boolean =
@@ -80,7 +179,11 @@ internal fun isCloudVoiceFallbackAvailable(context: Context): Boolean =
 
 private fun availableVoiceEngine(context: Context, cloudFallbackEnabled: Boolean = false): VoiceEngineChoice =
     chooseVoiceEngine(
-        Build.VERSION.SDK_INT, onDeviceAvailable(context), platformAvailable(context), cloudFallbackEnabled,
+        Build.VERSION.SDK_INT,
+        onDeviceAvailable(context),
+        platformAvailable(context),
+        cloudFallbackEnabled,
+        onDeviceVietnameseReady = onDeviceVietnamesePackReady,
     )
 
 private fun onDeviceAvailable(context: Context): Boolean =

@@ -25,10 +25,64 @@ class VoiceInputRoutingTest {
     }
 
     @Test
+    fun apiBelow33UsesPlatformEvenWhenVietnamesePackFlagIsFalse() {
+        assertEquals(
+            VoiceEngineChoice.PLATFORM,
+            chooseVoiceEngine(31, false, true, cloudFallbackEnabled = true, onDeviceVietnameseReady = false),
+        )
+    }
+
+    @Test
     fun cloudFallbackComesAfterBothAndroidEngines() {
         assertEquals(VoiceEngineChoice.ON_DEVICE, chooseVoiceEngine(33, true, true, cloudFallbackEnabled = true))
         assertEquals(VoiceEngineChoice.PLATFORM, chooseVoiceEngine(33, false, true, cloudFallbackEnabled = true))
         assertEquals(VoiceEngineChoice.CLOUD_FALLBACK, chooseVoiceEngine(33, false, false, cloudFallbackEnabled = true))
+    }
+
+    @Test
+    fun vietnameseLocaleDetectionAcceptsViVariantsOnly() {
+        assertTrue(containsVietnameseLocale(listOf("vi-VN")))
+        assertTrue(containsVietnameseLocale(listOf("VI-vn")))
+        assertTrue(containsVietnameseLocale(listOf("vi_vn")))
+        assertTrue(containsVietnameseLocale(listOf("  VI_VN  ")))
+        assertTrue(containsVietnameseLocale(listOf("vi")))
+        assertFalse(containsVietnameseLocale(listOf("en-US")))
+        assertFalse(containsVietnameseLocale(null))
+        assertFalse(containsVietnameseLocale(emptyList()))
+    }
+
+    @Test
+    fun vietnameseLocaleDetectionRejectsUnlistedOrIncompleteRegions() {
+        assertFalse(containsVietnameseLocale(listOf("vi-US")))
+        assertFalse(containsVietnameseLocale(listOf("vi-")))
+    }
+
+    @Test
+    fun missingVietnamesePackRoutesDirectlyToCloudWhenCloudIsEnabled() {
+        assertEquals(
+            VoiceEngineChoice.CLOUD_FALLBACK,
+            chooseVoiceEngine(33, true, true, cloudFallbackEnabled = true, onDeviceVietnameseReady = false),
+        )
+        assertEquals(
+            VoiceEngineChoice.CLOUD_FALLBACK,
+            chooseVoiceEngine(34, false, false, cloudFallbackEnabled = true, onDeviceVietnameseReady = false),
+        )
+    }
+
+    @Test
+    fun installedVietnamesePackStillPrefersFreeOnDeviceWithCloudEnabled() {
+        assertEquals(
+            VoiceEngineChoice.ON_DEVICE,
+            chooseVoiceEngine(33, true, true, cloudFallbackEnabled = true, onDeviceVietnameseReady = true),
+        )
+    }
+
+    @Test
+    fun missingVietnamesePackWithoutCloudFallsBackToPlatform() {
+        assertEquals(
+            VoiceEngineChoice.PLATFORM,
+            chooseVoiceEngine(33, true, true, cloudFallbackEnabled = false, onDeviceVietnameseReady = false),
+        )
     }
 
     @Test
