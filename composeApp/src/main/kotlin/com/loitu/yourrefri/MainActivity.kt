@@ -2,8 +2,14 @@ package com.loitu.yourrefri
 
 import android.os.Bundle
 import android.Manifest
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.content.pm.PackageManager
+import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.AppCheckProviderFactory
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -62,6 +68,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        installAppCheck(applicationContext)
         // Chỉ đọc intent khi tạo mới: xoay màn hình không mở lại món đã mở.
         if (savedInstanceState == null) ReminderOpenRequest.request(intent?.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
         // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
@@ -91,6 +98,31 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+/**
+ * Cài App Check cho Firebase AI Logic. Chỉ chạy khi Firebase đã khởi tạo (có google-services.json);
+ * không thì bỏ qua, app vẫn chạy đầy đủ offline. Bản debug dùng debug provider (token đăng ký trong console),
+ * bản phát hành dùng Play Integrity. Debug provider nằm trong debugImplementation nên được nạp bằng reflection.
+ */
+private fun installAppCheck(context: Context) {
+    try {
+        if (FirebaseApp.getApps(context).isEmpty()) return
+        val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val factory: AppCheckProviderFactory = (if (debuggable) debugAppCheckFactory() else null)
+            ?: PlayIntegrityAppCheckProviderFactory.getInstance()
+        FirebaseAppCheck.getInstance().installAppCheckProviderFactory(factory)
+    } catch (_: Exception) {
+        // Thiếu cấu hình Firebase hoặc App Check: không làm app crash.
+    }
+}
+
+private fun debugAppCheckFactory(): AppCheckProviderFactory? = try {
+    Class.forName("com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory")
+        .getMethod("getInstance")
+        .invoke(null) as? AppCheckProviderFactory
+} catch (_: Exception) {
+    null
 }
 
 @OptIn(ExperimentalTime::class)

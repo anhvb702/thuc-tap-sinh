@@ -11,7 +11,7 @@ androidx-lifecycle = "2.8.4"
 androidx-testExt = "1.2.1"
 androidx-testRunner = "1.5.2"
 composeMultiplatform = "1.7.3"
-firebase-bom = "33.7.0"
+firebase-bom = "33.16.0"
 firebase-crashlytics-plugin = "3.0.2"
 google-services = "4.4.2"
 junit = "4.13.2"
@@ -26,6 +26,9 @@ sqldelight = "2.1.0"
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+firebase-ai = { module = "com.google.firebase:firebase-ai" }
+firebase-appcheck-playintegrity = { module = "com.google.firebase:firebase-appcheck-playintegrity" }
+firebase-appcheck-debug = { module = "com.google.firebase:firebase-appcheck-debug" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
 sqldelight-sqliteDriver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqldelight" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }

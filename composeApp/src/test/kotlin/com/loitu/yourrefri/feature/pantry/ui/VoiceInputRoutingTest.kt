@@ -25,6 +25,43 @@ class VoiceInputRoutingTest {
     }
 
     @Test
+    fun cloudFallbackComesAfterBothAndroidEngines() {
+        assertEquals(VoiceEngineChoice.ON_DEVICE, chooseVoiceEngine(33, true, true, cloudFallbackEnabled = true))
+        assertEquals(VoiceEngineChoice.PLATFORM, chooseVoiceEngine(33, false, true, cloudFallbackEnabled = true))
+        assertEquals(VoiceEngineChoice.CLOUD_FALLBACK, chooseVoiceEngine(33, false, false, cloudFallbackEnabled = true))
+    }
+
+    @Test
+    fun gateDecisionsMapToVoiceFailures() {
+        assertEquals(null, mapGateDecisionToFailure(VoiceGateDecision.ALLOW))
+        assertEquals(VoiceFailure.TOO_SHORT, mapGateDecisionToFailure(VoiceGateDecision.TOO_SHORT))
+        assertEquals(VoiceFailure.NOTHING_HEARD, mapGateDecisionToFailure(VoiceGateDecision.SILENT))
+        assertEquals(VoiceFailure.COOLDOWN, mapGateDecisionToFailure(VoiceGateDecision.RATE_LIMITED))
+        assertEquals(VoiceFailure.COOLDOWN, mapGateDecisionToFailure(VoiceGateDecision.SPAM_COOLDOWN))
+        assertEquals(VoiceFailure.QUOTA_REACHED, mapGateDecisionToFailure(VoiceGateDecision.DAILY_QUOTA_REACHED))
+    }
+
+    @Test
+    fun emptyAndSilentPcmHaveZeroRms() {
+        assertEquals(0f, pcm16NormalizedRms(shortArrayOf(), 0))
+        assertEquals(0f, pcm16NormalizedRms(shortArrayOf(4096), -1))
+        assertEquals(0f, pcm16NormalizedRms(shortArrayOf(0, 0, Short.MAX_VALUE), 2))
+    }
+
+    @Test
+    fun midLevelPcmIsBoostedAboveTheSpeechThreshold() {
+        val samples = shortArrayOf(0, -2048, Short.MAX_VALUE)
+        val rms = pcm16NormalizedRms(samples, 2)
+        assertEquals(0.1767767f, rms, absoluteTolerance = 0.0001f)
+        assertTrue(rms > 0.12f)
+    }
+
+    @Test
+    fun fullScalePcmRmsIsClampedToOne() {
+        assertEquals(1f, pcm16NormalizedRms(shortArrayOf(Short.MIN_VALUE, Short.MAX_VALUE), 2))
+    }
+
+    @Test
     fun onlyMissingOrUnsupportedLanguageErrorsIdentifyAMissingPack() {
         for (error in 1..15) {
             assertEquals(error == 12 || error == 13, isLanguagePackError(error), "Error $error")
@@ -70,6 +107,20 @@ class VoiceInputRoutingTest {
         )
         for (word in forbiddenWords) {
             assertFalse(message.contains(word, ignoreCase = true), "Forbidden copy: $word")
+        }
+    }
+
+    @Test
+    fun cloudFallbackMessagesAreNonBlankAndAvoidForbiddenCopy() {
+        val forbiddenWords = listOf(
+            "bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "streak", "chuỗi ngày liên tiếp", // lint-copy: rule
+            "điểm số", "xếp hạng", "so với người khác", "đáng xấu hổ", // lint-copy: rule
+        )
+        for (message in listOf(VOICE_TOO_SHORT, VOICE_COOLDOWN, VOICE_QUOTA_REACHED)) {
+            assertTrue(message.isNotBlank())
+            for (word in forbiddenWords) {
+                assertFalse(message.contains(word, ignoreCase = true), "Forbidden copy: $word")
+            }
         }
     }
 }

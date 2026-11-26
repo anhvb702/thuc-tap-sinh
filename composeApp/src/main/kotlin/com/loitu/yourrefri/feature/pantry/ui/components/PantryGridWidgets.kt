@@ -564,15 +564,21 @@ internal fun VoiceSheet(
                 Text(
                     text = when (phase) {
                         VoicePhase.LISTENING -> VOICE_LISTENING_TITLE
+                        VoicePhase.CLOUD_LISTENING -> "Đang nghe qua đám mây..."
+                        VoicePhase.CLOUD_PROCESSING -> "Đang nhận dạng giọng nói..."
                         VoicePhase.NOT_HEARD -> VOICE_NOT_HEARD
                         VoicePhase.LANGUAGE_PACK_MISSING -> VOICE_LANGUAGE_PACK_MISSING
-                        else -> VOICE_UNAVAILABLE_NOW
+                        VoicePhase.TOO_SHORT -> VOICE_TOO_SHORT
+                        VoicePhase.COOLDOWN -> VOICE_COOLDOWN
+                        VoicePhase.QUOTA_REACHED -> VOICE_QUOTA_REACHED
+                        VoicePhase.IDLE, VoicePhase.ERROR -> VOICE_UNAVAILABLE_NOW
                     },
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = colors.text,
                 )
             }
-            if (phase == VoicePhase.LISTENING) {
+            val listening = phase == VoicePhase.LISTENING || phase == VoicePhase.CLOUD_LISTENING
+            if (listening) {
                 val animatorsEnabled = areSystemAnimatorsEnabled()
                 Row(
                     modifier = Modifier.fillMaxWidth().height(24.dp),
@@ -606,6 +612,8 @@ internal fun VoiceSheet(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.cta, contentColor = colors.onCta),
                 ) { Text("Dừng", fontWeight = FontWeight.Bold) }
+            }
+            if (listening || phase == VoicePhase.CLOUD_PROCESSING) {
                 TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Hủy", color = colors.muted)
                 }
@@ -1179,7 +1187,10 @@ internal fun AddFoodEstimateSection(
     }
 }
 
-internal enum class VoicePhase { IDLE, LISTENING, NOT_HEARD, LANGUAGE_PACK_MISSING, ERROR }
+internal enum class VoicePhase {
+    IDLE, LISTENING, CLOUD_LISTENING, CLOUD_PROCESSING, NOT_HEARD, LANGUAGE_PACK_MISSING,
+    TOO_SHORT, COOLDOWN, QUOTA_REACHED, ERROR,
+}
 
 /** Chữ của ô tìm trên màn Tủ lạnh. */
 internal object PantrySearchCopy {
@@ -1199,12 +1210,15 @@ internal object PantryActionCopy {
 }
 
 internal const val VOICE_MIC_TITLE = "Bật micro nhé?"
-internal const val VOICE_MIC_EXPLAIN = "Mình cần micro để nghe tên món. Dịch vụ giọng nói của máy có thể gửi âm thanh qua mạng để nhận dạng."
+internal const val VOICE_MIC_EXPLAIN = "Mình cần micro để nghe tên món. Dịch vụ giọng nói của máy có thể dùng mạng. Khi máy chưa nghe được, ứng dụng có thể gửi đoạn ghi âm lên đám mây để nhận dạng."
 internal const val VOICE_MIC_DENIED = "Chưa bật micro, mình vẫn thêm thủ công được nhé"
 internal const val VOICE_LISTENING_TITLE = "Đang nghe..."
 internal const val VOICE_LISTENING_HINT = "Bạn nói tên món, ví dụ: cà chua, trứng gà và hành lá"
 internal const val VOICE_UNAVAILABLE_NOW = "Máy chưa nghe được lúc này, mình vẫn thêm thủ công được nhé"
 internal const val VOICE_LANGUAGE_PACK_MISSING = "Máy chưa có gói tiếng Việt — chạm gõ nhanh bên dưới nhé"
+internal const val VOICE_TOO_SHORT = "Chạm giữ lâu hơn một chút rồi nói tên món nhé"
+internal const val VOICE_COOLDOWN = "Tạm nghỉ một chút nhé — bạn có thể chọn nhanh bên dưới"
+internal const val VOICE_QUOTA_REACHED = "Hôm nay đã dùng hết lượt nghe đám mây — bạn chọn tay bên dưới nhé"
 internal const val VOICE_ALREADY_HAVE = "Những món này đã có trong tủ rồi nhé"
 
 internal fun voiceHeardLine(heard: String): String = "Mình nghe được: $heard"

@@ -29,12 +29,17 @@ import com.loitu.yourrefri.feature.pantry.logic.PantryGridAction
 import com.loitu.yourrefri.feature.pantry.logic.PantryGridState
 import com.loitu.yourrefri.feature.pantry.logic.cellsOf
 import com.loitu.yourrefri.ui.theme.AppTheme
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 enum class StorageTab { ALL, FRIDGE, FREEZER, SOON }
 
 @Composable
+@OptIn(ExperimentalTime::class)
 fun PantryGridScreen(
     state: PantryGridState,
     onAction: (PantryGridAction) -> Unit,
@@ -69,6 +74,14 @@ fun PantryGridScreen(
     var voiceLevel by remember { mutableFloatStateOf(0f) }
     var voiceNote by remember { mutableStateOf<String?>(null) }
     val voiceAvailable = voiceInputEnabled && remember { isVoiceInputAvailable(context) }
+    val voiceGate = remember(context) {
+        val clock = Clock.System
+        VoicePreFlightGate(
+            SharedPrefsVoiceQuotaStore(context),
+            nowMs = { clock.now().toEpochMilliseconds() },
+            todayKey = { clock.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString() },
+        )
+    }
     val sessionHolder = remember { arrayOfNulls<VoiceSession>(1) }
 
     fun endVoiceSession() {
@@ -100,8 +113,10 @@ fun PantryGridScreen(
             context = context,
             onPartial = { voicePartial = it },
             onResult = { text ->
+                val fromCloud = voicePhase == VoicePhase.CLOUD_PROCESSING
                 endVoiceSession()
                 val parsed = parseVoiceItems(text, state.ingredients)
+                if (fromCloud) voiceGate.recordParseOutcome(parsed.size)
                 val addable = parsed.filter { state.pantry[it]?.have != true }
                 when {
                     parsed.isEmpty() -> voicePhase = VoicePhase.NOT_HEARD
@@ -120,10 +135,19 @@ fun PantryGridScreen(
                 voicePhase = when (failure) {
                     VoiceFailure.NOTHING_HEARD -> VoicePhase.NOT_HEARD
                     VoiceFailure.LANGUAGE_PACK_MISSING -> VoicePhase.LANGUAGE_PACK_MISSING
+                    VoiceFailure.TOO_SHORT -> VoicePhase.TOO_SHORT
+                    VoiceFailure.COOLDOWN -> VoicePhase.COOLDOWN
+                    VoiceFailure.QUOTA_REACHED -> VoicePhase.QUOTA_REACHED
                     VoiceFailure.UNAVAILABLE -> VoicePhase.ERROR
                 }
             },
             onRms = { voiceLevel = it },
+            gate = voiceGate,
+            onCloudRecording = { recording ->
+                voicePartial = ""
+                voiceLevel = 0f
+                voicePhase = if (recording) VoicePhase.CLOUD_LISTENING else VoicePhase.CLOUD_PROCESSING
+            },
         )
         if (session == null) voicePhase = VoicePhase.ERROR else sessionHolder[0] = session
     }

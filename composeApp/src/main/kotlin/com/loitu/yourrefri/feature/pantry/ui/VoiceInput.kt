@@ -1,7 +1,11 @@
 package com.loitu.yourrefri.feature.pantry.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.media.AudioFormat
+import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -9,18 +13,32 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import com.google.firebase.FirebaseApp
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import kotlin.math.sqrt
+import kotlin.time.TimeSource
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-internal enum class VoiceEngineChoice { ON_DEVICE, PLATFORM, NONE }
+internal enum class VoiceEngineChoice { ON_DEVICE, PLATFORM, CLOUD_FALLBACK, NONE }
 
-internal enum class VoiceFailure { NOTHING_HEARD, LANGUAGE_PACK_MISSING, UNAVAILABLE }
+internal enum class VoiceFailure { NOTHING_HEARD, LANGUAGE_PACK_MISSING, TOO_SHORT, COOLDOWN, QUOTA_REACHED, UNAVAILABLE }
 
 internal fun chooseVoiceEngine(
     sdkInt: Int,
     onDeviceAvailable: Boolean,
     platformAvailable: Boolean,
+    cloudFallbackEnabled: Boolean = false,
 ): VoiceEngineChoice = when {
     sdkInt >= Build.VERSION_CODES.TIRAMISU && onDeviceAvailable -> VoiceEngineChoice.ON_DEVICE
     platformAvailable -> VoiceEngineChoice.PLATFORM
+    cloudFallbackEnabled -> VoiceEngineChoice.CLOUD_FALLBACK
     else -> VoiceEngineChoice.NONE
 }
 
@@ -51,10 +69,19 @@ internal fun classifyVoiceError(errorCode: Int): VoiceFailure = when {
 }
 
 internal fun isVoiceInputAvailable(context: Context): Boolean =
-    availableVoiceEngine(context) != VoiceEngineChoice.NONE
+    availableVoiceEngine(context) != VoiceEngineChoice.NONE || isCloudVoiceFallbackAvailable(context)
 
-private fun availableVoiceEngine(context: Context): VoiceEngineChoice =
-    chooseVoiceEngine(Build.VERSION.SDK_INT, onDeviceAvailable(context), platformAvailable(context))
+internal fun isCloudVoiceFallbackAvailable(context: Context): Boolean =
+    try {
+        FirebaseApp.getApps(context).isNotEmpty()
+    } catch (_: Exception) {
+        false
+    }
+
+private fun availableVoiceEngine(context: Context, cloudFallbackEnabled: Boolean = false): VoiceEngineChoice =
+    chooseVoiceEngine(
+        Build.VERSION.SDK_INT, onDeviceAvailable(context), platformAvailable(context), cloudFallbackEnabled,
+    )
 
 private fun onDeviceAvailable(context: Context): Boolean =
     try {
@@ -82,6 +109,25 @@ internal interface VoiceSession {
 internal fun normalizeVoiceRms(rmsdB: Float): Float =
     if (rmsdB.isFinite()) ((rmsdB + 2f) / 12f).coerceIn(0f, 1f) else 0f
 
+internal fun mapGateDecisionToFailure(decision: VoiceGateDecision): VoiceFailure? = when (decision) {
+    VoiceGateDecision.ALLOW -> null
+    VoiceGateDecision.TOO_SHORT -> VoiceFailure.TOO_SHORT
+    VoiceGateDecision.SILENT -> VoiceFailure.NOTHING_HEARD
+    VoiceGateDecision.RATE_LIMITED, VoiceGateDecision.SPAM_COOLDOWN -> VoiceFailure.COOLDOWN
+    VoiceGateDecision.DAILY_QUOTA_REACHED -> VoiceFailure.QUOTA_REACHED
+}
+
+internal fun pcm16NormalizedRms(samples: ShortArray, count: Int): Float {
+    if (count <= 0) return 0f
+    var sumSquares = 0.0
+    for (index in 0 until count) {
+        val sample = samples[index].toDouble()
+        sumSquares += sample * sample
+    }
+    val rms = sqrt(sumSquares / count).toFloat() / 32768f
+    return (rms * 4f).coerceIn(0f, 1f)
+}
+
 internal fun voiceWaveBarHeights(normalizedLevel: Float, animatorsEnabled: Boolean): List<Float> {
     if (!animatorsEnabled) return List(5) { 0.45f }
     val amplitude = 0.25f + 0.75f * normalizedLevel.coerceIn(0f, 1f)
@@ -94,10 +140,22 @@ internal fun startVoiceSession(
     onResult: (String) -> Unit,
     onFailure: (VoiceFailure) -> Unit,
     onRms: (Float) -> Unit = {},
+    gate: VoicePreFlightGate? = null,
+    transcriber: CloudSpeechTranscriber? = null,
+    onCloudRecording: (Boolean) -> Unit = {},
 ): VoiceSession? {
-    val engine = availableVoiceEngine(context)
-    if (engine == VoiceEngineChoice.NONE) return null
-    return ManagedVoiceSession(context, engine, onPartial, onResult, onFailure, onRms)
+    val startCloudFallback: (() -> VoiceSession)? = gate?.takeIf { isCloudVoiceFallbackAvailable(context) }?.let { cloudGate ->
+        {
+            val cloudTranscriber = transcriber ?: FirebaseGeminiTranscriber(context.applicationContext)
+            CloudFallbackVoiceSession(cloudGate, cloudTranscriber, onCloudRecording, onRms, onResult, onFailure)
+        }
+    }
+    return when (val engine = availableVoiceEngine(context, cloudFallbackEnabled = startCloudFallback != null)) {
+        VoiceEngineChoice.NONE -> null
+        VoiceEngineChoice.CLOUD_FALLBACK -> startCloudFallback?.invoke()
+        VoiceEngineChoice.ON_DEVICE, VoiceEngineChoice.PLATFORM ->
+            ManagedVoiceSession(context, engine, onPartial, onResult, onFailure, onRms, startCloudFallback)
+    }
 }
 
 private class ManagedVoiceSession(
@@ -107,6 +165,7 @@ private class ManagedVoiceSession(
     private val onResult: (String) -> Unit,
     private val onFailure: (VoiceFailure) -> Unit,
     private val onRms: (Float) -> Unit,
+    private var startCloudFallback: (() -> VoiceSession)?,
 ) : VoiceSession {
     private val mainHandler = Handler(Looper.getMainLooper())
     private var recognizer: SpeechRecognizer? = null
@@ -115,6 +174,7 @@ private class ManagedVoiceSession(
     private var lastPartial = ""
     private var finished = false
     private var stopRequested = false
+    private var cloudSession: VoiceSession? = null
 
     init {
         // Let the caller store the session before startup can report a failure.
@@ -140,7 +200,7 @@ private class ManagedVoiceSession(
                     }
                 }
                 VoiceEngineChoice.PLATFORM -> SpeechRecognizer.createSpeechRecognizer(context)
-                VoiceEngineChoice.NONE -> return
+                VoiceEngineChoice.CLOUD_FALLBACK, VoiceEngineChoice.NONE -> return
             }
             recognizer = nextRecognizer
             nextRecognizer.setRecognitionListener(
@@ -220,6 +280,16 @@ private class ManagedVoiceSession(
     private fun finishFailure(failure: VoiceFailure) {
         if (finished) return
         finished = true
+        if (startCloudFallback != null &&
+            (failure == VoiceFailure.UNAVAILABLE || failure == VoiceFailure.LANGUAGE_PACK_MISSING)
+        ) {
+            // Release the Android recognizer outside its callback before opening AudioRecord.
+            mainHandler.post {
+                destroyNow()
+                cloudSession = startCloudFallback?.invoke()
+            }
+            return
+        }
         onFailure(failure)
         mainHandler.post { destroyNow() }
     }
@@ -228,6 +298,10 @@ private class ManagedVoiceSession(
         bundle?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()?.takeIf { it.isNotBlank() }
 
     override fun stop() {
+        if (finished) {
+            cloudSession?.stop()
+            return
+        }
         stopRequested = true
         try {
             recognizer?.stopListening()
@@ -238,6 +312,9 @@ private class ManagedVoiceSession(
 
     override fun destroy() {
         finished = true
+        startCloudFallback = null
+        cloudSession?.destroy()
+        cloudSession = null
         mainHandler.post { destroyNow() }
     }
 
@@ -254,5 +331,119 @@ private class ManagedVoiceSession(
         } catch (_: Exception) {
             // The service may have already disconnected.
         }
+    }
+}
+
+private class CloudFallbackVoiceSession(
+    gate: VoicePreFlightGate,
+    transcriber: CloudSpeechTranscriber,
+    onCloudRecording: (Boolean) -> Unit,
+    private val onRms: (Float) -> Unit,
+    onResult: (String) -> Unit,
+    onFailure: (VoiceFailure) -> Unit,
+) : VoiceSession {
+    @Volatile
+    private var stopRequested = false
+
+    private val job = CoroutineScope(Dispatchers.Main).launch {
+        val transcript = try {
+            onCloudRecording(true)
+            val capture = withContext(Dispatchers.IO) { recordAudio() }
+            onCloudRecording(false)
+            ensureActive()
+            // Keep the quota check and attempt together on the main thread.
+            val failure = mapGateDecisionToFailure(gate.checkBeforeCloud(capture.metrics))
+            if (failure != null) {
+                onFailure(failure)
+                return@launch
+            }
+            gate.recordCloudCallAttempt()
+            withContext(Dispatchers.IO) {
+                transcriber.transcribeVietnamese(encodePcm16MonoToWav(capture.pcmBytes, SAMPLE_RATE))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            onFailure(VoiceFailure.UNAVAILABLE)
+            return@launch
+        }
+        if (transcript.isNullOrBlank()) {
+            gate.recordParseOutcome(0)
+            onFailure(if (transcript == null) VoiceFailure.UNAVAILABLE else VoiceFailure.NOTHING_HEARD)
+        } else {
+            onResult(transcript)
+        }
+    }
+
+    override fun stop() {
+        stopRequested = true
+    }
+
+    override fun destroy() {
+        stopRequested = true
+        job.cancel()
+    }
+
+    @SuppressLint("MissingPermission") // The screen requests RECORD_AUDIO before starting the session.
+    private suspend fun recordAudio(): Capture {
+        val channel = AudioFormat.CHANNEL_IN_MONO
+        val format = AudioFormat.ENCODING_PCM_16BIT
+        val minBufferBytes = AudioRecord.getMinBufferSize(SAMPLE_RATE, channel, format)
+        check(minBufferBytes > 0)
+        val recorder = AudioRecord(
+            MediaRecorder.AudioSource.MIC, SAMPLE_RATE, channel, format,
+            maxOf(minBufferBytes, BUFFER_SAMPLES * Short.SIZE_BYTES),
+        )
+        try {
+            check(recorder.state == AudioRecord.STATE_INITIALIZED)
+            recorder.startRecording()
+            try {
+                check(recorder.recordingState == AudioRecord.RECORDSTATE_RECORDING)
+                return readPcm(recorder)
+            } finally {
+                recorder.stop()
+            }
+        } finally {
+            recorder.release()
+        }
+    }
+
+    private suspend fun readPcm(recorder: AudioRecord): Capture {
+        val maxSamples = (MAX_RECORDING_MS * SAMPLE_RATE / 1_000).toInt()
+        val pcm = ByteBuffer.allocate(maxSamples * Short.SIZE_BYTES).order(ByteOrder.LITTLE_ENDIAN)
+        val samples = ShortArray(BUFFER_SAMPLES)
+        val started = TimeSource.Monotonic.markNow()
+        var totalSamples = 0
+        var activeSamples = 0
+        var peakRms = 0f
+        while (!stopRequested && totalSamples < maxSamples && started.elapsedNow().inWholeMilliseconds < MAX_RECORDING_MS) {
+            val requested = minOf(samples.size, maxSamples - totalSamples)
+            val count = recorder.read(samples, 0, requested, AudioRecord.READ_NON_BLOCKING)
+            check(count >= 0)
+            if (count == 0) {
+                delay(20)
+                continue
+            }
+            val rms = pcm16NormalizedRms(samples, count)
+            peakRms = maxOf(peakRms, rms)
+            if (rms >= MIN_SPEECH_RMS) activeSamples += count
+            for (index in 0 until count) pcm.putShort(samples[index])
+            totalSamples += count
+            withContext(Dispatchers.Main) { if (!stopRequested) onRms(rms) }
+        }
+        val metrics = AudioCaptureMetrics(
+            durationMs = totalSamples * 1_000L / SAMPLE_RATE,
+            activeSpeechMs = activeSamples * 1_000L / SAMPLE_RATE,
+            peakNormalizedRms = peakRms,
+        )
+        return Capture(pcm.array().copyOf(pcm.position()), metrics)
+    }
+
+    private data class Capture(val pcmBytes: ByteArray, val metrics: AudioCaptureMetrics)
+
+    private companion object {
+        const val SAMPLE_RATE = 16_000
+        const val BUFFER_SAMPLES = 320
+        const val MAX_RECORDING_MS = 12_000L
     }
 }
