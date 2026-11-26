@@ -229,7 +229,8 @@ fun HandsFreeCookScreen(
                     interactionSource = backInteractionSource,
                     modifier = Modifier.weight(1f).heightIn(min = NavButtonHeight).pressScale(backInteractionSource),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.surfaceSoft, contentColor = colors.text),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.surface, contentColor = colors.text),
+                    border = BorderStroke(1.5.dp, colors.line),
                 ) {
                     Text(HandsFreeCopy.BACK, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 }
