@@ -1,6 +1,7 @@
 package com.loitu.yourrefri.feature.settings.ui
 
 import com.loitu.yourrefri.feature.notice.logic.DEFAULT_WEEKDAY_REMINDER_TIME
+import com.loitu.yourrefri.feature.notice.logic.WeekendReminderDay
 import com.loitu.yourrefri.feature.notice.logic.clampWeekdayReminderTime
 import kotlinx.datetime.LocalTime
 
@@ -13,7 +14,21 @@ internal object ReminderCopy {
 
     fun weekdayTimeLabel(time: LocalTime): String =
         "Ngày thường lúc ${reminderTimeLabel(time.hour, time.minute)}"
+
+    fun weekendDayLabel(day: WeekendReminderDay): String = when (day) {
+        WeekendReminderDay.SATURDAY -> "Thứ 7"
+        WeekendReminderDay.SUNDAY -> "Chủ Nhật"
+    }
+
+    fun weekendSummary(day: WeekendReminderDay, time: LocalTime): String =
+        "${weekendDayLabel(day)} lúc ${reminderTimeLabel(time.hour, time.minute)}"
 }
+
+internal fun weekendDayOf(storedName: String?): WeekendReminderDay =
+    if (storedName == "SATURDAY") WeekendReminderDay.SATURDAY else WeekendReminderDay.SUNDAY
+
+internal fun shouldShowWeekdayTimeRow(reminderEnabled: Boolean, weekdayEnabled: Boolean): Boolean =
+    reminderEnabled && weekdayEnabled
 
 private const val DEFAULT_SUNDAY_MINUTES = 8 * 60
 

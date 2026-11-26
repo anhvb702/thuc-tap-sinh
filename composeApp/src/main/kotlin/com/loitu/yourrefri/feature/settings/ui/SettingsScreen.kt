@@ -5,6 +5,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loitu.yourrefri.feature.notice.logic.DEFAULT_WEEKDAY_REMINDER_TIME
+import com.loitu.yourrefri.feature.notice.logic.WeekendReminderDay
 import com.loitu.yourrefri.feature.recipe.logic.DietGoal
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
 import com.loitu.yourrefri.feature.recipe.logic.FamilyPreferenceTag
@@ -50,6 +54,7 @@ internal data class WeekdayReminderSettings(
 
 internal val LocalWeekdayReminderSettings = compositionLocalOf { WeekdayReminderSettings() }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
     modifier: Modifier = Modifier,
@@ -77,6 +82,10 @@ fun SettingsScreen(
     onTasteProfileChange: (FamilyTasteProfile) -> Unit = {},
     weekdayTime: LocalTime = LocalWeekdayReminderSettings.current.weekdayTime,
     onWeekdayTimeChange: (LocalTime) -> Unit = LocalWeekdayReminderSettings.current.onWeekdayTimeChange,
+    weekendDay: WeekendReminderDay = WeekendReminderDay.SUNDAY,
+    onWeekendDayChange: (WeekendReminderDay) -> Unit = {},
+    weekdayEnabled: Boolean = false,
+    onWeekdayEnabledChange: (Boolean) -> Unit = {},
 ) {
     val colors = AppTheme.colors
     val context = LocalContext.current
@@ -123,43 +132,75 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(SettingsPresentation.title, fontSize = 27.sp, fontWeight = FontWeight.SemiBold, color = colors.text)
-        val sundayTimeRow: @Composable () -> Unit = {
-            ChipRow("Chủ Nhật nhắc đi chợ", "Chạm để điều chỉnh") {
-                ValueChip(
-                    text = ReminderCopy.sundayTimeLabel(sundayTime).substringAfter("lúc "),
-                    description = "Đổi giờ nhắc đi chợ Chủ Nhật",
-                    onClick = {
-                        TimePickerDialog(context, { _, hour, minute -> onSundayTimeChange(LocalTime(hour, minute)) }, sundayTime.hour, sundayTime.minute, true).show()
-                    },
-                )
-            }
-        }
         SETTINGS_MAIN_CARDS.forEach { card ->
             SettingsCard {
                 when (card) {
                     SettingsMainCard.REMINDER -> {
                         SectionTitle(SettingsPresentation.reminderGroupTitle, AppIcons.Bell)
-                        ChipRow(SettingsPresentation.reminderTitle, ReminderCopy.weekdayTimeLabel(weekdayTime)) {
-                            ToggleChip(reminderEnabled, SettingsPresentation.reminderTitle, onReminderChanged)
+                        val weekendTitle = "Nhắc đi chợ cuối tuần"
+                        ChipRow(weekendTitle, ReminderCopy.weekendSummary(weekendDay, sundayTime)) {
+                            ToggleChip(reminderEnabled, weekendTitle, onReminderChanged)
                         }
                         AnimatedVisibility(visible = shouldShowSundayTimeRow(reminderEnabled)) {
                             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                ChipRow("Giờ nhắc ngày thường", "Từ 14:00 đến 20:00") {
+                                Column {
+                                    Text("Ngày đi chợ", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = colors.text)
+                                    Text("Chọn Thứ 7 hoặc Chủ Nhật", fontSize = 12.sp, color = colors.muted)
+                                    FlowRow(
+                                        modifier = Modifier.selectableGroup().padding(top = 4.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        for (day in WeekendReminderDay.entries) {
+                                            SelectChip(
+                                                text = ReminderCopy.weekendDayLabel(day),
+                                                selected = day == weekendDay,
+                                                onClick = { onWeekendDayChange(day) },
+                                            )
+                                        }
+                                    }
+                                }
+                                ChipRow("Giờ nhắc đi chợ") {
                                     ValueChip(
-                                        text = reminderTimeLabel(weekdayTime.hour, weekdayTime.minute),
-                                        description = "Đổi giờ nhắc ngày thường",
+                                        text = reminderTimeLabel(sundayTime.hour, sundayTime.minute),
+                                        description = "Đổi giờ nhắc đi chợ",
                                         onClick = {
                                             TimePickerDialog(
                                                 context,
-                                                { _, hour, minute -> onWeekdayTimeChange(LocalTime(hour, minute)) },
-                                                weekdayTime.hour,
-                                                weekdayTime.minute,
+                                                { _, hour, minute -> onSundayTimeChange(LocalTime(hour, minute)) },
+                                                sundayTime.hour,
+                                                sundayTime.minute,
                                                 true,
                                             ).show()
                                         },
                                     )
                                 }
-                                sundayTimeRow()
+                                val weekdayTitle = "Nhắc thêm đồ sắp dùng"
+                                val weekdaySummary = if (weekdayEnabled) {
+                                    ReminderCopy.weekdayTimeLabel(weekdayTime)
+                                } else {
+                                    "Tắt — chỉ nhắc cuối tuần"
+                                }
+                                ChipRow(weekdayTitle, weekdaySummary) {
+                                    ToggleChip(weekdayEnabled, weekdayTitle, onWeekdayEnabledChange)
+                                }
+                                AnimatedVisibility(visible = shouldShowWeekdayTimeRow(reminderEnabled, weekdayEnabled)) {
+                                    ChipRow("Giờ nhắc ngày thường", "Từ 14:00 đến 20:00") {
+                                        ValueChip(
+                                            text = reminderTimeLabel(weekdayTime.hour, weekdayTime.minute),
+                                            description = "Đổi giờ nhắc ngày thường",
+                                            onClick = {
+                                                TimePickerDialog(
+                                                    context,
+                                                    { _, hour, minute -> onWeekdayTimeChange(LocalTime(hour, minute)) },
+                                                    weekdayTime.hour,
+                                                    weekdayTime.minute,
+                                                    true,
+                                                ).show()
+                                            },
+                                        )
+                                    }
+                                }
                             }
                         }
                         Text(ReminderCopy.subtitle, fontSize = 12.sp, color = colors.muted)

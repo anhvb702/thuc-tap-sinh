@@ -521,6 +521,10 @@ fun MainScaffold(
                                 onWeekdayTimeChange = settings.onWeekdayTimeChange,
                                 sundayTime = settings.uiState.sundayTime,
                                 onSundayTimeChange = settings.onSundayTimeChange,
+                                weekendDay = settings.uiState.weekendDay,
+                                onWeekendDayChange = settings.onWeekendDayChange,
+                                weekdayEnabled = settings.uiState.weekdayEnabled,
+                                onWeekdayEnabledChange = settings.onWeekdayEnabledChange,
                                 tasteProfile = settings.uiState.tasteProfile,
                                 onTasteProfileChange = settings.onTasteProfileChange,
                             )

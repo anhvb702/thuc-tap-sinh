@@ -45,6 +45,8 @@ class ReminderReceiver : BroadcastReceiver() {
                 val planned = planDailyNotice(
                     runBlocking { repository.observe().first() }, base.map { it.copy(userShelfDays = overrides[it.id]) },
                     today, prefs.getString("last_sent", null)?.let(kotlinx.datetime.LocalDate::parse),
+                    weekendDay = ReminderScheduler.weekendDay(context),
+                    weekdayEnabled = ReminderScheduler.weekdayEnabled(context),
                 )
                 val notice = planned ?: if (test) DailyNotice(today, emptyList(), "Gợi ý bữa cơm: ${entry.titleVi}", "Món gợi ý hôm nay: ${entry.titleVi}. Bấm để xem công thức và nấu ngay nhé!") else null
                 val manager = context.getSystemService(NotificationManager::class.java)

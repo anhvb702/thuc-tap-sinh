@@ -6,6 +6,7 @@ import com.loitu.yourrefri.core.mvi.MviViewModel
 import com.loitu.yourrefri.feature.backup.data.BackupCodec
 import com.loitu.yourrefri.feature.backup.data.PantryBackupRepositoryImpl
 import com.loitu.yourrefri.feature.notice.logic.DEFAULT_WEEKDAY_REMINDER_TIME
+import com.loitu.yourrefri.feature.notice.logic.WeekendReminderDay
 import com.loitu.yourrefri.feature.notice.logic.clampWeekdayReminderTime
 import com.loitu.yourrefri.feature.recipe.data.TasteProfileRepository
 import com.loitu.yourrefri.feature.recipe.logic.DietRestriction
@@ -40,6 +41,10 @@ interface SettingsPreferencesPort {
     fun setSundayTime(time: LocalTime) = Unit
     fun weekdayTime(): LocalTime = DEFAULT_WEEKDAY_REMINDER_TIME
     fun setWeekdayTime(time: LocalTime) {}
+    fun readWeekendDay(): WeekendReminderDay = WeekendReminderDay.SUNDAY
+    fun setWeekendDay(day: WeekendReminderDay) = Unit
+    fun readWeekdayEnabled(): Boolean = false
+    fun setWeekdayEnabled(enabled: Boolean) = Unit
     fun readDietRestriction(): DietRestriction = DietRestriction.NONE
     fun setDietRestriction(restriction: DietRestriction) = Unit
     fun readThemeMode(): ThemeMode = ThemeMode.SYSTEM
@@ -56,6 +61,10 @@ class DefaultSettingsPreferencesPort(private val context: Context, private val t
     override fun setSundayTime(time: LocalTime) = ReminderScheduler.setSundayTime(context, time)
     override fun weekdayTime() = ReminderScheduler.weekdayTime(context)
     override fun setWeekdayTime(time: LocalTime) = ReminderScheduler.setWeekdayTime(context, time)
+    override fun readWeekendDay() = ReminderScheduler.weekendDay(context)
+    override fun setWeekendDay(day: WeekendReminderDay) = ReminderScheduler.setWeekendDay(context, day)
+    override fun readWeekdayEnabled() = ReminderScheduler.weekdayEnabled(context)
+    override fun setWeekdayEnabled(enabled: Boolean) = ReminderScheduler.setWeekdayEnabled(context, enabled)
     override fun readDietRestriction() = DietPrefs.read(context)
     override fun setDietRestriction(restriction: DietRestriction) = DietPrefs.write(context, restriction)
     override fun readThemeMode() = ThemePrefs.read(context)
@@ -73,6 +82,8 @@ class SettingsViewModel(
         reminderEnabled = preferencesPort.readReminderEnabled(),
         sundayTime = preferencesPort.readSundayTime(),
         weekdayTime = preferencesPort.weekdayTime(),
+        weekendDay = preferencesPort.readWeekendDay(),
+        weekdayEnabled = preferencesPort.readWeekdayEnabled(),
         dietRestriction = preferencesPort.readDietRestriction(),
         themeMode = preferencesPort.readThemeMode(),
     ),
@@ -125,6 +136,14 @@ class SettingsViewModel(
                     val clamped = clampWeekdayReminderTime(intent.time)
                     preferencesPort.setWeekdayTime(clamped)
                     updateState { copy(weekdayTime = clamped) }
+                }
+                is SettingsIntent.SetWeekendDay -> {
+                    preferencesPort.setWeekendDay(intent.day)
+                    updateState { copy(weekendDay = intent.day) }
+                }
+                is SettingsIntent.SetWeekdayEnabled -> {
+                    preferencesPort.setWeekdayEnabled(intent.enabled)
+                    updateState { copy(weekdayEnabled = intent.enabled) }
                 }
                 is SettingsIntent.SetDietRestriction -> preferencesPort.setDietRestriction(intent.restriction).let {
                     updateState { copy(dietRestriction = intent.restriction) }

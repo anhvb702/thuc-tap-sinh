@@ -250,6 +250,8 @@ private fun App(dependencies: AppContainer, settingsViewModel: SettingsViewModel
             onDietRestrictionChange = { settingsViewModel.onIntent(SettingsIntent.SetDietRestriction(it)) },
             onSundayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetSundayTime(it)) },
             onWeekdayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekdayTime(it)) },
+            onWeekendDayChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekendDay(it)) },
+            onWeekdayEnabledChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekdayEnabled(it)) },
             onTasteProfileChange = { settingsViewModel.onIntent(SettingsIntent.SetTasteProfile(it)) },
         ),
         collections = MainScaffoldCollectionBinding(
