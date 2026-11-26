@@ -9,6 +9,7 @@ import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Instant
 
@@ -124,5 +125,59 @@ class SundayNoticeTest {
     @Test
     fun weekday_noExpiring_stillNoNotice() {
         assertNull(planDailyNotice(emptyList(), emptyList(), friday, lastSent = null))
+    }
+
+    @Test
+    fun weekendDaySaturday_sendsShoppingNoticeOnSaturday() {
+        val saturday = LocalDate(2026, 11, 14)
+        val notice = planDailyNotice(emptyList(), emptyList(), saturday, lastSent = null, weekendDay = WeekendReminderDay.SATURDAY)
+        assertEquals(shoppingBody, notice?.body)
+        assertEquals("Cuối tuần rồi nè", notice?.title)
+        assertEquals(saturday, notice?.day)
+    }
+
+    @Test
+    fun weekendDaySaturday_sundayIsOrdinaryDay() {
+        assertNull(planDailyNotice(emptyList(), emptyList(), sunday, lastSent = null, weekendDay = WeekendReminderDay.SATURDAY))
+    }
+
+    @Test
+    fun weekendDaySaturday_sunday_withExpiringItem_weekdayEnabled_returnsExpiringNotice() {
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        val notice = planDailyNotice(
+            pantry, ingredients, sunday, lastSent = null,
+            weekendDay = WeekendReminderDay.SATURDAY, weekdayEnabled = true,
+        )
+        assertNotNull(notice)
+        assertEquals(listOf("rau"), notice.ingredientIds)
+        assertEquals("Gợi ý từ tủ nhà mình", notice.title)
+    }
+
+    @Test
+    fun weekendDaySaturday_sunday_withExpiringItem_weekdayDisabled_returnsNull() {
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        assertNull(
+            planDailyNotice(
+                pantry, ingredients, sunday, lastSent = null,
+                weekendDay = WeekendReminderDay.SATURDAY, weekdayEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun weekdayDisabled_hidesExpiringNoticeOnWeekdays() {
+        val ingredients = listOf(Ingredient("rau", "Rau muống", "rau-la", 1))
+        val pantry = listOf(PantryItem("rau", true, LocalDate(2026, 11, 10)))
+        // Đối chứng: cùng dữ liệu, khi bật ngày thường thì có thông báo.
+        assertNotNull(planDailyNotice(pantry, ingredients, friday, lastSent = null))
+        assertNull(planDailyNotice(pantry, ingredients, friday, lastSent = null, weekdayEnabled = false))
+    }
+
+    @Test
+    fun weekdayDisabled_stillSendsShoppingNoticeOnWeekendDay() {
+        val notice = planDailyNotice(emptyList(), emptyList(), sunday, lastSent = null, weekdayEnabled = false)
+        assertEquals(shoppingBody, notice?.body)
     }
 }

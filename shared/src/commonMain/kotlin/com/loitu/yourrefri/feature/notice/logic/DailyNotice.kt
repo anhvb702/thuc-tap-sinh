@@ -3,7 +3,6 @@ package com.loitu.yourrefri.feature.notice.logic
 import com.loitu.yourrefri.feature.pantry.data.Ingredient
 import com.loitu.yourrefri.feature.pantry.data.PantryItem
 import com.loitu.yourrefri.feature.pantry.logic.expiringList
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
 
 data class DailyNotice(
@@ -19,11 +18,13 @@ fun planDailyNotice(
     today: LocalDate,
     lastSent: LocalDate?,
     sundayShopping: Boolean = true,
+    weekendDay: WeekendReminderDay = WeekendReminderDay.SUNDAY,
+    weekdayEnabled: Boolean = true,
 ): DailyNotice? {
     // Ngày tương lai cũng chặn để đổi giờ máy lùi không gây gửi lại.
     if (lastSent != null && lastSent >= today) return null
-    // Chủ Nhật thay thông báo thường bằng lời nhắc đi chợ (vẫn đúng một thông báo trong ngày).
-    if (sundayShopping && today.dayOfWeek == DayOfWeek.SUNDAY) {
+    // Ngày cuối tuần thay thông báo thường bằng lời nhắc đi chợ (vẫn đúng một thông báo trong ngày).
+    if (sundayShopping && today.dayOfWeek == weekendDay.dayOfWeek) {
         return DailyNotice(
             day = today,
             ingredientIds = emptyList(),
@@ -31,6 +32,7 @@ fun planDailyNotice(
             body = "Nay là cuối tuần rồi nè, đã sẵn sàng đi chợ cho 1 tuần mới chưa nào!",
         )
     }
+    if (!weekdayEnabled) return null
     val items = expiringList(pantry, ingredients, today)
     if (items.isEmpty()) return null
     val names = items.take(2).joinToString(", ") { it.ingredient.nameVi }

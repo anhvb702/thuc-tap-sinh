@@ -2,10 +2,12 @@
 
 package com.loitu.yourrefri.feature.notice.logic
 
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalTime
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.time.Instant
 
 class NextTriggerTimeTest {
@@ -107,5 +109,101 @@ class NextTriggerTimeTest {
         assertEquals(instant("2026-11-29T09:00:00Z"), nextReminderTrigger(true, instant("2026-11-28T16:00:00Z"), utc, sunday, LocalTime(15, 0)))
         assertEquals(instant("2026-11-23T14:00:00Z"), nextReminderTrigger(true, instant("2026-11-23T00:00:00Z"), utc, sunday, LocalTime(13, 0)))
         assertEquals(null, nextReminderTrigger(false, instant("2026-11-23T00:00:00Z"), utc, sunday, LocalTime(15, 0)))
+    }
+
+    private val weekendTime = LocalTime(9, 0)
+    private val dateSat = LocalDate(2026, 11, 14)
+    private val dateFri = LocalDate(2026, 11, 13)
+    private val dateSun = LocalDate(2026, 11, 15)
+
+    @Test
+    fun reminderTimeFor_weekendOverload_pickedDayUsesWeekendTime() {
+        assertEquals(weekendTime, reminderTimeFor(dateSat, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = true))
+        assertEquals(LocalTime(16, 0), reminderTimeFor(dateFri, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = true))
+        assertEquals(LocalTime(16, 0), reminderTimeFor(dateSun, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = true))
+        assertEquals(LocalTime(20, 0), reminderTimeFor(dateFri, weekendTime, WeekendReminderDay.SATURDAY, true, LocalTime(21, 0)))
+    }
+
+    @Test
+    fun reminderTimeFor_weekendOverload_weekdayDisabledReturnsNullOnOtherDays() {
+        assertNull(reminderTimeFor(dateFri, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = false))
+        assertNull(reminderTimeFor(dateSun, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = false))
+        assertEquals(weekendTime, reminderTimeFor(dateSat, weekendTime, WeekendReminderDay.SATURDAY, weekdayEnabled = false))
+    }
+
+    @Test
+    fun weekendOnly_saturday_skipsOtherDaysAndFiresNextSaturday() {
+        fun next(now: String) = nextReminderTrigger(
+            true, instant(now), TimeZone.UTC, weekendTime,
+            weekendDay = WeekendReminderDay.SATURDAY, weekdayEnabled = false,
+        )
+        assertEquals(instant("2026-11-14T09:00:00Z"), next("2026-11-13T12:00:00Z")) // Thứ 6 -> Thứ 7 mai
+        assertEquals(instant("2026-11-21T09:00:00Z"), next("2026-11-15T00:00:00Z")) // Chủ Nhật -> Thứ 7 tuần sau
+        assertEquals(instant("2026-11-21T09:00:00Z"), next("2026-11-16T12:00:00Z")) // Thứ 2
+        assertEquals(instant("2026-11-14T09:00:00Z"), next("2026-11-14T08:59:59Z")) // Thứ 7 trước giờ
+        assertEquals(instant("2026-11-21T09:00:00Z"), next("2026-11-14T09:00:00Z")) // đúng giờ đã qua
+        assertEquals(instant("2026-11-21T09:00:00Z"), next("2026-11-14T10:00:00Z")) // Thứ 7 sau giờ
+    }
+
+    @Test
+    fun weekendOnly_sunday_skipsOtherDaysAndFiresNextSunday() {
+        val sundayTime = LocalTime(10, 0)
+        fun next(now: String) = nextReminderTrigger(
+            true, instant(now), TimeZone.UTC, sundayTime,
+            weekendDay = WeekendReminderDay.SUNDAY, weekdayEnabled = false,
+        )
+        assertEquals(instant("2026-11-15T10:00:00Z"), next("2026-11-14T12:00:00Z")) // Thứ 7 -> Chủ Nhật mai
+        assertEquals(instant("2026-11-15T10:00:00Z"), next("2026-11-15T09:00:00Z")) // Chủ Nhật trước giờ
+        assertEquals(instant("2026-11-22T10:00:00Z"), next("2026-11-15T10:30:00Z")) // Chủ Nhật sau giờ
+        assertEquals(instant("2026-11-22T10:00:00Z"), next("2026-11-16T12:00:00Z")) // Thứ 2
+    }
+
+    @Test
+    fun weekendOnly_sunday_dstSpringForward_keepsLocalNineAm() {
+        // 01/03/2026 là Chủ Nhật; 14:00Z = 09:00 EST. Chuyển sang EDT ngày 08/03 nên 09:00 EDT = 13:00Z (không phải +168h = 14:00Z).
+        val newYork = TimeZone.of("America/New_York")
+        assertEquals(
+            instant("2026-03-08T13:00:00Z"),
+            nextReminderTrigger(
+                true, instant("2026-03-01T14:00:00Z"), newYork, weekendTime,
+                weekendDay = WeekendReminderDay.SUNDAY, weekdayEnabled = false,
+            ),
+        )
+    }
+
+    @Test
+    fun weekendPlusWeekday_saturday_usesWeekendTimeOnSaturday_weekdayTimeOnOtherDays() {
+        val weekdayTime = LocalTime(18, 30)
+        fun next(now: String) = nextReminderTrigger(
+            true, instant(now), TimeZone.UTC, weekendTime, weekdayTime,
+            weekendDay = WeekendReminderDay.SATURDAY, weekdayEnabled = true,
+        )
+        assertEquals(instant("2026-11-13T18:30:00Z"), next("2026-11-13T10:00:00Z")) // Thứ 6 dùng giờ ngày thường
+        assertEquals(instant("2026-11-14T09:00:00Z"), next("2026-11-14T08:00:00Z")) // Thứ 7 dùng giờ cuối tuần
+        assertEquals(instant("2026-11-15T18:30:00Z"), next("2026-11-14T10:00:00Z")) // Chủ Nhật dùng giờ ngày thường
+        assertEquals(
+            instant("2026-11-16T20:00:00Z"),
+            nextReminderTrigger(
+                true, instant("2026-11-16T10:00:00Z"), TimeZone.UTC, weekendTime, LocalTime(21, 0),
+                weekendDay = WeekendReminderDay.SATURDAY,
+            ),
+        ) // giờ ngày thường 21:00 bị kẹp về 20:00
+    }
+
+    @Test
+    fun disabled_alwaysNull_inEveryWeekendMode() {
+        for (day in WeekendReminderDay.entries) {
+            for (weekdayEnabled in listOf(true, false)) {
+                assertNull(nextReminderTrigger(
+                    false, instant("2026-11-14T08:00:00Z"), TimeZone.UTC, weekendTime,
+                    weekendDay = day, weekdayEnabled = weekdayEnabled,
+                ))
+            }
+        }
+    }
+
+    @Test
+    fun noWeekendTime_andWeekdayDisabled_returnsNull() {
+        assertNull(nextReminderTrigger(true, instant("2026-11-14T08:00:00Z"), TimeZone.UTC, null, weekdayEnabled = false))
     }
 }

@@ -24,6 +24,12 @@ fun clampWeekdayReminderTime(time: LocalTime): LocalTime = when {
     else -> time
 }
 
+/** Ngày nhắc đi chợ cuối tuần: Thứ 7 hoặc Chủ Nhật. */
+enum class WeekendReminderDay(val dayOfWeek: DayOfWeek) {
+    SATURDAY(DayOfWeek.SATURDAY),
+    SUNDAY(DayOfWeek.SUNDAY),
+}
+
 /** Chủ Nhật dùng giờ riêng (nhắc đi chợ), Thứ 2-Thứ 7 dùng giờ ngày thường đã kẹp (mặc định 16:00). */
 fun reminderTimeFor(
     date: LocalDate,
@@ -33,7 +39,24 @@ fun reminderTimeFor(
     if (date.dayOfWeek == DayOfWeek.SUNDAY) sundayTime else clampWeekdayReminderTime(weekdayTime)
 
 /**
- * Mốc nhắc kế tiếp. `sundayTime == null` giữ nguyên hành vi cũ (16:00 mọi ngày); có giá trị thì Chủ Nhật dùng giờ đó.
+ * Giờ nhắc của một ngày. Ngày cuối tuần đã chọn dùng [weekendTime]; ngày khác dùng giờ ngày thường đã kẹp
+ * nếu [weekdayEnabled], không thì `null` (không nhắc).
+ */
+fun reminderTimeFor(
+    date: LocalDate,
+    weekendTime: LocalTime,
+    weekendDay: WeekendReminderDay,
+    weekdayEnabled: Boolean,
+    weekdayTime: LocalTime = DEFAULT_WEEKDAY_REMINDER_TIME,
+): LocalTime? = when {
+    date.dayOfWeek == weekendDay.dayOfWeek -> weekendTime
+    weekdayEnabled -> clampWeekdayReminderTime(weekdayTime)
+    else -> null
+}
+
+/**
+ * Mốc nhắc kế tiếp. `sundayTime == null` giữ nguyên hành vi cũ (16:00 mọi ngày); có giá trị thì ngày cuối tuần
+ * đã chọn ([weekendDay]) dùng giờ đó. `weekdayEnabled = false` chỉ nhắc vào cuối tuần.
  * Mỗi ngày đúng một mốc nên tối đa một thông báo mỗi ngày.
  */
 fun nextReminderTrigger(
@@ -42,14 +65,22 @@ fun nextReminderTrigger(
     tz: TimeZone,
     sundayTime: LocalTime? = null,
     weekdayTime: LocalTime = DEFAULT_WEEKDAY_REMINDER_TIME,
+    weekendDay: WeekendReminderDay = WeekendReminderDay.SUNDAY,
+    weekdayEnabled: Boolean = true,
 ): Instant? {
     if (!enabled) return null
-    if (sundayTime == null) return nextTriggerTime(now, tz, clampWeekdayReminderTime(weekdayTime))
+    if (sundayTime == null) {
+        if (!weekdayEnabled) return null
+        return nextTriggerTime(now, tz, clampWeekdayReminderTime(weekdayTime))
+    }
     val today = now.toLocalDateTime(tz).date
     // Cộng ngày lịch rồi mới ghép giờ địa phương để giữ đúng giờ treo tường khi chuyển DST.
     return (0..7).asSequence()
         .map { offset -> today.plus(offset, DateTimeUnit.DAY) }
-        .map { date -> LocalDateTime(date, reminderTimeFor(date, sundayTime, weekdayTime)).toInstant(tz) }
+        .mapNotNull { date ->
+            reminderTimeFor(date, sundayTime, weekendDay, weekdayEnabled, weekdayTime)
+                ?.let { LocalDateTime(date, it).toInstant(tz) }
+        }
         .first { it > now }
 }
 
