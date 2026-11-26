@@ -206,7 +206,7 @@ class ShippedRecipeBundleTest {
         "muc-xao-bong-cai",
     )
 
-    // 16 món Việt gia đình thêm ở U4-03 (mở sẵn, nối sau 36 món cũ).
+    // 16 món Việt gia đình thêm ở U4-03 (bí ẩn, mở qua vòng quay; nối sau 36 món cũ).
     private val vietnameseRecipeIds = setOf(
         "ca-loc-kho-to",
         "canh-mong-toi-nau-ngao",
@@ -232,12 +232,12 @@ class ShippedRecipeBundleTest {
         val standard = recipes.filter { !it.isMystery }
         val mystery = recipes.filter { it.isMystery }
 
-        // 46 món mở sẵn (36 + 16 món Việt U4-03) + 6 món bí mật mới theo yêu cầu tính năng Cook-to-Unlock.
+        // 30 món mở sẵn + 22 món bí ẩn (6 cũ + 16 món Việt U4-03, mở qua vòng quay).
         assertEquals(52, recipes.size)
-        assertEquals(46, standard.size)
-        assertEquals(6, mystery.size)
-        assertEquals(originalRecipeIds + newRecipeContracts.keys + vietnameseRecipeIds, standard.map { it.id }.toSet())
-        assertEquals(mysteryRecipeIds, mystery.map { it.id }.toSet())
+        assertEquals(30, standard.size)
+        assertEquals(22, mystery.size)
+        assertEquals(originalRecipeIds + newRecipeContracts.keys, standard.map { it.id }.toSet())
+        assertEquals(mysteryRecipeIds + vietnameseRecipeIds, mystery.map { it.id }.toSet())
     }
 
     @Test
@@ -353,7 +353,7 @@ class ShippedRecipeBundleTest {
                 assertTrue(seasoning.amountText.isNotBlank(), "${recipe.id}: ${seasoning.name} needs amountText")
             }
         }
-        assertEquals(6, recipes.count { it.isMystery })
+        assertEquals(22, recipes.count { it.isMystery })
     }
 
     private fun assertCompleteMeasuresAndSeasonings(recipes: List<Recipe>, expectedIds: List<String>) {

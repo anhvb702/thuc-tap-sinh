@@ -980,6 +980,7 @@
   },
   {
     "id": "ca-loc-kho-to",
+    "mystery": true,
     "title": "Cá lóc kho tộ",
     "minutes": 30,
     "servings": 2,
@@ -1005,6 +1006,7 @@
   },
   {
     "id": "canh-mong-toi-nau-ngao",
+    "mystery": true,
     "title": "Canh mồng tơi nấu ngao",
     "minutes": 20,
     "servings": 2,
@@ -1030,6 +1032,7 @@
   },
   {
     "id": "canh-rau-den-thit-bam",
+    "mystery": true,
     "title": "Canh rau dền thịt băm",
     "minutes": 15,
     "servings": 2,
@@ -1055,6 +1058,7 @@
   },
   {
     "id": "uc-ga-ap-chao-bo-toi",
+    "mystery": true,
     "title": "Ức gà áp chảo bơ tỏi",
     "minutes": 20,
     "servings": 2,
@@ -1078,6 +1082,7 @@
   },
   {
     "id": "dui-ga-chien-nuoc-mam",
+    "mystery": true,
     "title": "Đùi gà chiên nước mắm",
     "minutes": 40,
     "servings": 2,
@@ -1103,6 +1108,7 @@
   },
   {
     "id": "canh-ga-rim-xi-dau",
+    "mystery": true,
     "title": "Cánh gà rim nước tương",
     "minutes": 30,
     "servings": 2,
@@ -1129,6 +1135,7 @@
   },
   {
     "id": "vit-kho-gung",
+    "mystery": true,
     "title": "Vịt kho gừng",
     "minutes": 55,
     "servings": 2,
@@ -1155,6 +1162,7 @@
   },
   {
     "id": "ca-ro-phi-chien-gion",
+    "mystery": true,
     "title": "Cá rô phi chiên giòn",
     "minutes": 25,
     "servings": 2,
@@ -1180,6 +1188,7 @@
   },
   {
     "id": "ca-nuc-kho-ca-chua",
+    "mystery": true,
     "title": "Cá nục kho cà chua",
     "minutes": 30,
     "servings": 2,
@@ -1205,6 +1214,7 @@
   },
   {
     "id": "bach-tuoc-xao-sa-te",
+    "mystery": true,
     "title": "Bạch tuộc xào sa tế",
     "minutes": 15,
     "servings": 2,
@@ -1232,6 +1242,7 @@
   },
   {
     "id": "thit-kho-trung-cut",
+    "mystery": true,
     "title": "Thịt kho trứng cút",
     "minutes": 60,
     "servings": 2,
@@ -1257,6 +1268,7 @@
   },
   {
     "id": "ca-tim-om-dau-phu",
+    "mystery": true,
     "title": "Cà tím om đậu phụ thịt băm",
     "minutes": 25,
     "servings": 2,
@@ -1282,6 +1294,7 @@
   },
   {
     "id": "canh-bi-do-nau-tom",
+    "mystery": true,
     "title": "Canh bí đỏ nấu tôm",
     "minutes": 20,
     "servings": 2,
@@ -1307,6 +1320,7 @@
   },
   {
     "id": "bap-cai-xao-trung",
+    "mystery": true,
     "title": "Bắp cải xào trứng",
     "minutes": 12,
     "servings": 2,
@@ -1333,6 +1347,7 @@
   },
   {
     "id": "nam-kim-cham-cuon-ba-chi",
+    "mystery": true,
     "title": "Nấm kim châm cuộn ba chỉ",
     "minutes": 25,
     "servings": 2,
@@ -1358,6 +1373,7 @@
   },
   {
     "id": "mien-xao-muc",
+    "mystery": true,
     "title": "Miến xào mực rau củ",
     "minutes": 25,
     "servings": 2,
