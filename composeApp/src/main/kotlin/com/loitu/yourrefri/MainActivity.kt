@@ -37,6 +37,7 @@ import com.loitu.yourrefri.feature.recipe.ui.WeeklyMealPlanEffect
 import com.loitu.yourrefri.di.AppGraph
 import com.loitu.yourrefri.di.AppContainer
 import com.loitu.yourrefri.shared.db.DatabaseTooNewException
+import com.loitu.yourrefri.telemetry.TelemetryEvent
 import com.loitu.yourrefri.ui.DatabaseTooNewNotice
 import com.loitu.yourrefri.ui.MainScaffold
 import com.loitu.yourrefri.ui.MainScaffoldCollectionBinding
@@ -63,18 +64,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Chỉ đọc intent khi tạo mới: xoay màn hình không mở lại món đã mở.
         if (savedInstanceState == null) ReminderOpenRequest.request(intent?.getStringExtra(ReminderIntents.EXTRA_RECIPE_ID))
+        // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
+        val appContainer = try { AppGraph.get(this) } catch (_: DatabaseTooNewException) { null }
+        if (savedInstanceState == null) {
+            appContainer?.telemetry?.track(TelemetryEvent.ScreenViewed("app_launch"))
+        }
         setContent {
             val context = LocalContext.current
-            // DB mới hơn app: hiện thông báo cập nhật thay vì crash; dữ liệu không bị đụng tới.
-            val dependencies = remember(context) {
-                try { AppGraph.get(context) } catch (_: DatabaseTooNewException) { null }
-            }
-            if (dependencies == null) {
+            if (appContainer == null) {
                 YourRefriTheme(darkTheme = ThemePrefs.read(context).isDark(isSystemInDarkTheme())) {
                     DatabaseTooNewNotice()
                 }
             } else {
-                val settingsViewModel: SettingsViewModel = viewModel(factory = remember(dependencies) { dependencies.settingsViewModelFactory() })
+                val settingsViewModel: SettingsViewModel = viewModel(factory = remember(appContainer) { appContainer.settingsViewModelFactory() })
                 val settingsState by settingsViewModel.state.collectAsState()
                 YourRefriTheme(darkTheme = settingsState.themeMode.isDark(isSystemInDarkTheme())) {
                     CompositionLocalProvider(
@@ -83,7 +85,7 @@ class MainActivity : ComponentActivity() {
                             onWeekdayTimeChange = { settingsViewModel.onIntent(SettingsIntent.SetWeekdayTime(it)) },
                         ),
                     ) {
-                        App(dependencies, settingsViewModel, settingsState)
+                        App(appContainer, settingsViewModel, settingsState)
                     }
                 }
             }
