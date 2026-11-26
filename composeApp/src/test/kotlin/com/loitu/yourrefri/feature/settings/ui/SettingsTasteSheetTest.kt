@@ -79,4 +79,36 @@ class SettingsTasteSheetTest {
         val banned = listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "điểm số", "so sánh", "streak") // lint-copy: rule
         for (label in labels) for (word in banned) assertFalse(label.contains(word, ignoreCase = true), label)
     }
+
+    @Test fun tasteSheetGroups_hasExactlyThreeGroupsCoveringAllSevenSections() {
+        assertEquals(listOf("Nhà mình ăn", "Hay thích", "Tuần này"), TASTE_SHEET_GROUPS.map { it.title })
+        assertEquals(
+            listOf(listOf("DIET", "AVOIDED", "KIDS"), listOf("FLAVORS", "DISH_STYLES"), listOf("FAVORITE_GROUPS", "GOAL")),
+            TASTE_SHEET_GROUPS.map { group -> group.sections.map { it.name } },
+        )
+    }
+
+    @Test fun tasteKidsChipLabel_usesMildSpiceCopy() =
+        assertEquals("Ít cay · Nhạt cho trẻ", TASTE_KIDS_CHIP_LABEL)
+
+    @Test fun tasteSheetGroupLabels_haveNoBannedCopy() {
+        val labels = TASTE_SHEET_GROUPS.flatMap { listOf(it.title, it.subtitle) } + TASTE_KIDS_CHIP_LABEL
+        val banned = listOf("bạn quên", "lãng phí", "bỏ lỡ", "hết hạn", "điểm số", "so sánh", "streak", "chuỗi ngày liên tiếp", "xếp hạng", "so với người khác", "đáng xấu hổ") // lint-copy: rule
+        for (label in labels) for (word in banned) assertFalse(label.contains(word, ignoreCase = true), label)
+    }
+
+    @Test fun kidsChipToggle_preservesHasYoungKidsPersistenceField() {
+        val current = TasteHabitSnapshot(taste = FamilyTasteProfile(
+            flavors = setOf(TasteFlavor.SWEET),
+            avoidIngredientIds = setOf("tom"),
+        ))
+        val saved = mutableListOf<FamilyTasteProfile>()
+        val toggle: (TasteHabitSnapshot) -> TasteHabitSnapshot =
+            { it.copy(taste = it.taste.copy(hasYoungKids = !it.taste.hasYoungKids)) }
+
+        val (enabled) = applyImmediateTasteChange(current, toggle) { saved.add(it.taste) }
+        applyImmediateTasteChange(enabled, toggle) { saved.add(it.taste) }
+
+        assertEquals(listOf(current.taste.copy(hasYoungKids = true), current.taste), saved)
+    }
 }

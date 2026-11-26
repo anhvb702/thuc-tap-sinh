@@ -21,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -34,8 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.loitu.yourrefri.feature.recipe.logic.*
 import com.loitu.yourrefri.ui.theme.AppIcons
@@ -103,7 +106,7 @@ internal fun SettingsTasteSheet(
                 }
             }
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                TASTE_SHEET_SECTIONS.forEach { section ->
+                TasteSheetGroups { section ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         if (section != TasteSheetSection.KIDS) Text(section.title, style = MaterialTheme.typography.titleSmall)
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -132,10 +135,8 @@ internal fun SettingsTasteSheet(
                                 TasteSheetSection.AVOIDED -> AVOIDED_INGREDIENT_OPTIONS.forEach { (id, label) ->
                                     TasteToggleChip(label, id in current.taste.avoidIngredientIds) { changeTaste { toggleAvoidIngredient(it, id) } }
                                 }
-                                TasteSheetSection.KIDS -> ChipRow(section.title) {
-                                    ToggleChip(current.taste.hasYoungKids, section.title) { enabled ->
-                                        changeTaste { it.copy(hasYoungKids = enabled) }
-                                    }
+                                TasteSheetSection.KIDS -> TasteToggleChip(TASTE_KIDS_CHIP_LABEL, current.taste.hasYoungKids) {
+                                    changeTaste { it.copy(hasYoungKids = !it.hasYoungKids) }
                                 }
                             }
                         }
@@ -156,6 +157,37 @@ internal fun SettingsTasteSheet(
                 Button(onDismiss, touchTarget, shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary),
                 ) { Text(SettingsPresentation.doneLabel) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TasteSheetGroups(sectionContent: @Composable (TasteSheetSection) -> Unit) {
+    val colors = AppTheme.colors
+    TASTE_SHEET_GROUPS.forEach { group ->
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            color = colors.surface,
+            contentColor = colors.text,
+        ) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        group.title,
+                        modifier = Modifier.semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        group.subtitle,
+                        color = colors.muted,
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                group.sections.forEach { section -> sectionContent(section) }
             }
         }
     }

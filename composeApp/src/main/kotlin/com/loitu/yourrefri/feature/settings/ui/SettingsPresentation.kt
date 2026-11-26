@@ -84,6 +84,32 @@ internal enum class TasteSheetSection(val title: String) {
 
 internal val TASTE_SHEET_SECTIONS = TasteSheetSection.entries
 
+internal const val TASTE_KIDS_CHIP_LABEL = "Ít cay · Nhạt cho trẻ"
+
+internal enum class TasteSheetGroup(
+    val title: String,
+    val subtitle: String,
+    val sections: List<TasteSheetSection>,
+) {
+    FAMILY_RULES(
+        "Nhà mình ăn",
+        "Luật cố định để lọc món phù hợp",
+        listOf(TasteSheetSection.DIET, TasteSheetSection.AVOIDED, TasteSheetSection.KIDS),
+    ),
+    FAVORITES(
+        "Hay thích",
+        "Vị và kiểu món cả nhà thích ăn",
+        listOf(TasteSheetSection.FLAVORS, TasteSheetSection.DISH_STYLES),
+    ),
+    WEEKLY_FOCUS(
+        "Tuần này",
+        "Gợi ý ưu tiên theo nhịp bữa cơm",
+        listOf(TasteSheetSection.FAVORITE_GROUPS, TasteSheetSection.GOAL),
+    ),
+}
+
+internal val TASTE_SHEET_GROUPS = TasteSheetGroup.entries
+
 internal data class TasteHabitSnapshot(
     val diet: DietRestriction = DietRestriction.NONE,
     val preferences: Set<FamilyPreferenceTag> = emptySet(),
